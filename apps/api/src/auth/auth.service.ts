@@ -1,24 +1,22 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
+import { OtpChallengeEntity } from './otp-challenge.entity';
 import { RegisterDto } from './dto/register.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 
-interface OtpChallenge {
-  code: string;
-  expiresAt: number;
-}
-
 @Injectable()
 export class AuthService {
-  private readonly otpChallenges = new Map<string, OtpChallenge>();
-
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    @InjectRepository(OtpChallengeEntity)
+    private readonly otpChallengesRepository: Repository<OtpChallengeEntity>,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -40,7 +38,10 @@ export class AuthService {
     const code = this.generateOtp();
     const expiresAt = Date.now() + 5 * 60 * 1000;
     const email = user.email.toLowerCase();
-    this.otpChallenges.set(email, { code, expiresAt });
+
+    await this.otpChallengesRepository.save(
+      this.otpChallengesRepository.create({ email, code, expiresAt }),
+    );
 
     return {
       message: 'OTP generated for verification.',
@@ -52,24 +53,25 @@ export class AuthService {
 
   async verifyOtp(dto: VerifyOtpDto) {
     const email = dto.email.trim().toLowerCase();
-    const challenge = this.otpChallenges.get(email);
+    const challenge = await this.otpChallengesRepository.findOneBy({ email });
 
     if (!challenge || challenge.expiresAt < Date.now() || challenge.code !== dto.otp) {
       throw new UnauthorizedException('Invalid or expired OTP.');
     }
 
-    const user = this.usersService.findByEmail(email);
+    const user = await this.usersService.findByEmail(email);
 
     if (!user) {
       throw new UnauthorizedException('User not found.');
     }
 
-    this.otpChallenges.delete(email);
+    await this.otpChallengesRepository.delete({ email });
 
     const payload = {
       sub: user.id,
       email: user.email,
       name: user.name,
+      accountType: user.accountType,
     };
 
     return {

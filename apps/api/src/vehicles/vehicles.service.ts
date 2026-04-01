@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { randomUUID } from 'crypto';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
+import { VehicleEntity } from './vehicle.entity';
 
 export interface Vehicle {
   id: string;
@@ -17,15 +19,25 @@ export interface Vehicle {
 
 @Injectable()
 export class VehiclesService {
-  private readonly vehicles = new Map<string, Vehicle[]>();
+  constructor(
+    @InjectRepository(VehicleEntity)
+    private readonly vehiclesRepository: Repository<VehicleEntity>,
+  ) {}
 
-  listByUser(userId: string) {
-    return this.vehicles.get(userId) ?? [];
+  async listByUser(userId: string) {
+    const vehicles = await this.vehiclesRepository.find({
+      where: { userId },
+      order: { createdAt: 'ASC' },
+    });
+
+    return vehicles.map((vehicle) => ({
+      ...vehicle,
+      createdAt: vehicle.createdAt.toISOString(),
+    }));
   }
 
-  create(userId: string, dto: CreateVehicleDto) {
-    const vehicle: Vehicle = {
-      id: randomUUID(),
+  async create(userId: string, dto: CreateVehicleDto) {
+    const vehicle = this.vehiclesRepository.create({
       userId,
       nickname: dto.nickname.trim(),
       make: dto.make.trim(),
@@ -34,13 +46,13 @@ export class VehiclesService {
       registrationNumber: dto.registrationNumber.trim().toUpperCase(),
       color: dto.color?.trim() || undefined,
       notes: dto.notes?.trim() || undefined,
-      createdAt: new Date().toISOString(),
+    });
+
+    const saved = await this.vehiclesRepository.save(vehicle);
+
+    return {
+      ...saved,
+      createdAt: saved.createdAt.toISOString(),
     };
-
-    const current = this.vehicles.get(userId) ?? [];
-    current.push(vehicle);
-    this.vehicles.set(userId, current);
-
-    return vehicle;
   }
 }

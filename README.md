@@ -7,6 +7,8 @@ Local development workspace for a NestJS API and a lightweight Vite frontend.
 docker compose up -d
 ```
 
+This starts PostgreSQL for persistent application data.
+
 ## Start API
 ```bash
 cd apps/api
@@ -23,11 +25,23 @@ GET  /health
 POST /auth/register
 POST /auth/login
 POST /auth/verify-otp
+GET  /vehicles
+POST /vehicles
+GET  /provider-services
+GET  /provider-services/catalog
+POST /provider-services
+PUT  /provider-services/:serviceId
+GET  /roadside-requests
+POST /roadside-requests
 ```
 
 Notes:
 - `POST /auth/login` returns a development OTP in non-production mode.
 - `POST /auth/verify-otp` returns a JWT access token.
+- `POST /auth/register` now accepts `accountType` with `customer` or `provider`.
+- Provider services support `basePriceKsh`, `pricePerKmKsh`, and optional fuel pricing for fuel delivery.
+- Fuel delivery request estimates combine delivery pricing with the requested fuel litres and fuel type.
+- Users, OTP challenges, vehicles, provider services, and roadside requests now persist in PostgreSQL.
 
 ## Start web app
 ```bash
@@ -39,4 +53,4 @@ npm run dev
 The web app runs on `http://localhost:3000` and talks to the API on `http://localhost:4000`.
 
 ## Environment
-Copy `apps/api/.env.example` to `apps/api/.env` if you want to override the JWT settings.
+Copy `apps/api/.env.example` to `apps/api/.env` if you want to override the JWT or database settings.

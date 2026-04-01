@@ -12,6 +12,7 @@ export interface AuthenticatedRequest extends Request {
     sub: string;
     email: string;
     name: string;
+    accountType: 'customer' | 'provider';
   };
 }
 

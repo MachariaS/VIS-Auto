@@ -1,41 +1,46 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { compare, hash } from 'bcrypt';
-import { randomUUID } from 'crypto';
+import { Repository } from 'typeorm';
+import { UserEntity } from './user.entity';
 import { User } from './user.types';
 
 interface CreateUserInput {
   email: string;
   name: string;
+  accountType: 'customer' | 'provider';
   password: string;
 }
 
 @Injectable()
 export class UsersService {
-  private readonly users = new Map<string, User>();
+  constructor(
+    @InjectRepository(UserEntity)
+    private readonly usersRepository: Repository<UserEntity>,
+  ) {}
 
   async create(input: CreateUserInput) {
     const email = input.email.trim().toLowerCase();
-    const existing = this.users.get(email);
+    const existing = await this.usersRepository.findOneBy({ email });
 
     if (existing) {
       throw new ConflictException('A user with that email already exists.');
     }
 
-    const user: User = {
-      id: randomUUID(),
+    const user = this.usersRepository.create({
       email,
       name: input.name.trim(),
+      accountType: input.accountType,
       passwordHash: await hash(input.password, 10),
-      createdAt: new Date().toISOString(),
-    };
+    });
 
-    this.users.set(email, user);
+    const saved = await this.usersRepository.save(user);
 
-    return this.toSafeUser(user);
+    return this.toSafeUser(saved);
   }
 
   async validateCredentials(email: string, password: string) {
-    const user = this.users.get(email.trim().toLowerCase());
+    const user = await this.usersRepository.findOneBy({ email: email.trim().toLowerCase() });
 
     if (!user) {
       throw new NotFoundException('User not found.');
@@ -50,16 +55,22 @@ export class UsersService {
     return user;
   }
 
-  findByEmail(email: string) {
-    return this.users.get(email.trim().toLowerCase()) ?? null;
+  async findByEmail(email: string) {
+    return this.usersRepository.findOneBy({ email: email.trim().toLowerCase() });
   }
 
-  toSafeUser(user: User) {
+  async findById(userId: string) {
+    return this.usersRepository.findOneBy({ id: userId });
+  }
+
+  toSafeUser(user: User | UserEntity) {
     return {
       id: user.id,
       email: user.email,
       name: user.name,
-      createdAt: user.createdAt,
+      accountType: user.accountType,
+      createdAt:
+        user.createdAt instanceof Date ? user.createdAt.toISOString() : String(user.createdAt),
     };
   }
 }

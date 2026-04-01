@@ -61,7 +61,8 @@ label span,
 .landing-copy,
 .status-banner,
 .info-card p,
-.estimate-band p {
+.estimate-band p,
+.auth-copy {
   color: rgba(244, 239, 231, 0.72);
 }
 
@@ -466,6 +467,20 @@ button:disabled {
   .dashboard-sidebar {
     position: static;
   }
+
+  .dashboard-sidebar {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar-nav {
+    flex-direction: row;
+  }
+
+  .nav-active,
+  .nav-idle {
+    flex: 1 1 140px;
+    text-align: center;
+  }
 }
 
 @media (max-width: 760px) {
@@ -491,5 +506,54 @@ button:disabled {
   .hero-grid,
   .form-grid {
     grid-template-columns: 1fr;
+  }
+
+  .landing-shell,
+  .auth-shell,
+  .dashboard-sidebar,
+  .dashboard-panel {
+    padding: 18px;
+    border-radius: 22px;
+  }
+
+  .cta-row,
+  .future-strip,
+  .panel-head {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .service-strip {
+    gap: 10px;
+  }
+
+  .sidebar-head {
+    gap: 4px;
+  }
+
+  .sidebar-nav {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .nav-active,
+  .nav-idle,
+  .ghost-button,
+  .primary-cta,
+  .secondary-cta {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+  }
+
+  .sidebar-metrics {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .info-top,
+  .info-meta {
+    flex-direction: column;
+    align-items: flex-start;
   }
 }

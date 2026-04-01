@@ -133,7 +133,7 @@ export default function App() {
   const [registerForm, setRegisterForm] = useState(initialRegister);
   const [loginForm, setLoginForm] = useState(initialLogin);
   const [verifyForm, setVerifyForm] = useState(initialVerify);
-  const [message, setMessage] = useState('Choose how you want to use VIS Assist.');
+  const [message, setMessage] = useState('');
   const [token, setToken] = useState('');
   const [user, setUser] = useState(null);
   const [devOtp, setDevOtp] = useState('');
@@ -490,7 +490,7 @@ export default function App() {
     setRoadsideForm(initialRoadsideRequest);
     setDashboardTab('overview');
     setServiceFilter('battery_jump');
-    setMessage('Choose how you want to use VIS Assist.');
+      setMessage('');
   }
 
   function renderLandingPanel() {
@@ -555,15 +555,8 @@ export default function App() {
           <div className="auth-head">
             <span className="mini-pill">OTP</span>
             <h2>Verify sign in</h2>
+            <p className="auth-copy">Enter the code sent to your email or SMS.</p>
           </div>
-          <label>
-            <span>Email</span>
-            <input
-              type="email"
-              value={verifyForm.email}
-              onChange={(event) => setVerifyForm({ ...verifyForm, email: event.target.value })}
-            />
-          </label>
           <label>
             <span>Code</span>
             <input
@@ -679,7 +672,7 @@ export default function App() {
               />
             </label>
             <button type="submit" disabled={loading}>
-              {loading ? 'Sending OTP...' : 'Continue with OTP'}
+              {loading ? 'Signing in...' : 'Log In'}
             </button>
             <div className="inline-actions">
               <button className="link-button" type="button" onClick={handleForgotPassword}>
@@ -698,7 +691,7 @@ export default function App() {
           </button>
         </div>
 
-        <div className="status-banner">{message}</div>
+        {message ? <div className="status-banner">{message}</div> : null}
       </div>
     );
   }

@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 
 const API_BASE = 'http://localhost:4000';
+const SESSION_STORAGE_KEY = 'vis-assist-session';
+const THEME_STORAGE_KEY = 'vis-assist-theme';
+const PROFILE_STORAGE_KEY = 'vis-assist-profile';
 
 const serviceTypeOptions = [
   { code: 'battery_jump', label: 'Battery Jump', short: 'Power restart' },
-  { code: 'fuel_delivery', label: 'Fuel Delivery', short: 'Fuel + delivery' },
+  { code: 'fuel_delivery', label: 'Fuel Delivery', short: 'Fuel plus delivery' },
   { code: 'tire_change', label: 'Tire Change', short: 'Wheel support' },
   { code: 'towing', label: 'Towing', short: 'Recovery move' },
   { code: 'lockout', label: 'Lockout', short: 'Entry support' },
@@ -14,17 +17,35 @@ const futureCustomerModules = [
   { title: 'Diagnostics', meta: 'Coming next', detail: 'Fault alerts and probable causes.' },
   { title: 'Live Fuel', meta: 'Planned', detail: 'Consumption trends and refill history.' },
   { title: 'Next Service', meta: 'Planned', detail: 'Mileage-based maintenance reminders.' },
-  { title: 'Car History', meta: 'Planned', detail: 'Parts, service logs, and ownership notes.' },
+  { title: 'Car History', meta: 'Planned', detail: 'Service, parts, and ownership logs.' },
 ];
 
 const futureProviderModules = [
-  { title: 'Live Jobs', meta: 'Next phase', detail: 'Incoming roadside jobs and dispatch.' },
-  { title: 'Coverage', meta: 'Planned', detail: 'Zones, hours, and provider availability.' },
-  { title: 'Payouts', meta: 'Planned', detail: 'Cash, M-Pesa, and provider earnings.' },
-  { title: 'Reviews', meta: 'Planned', detail: 'Ratings, complaints, and service quality.' },
+  { title: 'Live Jobs', meta: 'Next phase', detail: 'Incoming roadside dispatch and job flow.' },
+  { title: 'Coverage', meta: 'Planned', detail: 'Zones, service radius, and hours.' },
+  { title: 'Payouts', meta: 'Planned', detail: 'Cash and M-Pesa provider earnings.' },
+  { title: 'Reviews', meta: 'Planned', detail: 'Ratings, complaints, and quality metrics.' },
 ];
 
 const fuelLiterOptions = [5, 10, 20, 30];
+
+const staticNotifications = [
+  {
+    id: 'eta',
+    title: 'Provider ETA updated',
+    body: 'Roadside ETA cards will appear here once dispatch becomes live.',
+  },
+  {
+    id: 'billing',
+    title: 'Billing summary ready',
+    body: 'Subscription invoices and receipts will live under profile and billing.',
+  },
+  {
+    id: 'reminder',
+    title: 'Maintenance reminder',
+    body: 'Next-service reminders will surface in this notification tray.',
+  },
+];
 
 const initialRegister = {
   name: '',
@@ -79,6 +100,12 @@ const initialRoadsideRequest = {
   gasolineGrade: 'regular',
 };
 
+const initialPasswordForm = {
+  currentPassword: '',
+  newPassword: '',
+  confirmPassword: '',
+};
+
 async function request(path, body, method = 'POST', token) {
   const response = await fetch(`${API_BASE}${path}`, {
     method,
@@ -126,6 +153,80 @@ function getFuelUnitPrice(service, form) {
     : service.fuelPricing?.gasoline?.regular ?? 0;
 }
 
+function getDefaultProfile(user) {
+  return {
+    account: {
+      displayName: user?.name ?? '',
+      email: user?.email ?? '',
+      phone: '',
+      company: user?.accountType === 'provider' ? user?.name ?? '' : '',
+      location: 'Nairobi, Kenya',
+    },
+    notifications: {
+      emailAlerts: true,
+      smsAlerts: true,
+      pushAlerts: true,
+      marketing: false,
+    },
+    preferences: {
+      theme: 'dark',
+      language: 'English',
+      compactMode: false,
+    },
+    subscription: {
+      plan: user?.accountType === 'provider' ? 'Provider Starter' : 'Driver Starter',
+      status: 'Trial active',
+      renewalDate: '2026-05-15',
+      billingEmail: user?.email ?? '',
+    },
+  };
+}
+
+function SunIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v3M12 19v3M4.93 4.93l2.12 2.12M16.95 16.95l2.12 2.12M2 12h3M19 12h3M4.93 19.07l2.12-2.12M16.95 7.05l2.12-2.12" />
+    </svg>
+  );
+}
+
+function MoonIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+    </svg>
+  );
+}
+
+function BellIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M6 9a6 6 0 0 1 12 0v5l2 3H4l2-3Z" />
+      <path d="M10 19a2 2 0 0 0 4 0" />
+    </svg>
+  );
+}
+
+function UserIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <circle cx="12" cy="8" r="4" />
+      <path d="M5 20a7 7 0 0 1 14 0" />
+    </svg>
+  );
+}
+
+function LogoutIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M9 4H5v16h4" />
+      <path d="M16 7l5 5-5 5" />
+      <path d="M21 12H9" />
+    </svg>
+  );
+}
+
 export default function App() {
   const [health, setHealth] = useState(null);
   const [mode, setMode] = useState('login');
@@ -148,6 +249,56 @@ export default function App() {
   const [roadsideForm, setRoadsideForm] = useState(initialRoadsideRequest);
   const [dashboardTab, setDashboardTab] = useState('overview');
   const [serviceFilter, setServiceFilter] = useState('battery_jump');
+  const [theme, setTheme] = useState('dark');
+  const [profileSettings, setProfileSettings] = useState(getDefaultProfile(null));
+  const [passwordForm, setPasswordForm] = useState(initialPasswordForm);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const [sessionReady, setSessionReady] = useState(false);
+
+  const topbarLabel = useMemo(() => {
+    if (user?.accountType === 'provider') {
+      return {
+        overview: 'Provider overview',
+        services: 'Published services',
+        pricing: editingProviderServiceId ? 'Edit service' : 'Add service',
+        profile: 'Profile and settings',
+      }[dashboardTab] || 'Provider dashboard';
+    }
+
+    return {
+      overview: 'Driver overview',
+      request: 'Request roadside help',
+      vehicles: 'Vehicle profiles',
+      history: 'Request history',
+      profile: 'Profile and settings',
+    }[dashboardTab] || 'Driver dashboard';
+  }, [dashboardTab, editingProviderServiceId, user?.accountType]);
+
+  const requestStats = useMemo(
+    () => ({
+      active: requests.filter((item) => item.status !== 'completed').length,
+      vehicles: vehicles.length,
+      providers: providerCatalog.length,
+      services: providerServices.length,
+    }),
+    [providerCatalog.length, providerServices.length, requests, vehicles.length],
+  );
+
+  const filteredProviderOptions = providerCatalog.filter((item) => item.serviceCode === serviceFilter);
+  const selectedProviderService = providerCatalog.find(
+    (item) => item.id === roadsideForm.providerServiceId,
+  );
+  const selectedFuelLitres = getSelectedFuelLitres(roadsideForm);
+  const deliveryEstimate = selectedProviderService
+    ? Number(roadsideForm.distanceKm || 0) * selectedProviderService.pricePerKmKsh +
+      selectedProviderService.basePriceKsh
+    : 0;
+  const fuelEstimate =
+    selectedProviderService?.serviceCode === 'fuel_delivery'
+      ? getFuelUnitPrice(selectedProviderService, roadsideForm) * selectedFuelLitres
+      : 0;
+  const totalEstimate = deliveryEstimate + fuelEstimate;
 
   useEffect(() => {
     fetch(`${API_BASE}/health`)
@@ -160,6 +311,105 @@ export default function App() {
         });
       });
   }, []);
+
+  useEffect(() => {
+    const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
+    const storedProfile = window.localStorage.getItem(PROFILE_STORAGE_KEY);
+    const storedSession = window.localStorage.getItem(SESSION_STORAGE_KEY);
+
+    if (storedTheme === 'light' || storedTheme === 'dark') {
+      setTheme(storedTheme);
+    }
+
+    if (storedProfile) {
+      try {
+        setProfileSettings(JSON.parse(storedProfile));
+      } catch {
+        window.localStorage.removeItem(PROFILE_STORAGE_KEY);
+      }
+    }
+
+    if (storedSession) {
+      try {
+        const parsed = JSON.parse(storedSession);
+        if (parsed.token && parsed.user) {
+          setToken(parsed.token);
+          setUser(parsed.user);
+          setMode('login');
+          setStep(parsed.step ?? 'dashboard');
+          setDashboardTab(parsed.dashboardTab ?? 'overview');
+          setVerifyForm({ email: parsed.user.email, otp: '' });
+        }
+      } catch {
+        window.localStorage.removeItem(SESSION_STORAGE_KEY);
+      }
+    }
+
+    setSessionReady(true);
+  }, []);
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    if (sessionReady) {
+      window.localStorage.setItem(THEME_STORAGE_KEY, theme);
+    }
+  }, [sessionReady, theme]);
+
+  useEffect(() => {
+    if (!sessionReady) {
+      return;
+    }
+
+    if (token && user) {
+      window.localStorage.setItem(
+        SESSION_STORAGE_KEY,
+        JSON.stringify({
+          token,
+          user,
+          step,
+          dashboardTab,
+        }),
+      );
+    } else {
+      window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    }
+  }, [dashboardTab, sessionReady, step, token, user]);
+
+  useEffect(() => {
+    if (!sessionReady) {
+      return;
+    }
+
+    window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profileSettings));
+  }, [profileSettings, sessionReady]);
+
+  useEffect(() => {
+    if (!user) {
+      return;
+    }
+
+    setProfileSettings((current) => ({
+      ...current,
+      account: {
+        ...current.account,
+        displayName: current.account.displayName || user.name || '',
+        email: current.account.email || user.email || '',
+        company:
+          current.account.company || (user.accountType === 'provider' ? user.name || '' : ''),
+      },
+      subscription: {
+        ...current.subscription,
+        plan:
+          current.subscription.plan ||
+          (user.accountType === 'provider' ? 'Provider Starter' : 'Driver Starter'),
+        billingEmail: current.subscription.billingEmail || user.email || '',
+      },
+      preferences: {
+        ...current.preferences,
+        theme,
+      },
+    }));
+  }, [theme, user]);
 
   useEffect(() => {
     const filtered = providerCatalog.filter((item) => item.serviceCode === serviceFilter);
@@ -181,33 +431,18 @@ export default function App() {
     }
   }, [providerCatalog, roadsideForm.providerServiceId, serviceFilter]);
 
-  const filteredProviderOptions = providerCatalog.filter((item) => item.serviceCode === serviceFilter);
-  const selectedProviderService = providerCatalog.find(
-    (item) => item.id === roadsideForm.providerServiceId,
-  );
-  const selectedFuelLitres = getSelectedFuelLitres(roadsideForm);
+  useEffect(() => {
+    if (!sessionReady || !token || !user || step !== 'dashboard') {
+      return;
+    }
 
-  const deliveryEstimate = selectedProviderService
-    ? Number(roadsideForm.distanceKm || 0) * selectedProviderService.pricePerKmKsh +
-      selectedProviderService.basePriceKsh
-    : 0;
+    if (user.accountType === 'provider') {
+      void loadProviderDashboard(token);
+      return;
+    }
 
-  const fuelEstimate =
-    selectedProviderService?.serviceCode === 'fuel_delivery'
-      ? getFuelUnitPrice(selectedProviderService, roadsideForm) * selectedFuelLitres
-      : 0;
-
-  const totalEstimate = deliveryEstimate + fuelEstimate;
-
-  const requestStats = useMemo(
-    () => ({
-      active: requests.filter((item) => item.status !== 'completed').length,
-      vehicles: vehicles.length,
-      providers: providerCatalog.length,
-      services: providerServices.length,
-    }),
-    [providerCatalog.length, providerServices.length, requests, vehicles.length],
-  );
+    void loadCustomerDashboard(token);
+  }, [sessionReady, step, token, user]);
 
   async function loadCustomerDashboard(accessToken) {
     const [vehicleData, requestData, catalogData] = await Promise.all([
@@ -280,10 +515,7 @@ export default function App() {
       setRequests([]);
       setProviderServices([]);
       setProviderCatalog([]);
-      setVerifyForm({
-        email: loginForm.email,
-        otp: '',
-      });
+      setVerifyForm({ email: loginForm.email, otp: '' });
       setMessage(data.devOtp ? 'OTP sent. Use the code below for local testing.' : 'OTP sent.');
     } catch (error) {
       setMessage(error.message);
@@ -303,13 +535,6 @@ export default function App() {
       setDevOtp('');
       setStep('dashboard');
       setDashboardTab('overview');
-
-      if (data.user.accountType === 'provider') {
-        await loadProviderDashboard(data.accessToken);
-      } else {
-        await loadCustomerDashboard(data.accessToken);
-      }
-
       setMessage(`Signed in as ${data.user.email}`);
     } catch (error) {
       setMessage(error.message);
@@ -327,7 +552,7 @@ export default function App() {
       setVehicles((current) => [...current, newVehicle]);
       setVehicleForm(initialVehicle);
       setRoadsideForm((current) => ({ ...current, vehicleId: newVehicle.id }));
-      setDashboardTab('request');
+      setDashboardTab('vehicles');
       setMessage(`Vehicle saved: ${newVehicle.nickname}`);
     } catch (error) {
       setMessage(error.message);
@@ -397,39 +622,6 @@ export default function App() {
     }
   }
 
-  function handleForgotPassword() {
-    setMessage('Forgot password will be enabled when email delivery is connected.');
-  }
-
-  function handleSocialLogin(provider) {
-    setMessage(`${provider} sign-in will be added after the core auth flow is stable.`);
-  }
-
-  async function handleUseCurrentLocation() {
-    if (!navigator.geolocation) {
-      setMessage('Geolocation is not supported in this browser.');
-      return;
-    }
-
-    setLoading(true);
-
-    navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setRoadsideForm((current) => ({
-          ...current,
-          latitude: position.coords.latitude.toFixed(6),
-          longitude: position.coords.longitude.toFixed(6),
-        }));
-        setMessage('Location captured.');
-        setLoading(false);
-      },
-      () => {
-        setMessage('Unable to capture location. Enter coordinates manually.');
-        setLoading(false);
-      },
-    );
-  }
-
   async function handleSubmitRoadsideRequest(event) {
     event.preventDefault();
     setLoading(true);
@@ -473,35 +665,133 @@ export default function App() {
     }
   }
 
+  async function handleUseCurrentLocation() {
+    if (!navigator.geolocation) {
+      setMessage('Geolocation is not supported in this browser.');
+      return;
+    }
+
+    setLoading(true);
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setRoadsideForm((current) => ({
+          ...current,
+          latitude: position.coords.latitude.toFixed(6),
+          longitude: position.coords.longitude.toFixed(6),
+        }));
+        setMessage('Location captured.');
+        setLoading(false);
+      },
+      () => {
+        setMessage('Unable to capture location. Enter coordinates manually.');
+        setLoading(false);
+      },
+    );
+  }
+
+  function handleForgotPassword() {
+    setMessage('Forgot password email delivery will be connected next.');
+  }
+
+  function handleSocialLogin(provider) {
+    setMessage(`${provider} sign-in will be connected after the core auth flow is stable.`);
+  }
+
+  function handleProfileFieldChange(section, field, value) {
+    setProfileSettings((current) => ({
+      ...current,
+      [section]: {
+        ...current[section],
+        [field]: value,
+      },
+    }));
+  }
+
+  function toggleTheme() {
+    const nextTheme = theme === 'dark' ? 'light' : 'dark';
+    setTheme(nextTheme);
+    setProfileSettings((current) => ({
+      ...current,
+      preferences: {
+        ...current.preferences,
+        theme: nextTheme,
+      },
+    }));
+  }
+
+  function handlePreferenceThemeChange(nextTheme) {
+    setTheme(nextTheme);
+    handleProfileFieldChange('preferences', 'theme', nextTheme);
+  }
+
+  function handleSaveProfile(event) {
+    event.preventDefault();
+    setMessage('Profile settings saved locally for this MVP session.');
+  }
+
+  function handlePasswordReset(event) {
+    event.preventDefault();
+    setMessage('Secure password reset will connect to backend email delivery next.');
+    setPasswordForm(initialPasswordForm);
+  }
+
   function resetFlow(nextMode = 'login') {
     setMode(nextMode);
     setStep('entry');
+    setDevOtp('');
+    setVerifyForm(initialVerify);
+    setMessage('');
+    setShowAccountMenu(false);
+    setShowNotifications(false);
+  }
+
+  function signOut() {
     setToken('');
     setUser(null);
     setVehicles([]);
     setRequests([]);
     setProviderServices([]);
     setProviderCatalog([]);
-    setDevOtp('');
-    setVerifyForm(initialVerify);
     setVehicleForm(initialVehicle);
     setProviderServiceForm(initialProviderService);
     setEditingProviderServiceId('');
     setRoadsideForm(initialRoadsideRequest);
     setDashboardTab('overview');
     setServiceFilter('battery_jump');
-      setMessage('');
+    setVerifyForm(initialVerify);
+    setPasswordForm(initialPasswordForm);
+    setShowAccountMenu(false);
+    setShowNotifications(false);
+    setMessage('');
+    setStep('entry');
+    window.localStorage.removeItem(SESSION_STORAGE_KEY);
+  }
+
+  function openDashboard(tab = 'overview') {
+    setDashboardTab(tab);
+    setStep('dashboard');
+    setShowNotifications(false);
+    setShowAccountMenu(false);
+    setMessage('');
   }
 
   function renderLandingPanel() {
     return (
       <section className="landing-shell">
-        <div className="masthead">
-          <div className="brand-badge">VIS</div>
-          <div>
-            <p className="eyebrow">Vehicle Intelligence System</p>
-            <h1>Roadside help first. Vehicle intelligence next.</h1>
+        <div className="landing-topbar">
+          <div className="masthead">
+            <div className="brand-badge">VIS</div>
+            <div>
+              <p className="eyebrow">Vehicle Intelligence System</p>
+              <h1>Roadside help first. Vehicle intelligence next.</h1>
+            </div>
           </div>
+          {token && user ? (
+            <button className="secondary-cta" type="button" onClick={() => openDashboard()}>
+              Open dashboard
+            </button>
+          ) : null}
         </div>
 
         <p className="landing-copy">
@@ -523,6 +813,11 @@ export default function App() {
           >
             Provide a service
           </button>
+          {token && user ? (
+            <button className="ghost-button" type="button" onClick={() => openDashboard()}>
+              Resume session
+            </button>
+          ) : null}
         </div>
 
         <div className="service-strip">
@@ -548,7 +843,34 @@ export default function App() {
     );
   }
 
+  function renderResumePanel() {
+    return (
+      <div className="auth-shell">
+        <div className="auth-head">
+          <span className="mini-pill">Session</span>
+          <h2>Welcome back</h2>
+          <p className="auth-copy">Your session is still active on this browser.</p>
+        </div>
+        <div className="session-card">
+          <strong>{user?.name}</strong>
+          <span>{user?.email}</span>
+          <span>{user?.accountType === 'provider' ? 'Provider account' : 'Customer account'}</span>
+        </div>
+        <button type="button" onClick={() => openDashboard()}>
+          Go to dashboard
+        </button>
+        <button className="ghost-button" type="button" onClick={signOut}>
+          Switch account
+        </button>
+      </div>
+    );
+  }
+
   function renderAuthPanel() {
+    if (token && user && step === 'entry') {
+      return renderResumePanel();
+    }
+
     if (step === 'otp') {
       return (
         <form className="auth-shell" onSubmit={handleVerify}>
@@ -572,6 +894,7 @@ export default function App() {
           <button className="ghost-button" type="button" onClick={() => resetFlow('login')}>
             Back
           </button>
+          {message ? <div className="status-banner">{message}</div> : null}
         </form>
       );
     }
@@ -672,7 +995,7 @@ export default function App() {
               />
             </label>
             <button type="submit" disabled={loading}>
-              {loading ? 'Signing in...' : 'Log In'}
+              {loading ? 'Signing in...' : 'Log in'}
             </button>
             <div className="inline-actions">
               <button className="link-button" type="button" onClick={handleForgotPassword}>
@@ -696,6 +1019,101 @@ export default function App() {
     );
   }
 
+  function renderDashboardTopbar() {
+    return (
+      <header className="dashboard-topbar">
+        <div className="topbar-brand">
+          <button className="brand-inline" type="button" onClick={() => setStep('entry')}>
+            VIS
+          </button>
+          <div className="topbar-copy">
+            <strong>{topbarLabel}</strong>
+            <span>{user?.accountType === 'provider' ? 'Provider workspace' : 'Driver workspace'}</span>
+          </div>
+        </div>
+
+        <div className="topbar-actions">
+          <button className="icon-button" type="button" onClick={toggleTheme} aria-label="Toggle theme">
+            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+          </button>
+          <button
+            className="icon-button notification-button"
+            type="button"
+            onClick={() => {
+              setShowNotifications((current) => !current);
+              setShowAccountMenu(false);
+            }}
+            aria-label="Notifications"
+          >
+            <BellIcon />
+            <span className="notification-count">3</span>
+          </button>
+          <div className="account-menu-wrap">
+            <button
+              className="account-button"
+              type="button"
+              onClick={() => {
+                setShowAccountMenu((current) => !current);
+                setShowNotifications(false);
+              }}
+            >
+              <span className="avatar-badge">{(user?.name || 'U').charAt(0).toUpperCase()}</span>
+              <div className="account-text">
+                <strong>{user?.name}</strong>
+                <span>{user?.accountType === 'provider' ? 'Provider' : 'Customer'}</span>
+              </div>
+            </button>
+            {showAccountMenu ? (
+              <div className="dropdown-menu">
+                <div className="dropdown-head">
+                  <strong>{user?.name}</strong>
+                  <span>{user?.email}</span>
+                </div>
+                <button type="button" onClick={() => openDashboard('overview')}>
+                  <UserIcon />
+                  Dashboard
+                </button>
+                <button type="button" onClick={() => openDashboard('profile')}>
+                  <UserIcon />
+                  Profile
+                </button>
+                <button type="button" onClick={signOut}>
+                  <LogoutIcon />
+                  Sign out
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </header>
+    );
+  }
+
+  function renderNotificationsTray() {
+    if (!showNotifications) {
+      return null;
+    }
+
+    return (
+      <section className="floating-panel">
+        <div className="panel-head compact">
+          <div>
+            <p className="eyebrow">Notifications</p>
+            <h3>Recent updates</h3>
+          </div>
+        </div>
+        <div className="notification-list">
+          {staticNotifications.map((item) => (
+            <article className="notification-item" key={item.id}>
+              <strong>{item.title}</strong>
+              <p>{item.body}</p>
+            </article>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
   function renderCustomerDashboard() {
     return (
       <section className="dashboard-shell">
@@ -711,6 +1129,7 @@ export default function App() {
               ['request', 'Request'],
               ['vehicles', 'Vehicles'],
               ['history', 'History'],
+              ['profile', 'Profile'],
             ].map(([id, label]) => (
               <button
                 key={id}
@@ -732,16 +1151,16 @@ export default function App() {
               <strong>{requestStats.vehicles}</strong>
             </div>
           </div>
-          <button className="ghost-button" type="button" onClick={() => resetFlow('login')}>
-            Log out
-          </button>
         </aside>
 
         <div className="dashboard-main">
+          {renderDashboardTopbar()}
+          {renderNotificationsTray()}
           {dashboardTab === 'overview' ? renderCustomerOverview() : null}
           {dashboardTab === 'request' ? renderRequestPanel() : null}
           {dashboardTab === 'vehicles' ? renderVehiclePanel() : null}
           {dashboardTab === 'history' ? renderHistoryPanel() : null}
+          {dashboardTab === 'profile' ? renderProfilePanel() : null}
         </div>
       </section>
     );
@@ -761,6 +1180,7 @@ export default function App() {
               ['overview', 'Overview'],
               ['services', 'Services'],
               ['pricing', editingProviderServiceId ? 'Edit' : 'Add'],
+              ['profile', 'Profile'],
             ].map(([id, label]) => (
               <button
                 key={id}
@@ -782,15 +1202,15 @@ export default function App() {
               <strong>Ready</strong>
             </div>
           </div>
-          <button className="ghost-button" type="button" onClick={() => resetFlow('login')}>
-            Log out
-          </button>
         </aside>
 
         <div className="dashboard-main">
+          {renderDashboardTopbar()}
+          {renderNotificationsTray()}
           {dashboardTab === 'overview' ? renderProviderOverview() : null}
           {dashboardTab === 'services' ? renderProviderServiceList() : null}
           {dashboardTab === 'pricing' ? renderProviderServicePanel() : null}
+          {dashboardTab === 'profile' ? renderProfilePanel() : null}
         </div>
       </section>
     );
@@ -1104,7 +1524,8 @@ export default function App() {
     if (filteredProviderOptions.length === 0) {
       return (
         <div className="dashboard-panel empty-state">
-          No providers currently offer {serviceTypeOptions.find((item) => item.code === serviceFilter)?.label.toLowerCase()}.
+          No providers currently offer{' '}
+          {serviceTypeOptions.find((item) => item.code === serviceFilter)?.label.toLowerCase()}.
         </div>
       );
     }
@@ -1407,10 +1828,219 @@ export default function App() {
     );
   }
 
+  function renderProfilePanel() {
+    return (
+      <section className="profile-grid">
+        <form className="dashboard-panel stack" onSubmit={handleSaveProfile}>
+          <div className="panel-head">
+            <div>
+              <p className="eyebrow">Profile</p>
+              <h3>Account details</h3>
+            </div>
+          </div>
+          <div className="form-grid">
+            <label>
+              <span>Display name</span>
+              <input
+                value={profileSettings.account.displayName}
+                onChange={(event) =>
+                  handleProfileFieldChange('account', 'displayName', event.target.value)
+                }
+              />
+            </label>
+            <label>
+              <span>Email</span>
+              <input
+                value={profileSettings.account.email}
+                onChange={(event) => handleProfileFieldChange('account', 'email', event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Phone</span>
+              <input
+                placeholder="+254..."
+                value={profileSettings.account.phone}
+                onChange={(event) => handleProfileFieldChange('account', 'phone', event.target.value)}
+              />
+            </label>
+            <label>
+              <span>Location</span>
+              <input
+                value={profileSettings.account.location}
+                onChange={(event) =>
+                  handleProfileFieldChange('account', 'location', event.target.value)
+                }
+              />
+            </label>
+            {user?.accountType === 'provider' ? (
+              <label>
+                <span>Business name</span>
+                <input
+                  value={profileSettings.account.company}
+                  onChange={(event) =>
+                    handleProfileFieldChange('account', 'company', event.target.value)
+                  }
+                />
+              </label>
+            ) : null}
+          </div>
+          <button type="submit">Save profile</button>
+        </form>
+
+        <section className="dashboard-panel stack">
+          <div className="panel-head">
+            <div>
+              <p className="eyebrow">Notifications</p>
+              <h3>Alert settings</h3>
+            </div>
+          </div>
+          <div className="toggle-list">
+            {[
+              ['emailAlerts', 'Email alerts'],
+              ['smsAlerts', 'SMS alerts'],
+              ['pushAlerts', 'Push alerts'],
+              ['marketing', 'Product updates'],
+            ].map(([key, label]) => (
+              <label className="toggle-row" key={key}>
+                <span>{label}</span>
+                <input
+                  type="checkbox"
+                  checked={profileSettings.notifications[key]}
+                  onChange={(event) =>
+                    handleProfileFieldChange('notifications', key, event.target.checked)
+                  }
+                />
+              </label>
+            ))}
+          </div>
+        </section>
+
+        <section className="dashboard-panel stack">
+          <div className="panel-head">
+            <div>
+              <p className="eyebrow">Preferences</p>
+              <h3>Experience and theme</h3>
+            </div>
+          </div>
+          <div className="form-grid">
+            <label>
+              <span>Theme</span>
+              <select
+                value={profileSettings.preferences.theme}
+                onChange={(event) => handlePreferenceThemeChange(event.target.value)}
+              >
+                <option value="dark">Dark</option>
+                <option value="light">Light</option>
+              </select>
+            </label>
+            <label>
+              <span>Language</span>
+              <select
+                value={profileSettings.preferences.language}
+                onChange={(event) =>
+                  handleProfileFieldChange('preferences', 'language', event.target.value)
+                }
+              >
+                <option value="English">English</option>
+                <option value="Swahili">Swahili</option>
+              </select>
+            </label>
+          </div>
+          <label className="toggle-row">
+            <span>Compact mode</span>
+            <input
+              type="checkbox"
+              checked={profileSettings.preferences.compactMode}
+              onChange={(event) =>
+                handleProfileFieldChange('preferences', 'compactMode', event.target.checked)
+              }
+            />
+          </label>
+        </section>
+
+        <form className="dashboard-panel stack" onSubmit={handlePasswordReset}>
+          <div className="panel-head">
+            <div>
+              <p className="eyebrow">Security</p>
+              <h3>Password reset</h3>
+            </div>
+          </div>
+          <label>
+            <span>Current password</span>
+            <input
+              type="password"
+              value={passwordForm.currentPassword}
+              onChange={(event) =>
+                setPasswordForm({ ...passwordForm, currentPassword: event.target.value })
+              }
+            />
+          </label>
+          <label>
+            <span>New password</span>
+            <input
+              type="password"
+              value={passwordForm.newPassword}
+              onChange={(event) =>
+                setPasswordForm({ ...passwordForm, newPassword: event.target.value })
+              }
+            />
+          </label>
+          <label>
+            <span>Confirm password</span>
+            <input
+              type="password"
+              value={passwordForm.confirmPassword}
+              onChange={(event) =>
+                setPasswordForm({ ...passwordForm, confirmPassword: event.target.value })
+              }
+            />
+          </label>
+          <button type="submit">Update password</button>
+        </form>
+
+        <section className="dashboard-panel stack">
+          <div className="panel-head">
+            <div>
+              <p className="eyebrow">Billing</p>
+              <h3>Subscription and invoices</h3>
+            </div>
+          </div>
+          <div className="billing-strip">
+            <article className="billing-card">
+              <span>Plan</span>
+              <strong>{profileSettings.subscription.plan}</strong>
+            </article>
+            <article className="billing-card">
+              <span>Status</span>
+              <strong>{profileSettings.subscription.status}</strong>
+            </article>
+            <article className="billing-card">
+              <span>Renewal</span>
+              <strong>{profileSettings.subscription.renewalDate}</strong>
+            </article>
+          </div>
+          <label>
+            <span>Billing email</span>
+            <input
+              value={profileSettings.subscription.billingEmail}
+              onChange={(event) =>
+                handleProfileFieldChange('subscription', 'billingEmail', event.target.value)
+              }
+            />
+          </label>
+          <div className="billing-note">
+            <strong>Invoices and payment methods</strong>
+            <p>Recurring billing, receipts, and active subscriptions will connect here next.</p>
+          </div>
+        </section>
+      </section>
+    );
+  }
+
   return (
     <main className="app-shell">
-      {step === 'dashboard' ? (
-        user?.accountType === 'provider' ? renderProviderDashboard() : renderCustomerDashboard()
+      {step === 'dashboard' && user ? (
+        user.accountType === 'provider' ? renderProviderDashboard() : renderCustomerDashboard()
       ) : (
         <div className="entry-layout">
           {renderLandingPanel()}

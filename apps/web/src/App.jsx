@@ -1019,23 +1019,13 @@ export default function App() {
     );
   }
 
-  function renderDashboardTopbar() {
+  function renderTopActions() {
     return (
-      <header className="dashboard-topbar">
-        <div className="topbar-brand">
-          <button className="brand-inline" type="button" onClick={() => setStep('entry')}>
-            VIS
-          </button>
-          <div className="topbar-copy">
-            <strong>{topbarLabel}</strong>
-            <span>{user?.accountType === 'provider' ? 'Provider workspace' : 'Driver workspace'}</span>
-          </div>
-        </div>
-
-        <div className="topbar-actions">
-          <button className="icon-button" type="button" onClick={toggleTheme} aria-label="Toggle theme">
-            {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
-          </button>
+      <div className="top-actions-row">
+        <button className="icon-button" type="button" onClick={toggleTheme} aria-label="Toggle theme">
+          {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+        </button>
+        <div className="action-wrap">
           <button
             className="icon-button notification-button"
             type="button"
@@ -1048,69 +1038,62 @@ export default function App() {
             <BellIcon />
             <span className="notification-count">3</span>
           </button>
-          <div className="account-menu-wrap">
-            <button
-              className="account-button"
-              type="button"
-              onClick={() => {
-                setShowAccountMenu((current) => !current);
-                setShowNotifications(false);
-              }}
-            >
-              <span className="avatar-badge">{(user?.name || 'U').charAt(0).toUpperCase()}</span>
-              <div className="account-text">
-                <strong>{user?.name}</strong>
-                <span>{user?.accountType === 'provider' ? 'Provider' : 'Customer'}</span>
-              </div>
-            </button>
-            {showAccountMenu ? (
-              <div className="dropdown-menu">
-                <div className="dropdown-head">
-                  <strong>{user?.name}</strong>
-                  <span>{user?.email}</span>
+          {showNotifications ? (
+            <div className="floating-panel">
+              <div className="panel-head compact">
+                <div>
+                  <p className="eyebrow">Notifications</p>
+                  <h3>Recent updates</h3>
                 </div>
-                <button type="button" onClick={() => openDashboard('overview')}>
-                  <UserIcon />
-                  Dashboard
-                </button>
-                <button type="button" onClick={() => openDashboard('profile')}>
-                  <UserIcon />
-                  Profile
-                </button>
-                <button type="button" onClick={signOut}>
-                  <LogoutIcon />
-                  Sign out
-                </button>
               </div>
-            ) : null}
-          </div>
+              <div className="notification-list">
+                {staticNotifications.map((item) => (
+                  <article className="notification-item" key={item.id}>
+                    <strong>{item.title}</strong>
+                    <p>{item.body}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          ) : null}
         </div>
-      </header>
-    );
-  }
-
-  function renderNotificationsTray() {
-    if (!showNotifications) {
-      return null;
-    }
-
-    return (
-      <section className="floating-panel">
-        <div className="panel-head compact">
-          <div>
-            <p className="eyebrow">Notifications</p>
-            <h3>Recent updates</h3>
-          </div>
+        <div className="action-wrap">
+          <button
+            className="account-button"
+            type="button"
+            onClick={() => {
+              setShowAccountMenu((current) => !current);
+              setShowNotifications(false);
+            }}
+          >
+            <span className="avatar-badge">{(user?.name || 'U').charAt(0).toUpperCase()}</span>
+            <div className="account-text">
+              <strong>{user?.name}</strong>
+              <span>{user?.accountType === 'provider' ? 'Provider' : 'Customer'}</span>
+            </div>
+          </button>
+          {showAccountMenu ? (
+            <div className="dropdown-menu">
+              <div className="dropdown-head">
+                <strong>{user?.name}</strong>
+                <span>{user?.email}</span>
+              </div>
+              <button type="button" onClick={() => openDashboard('overview')}>
+                <UserIcon />
+                Dashboard
+              </button>
+              <button type="button" onClick={() => openDashboard('profile')}>
+                <UserIcon />
+                Profile
+              </button>
+              <button type="button" onClick={signOut}>
+                <LogoutIcon />
+                Sign out
+              </button>
+            </div>
+          ) : null}
         </div>
-        <div className="notification-list">
-          {staticNotifications.map((item) => (
-            <article className="notification-item" key={item.id}>
-              <strong>{item.title}</strong>
-              <p>{item.body}</p>
-            </article>
-          ))}
-        </div>
-      </section>
+      </div>
     );
   }
 
@@ -1154,8 +1137,6 @@ export default function App() {
         </aside>
 
         <div className="dashboard-main">
-          {renderDashboardTopbar()}
-          {renderNotificationsTray()}
           {dashboardTab === 'overview' ? renderCustomerOverview() : null}
           {dashboardTab === 'request' ? renderRequestPanel() : null}
           {dashboardTab === 'vehicles' ? renderVehiclePanel() : null}
@@ -1205,8 +1186,6 @@ export default function App() {
         </aside>
 
         <div className="dashboard-main">
-          {renderDashboardTopbar()}
-          {renderNotificationsTray()}
           {dashboardTab === 'overview' ? renderProviderOverview() : null}
           {dashboardTab === 'services' ? renderProviderServiceList() : null}
           {dashboardTab === 'pricing' ? renderProviderServicePanel() : null}
@@ -1224,6 +1203,7 @@ export default function App() {
             <p className="eyebrow">Overview</p>
             <h3>Clean entry point</h3>
           </div>
+          <div className="panel-actions">{renderTopActions()}</div>
           <button className="primary-cta" type="button" onClick={() => setDashboardTab('request')}>
             New roadside request
           </button>
@@ -1263,6 +1243,7 @@ export default function App() {
             <p className="eyebrow">Provider hub</p>
             <h3>Pricing first</h3>
           </div>
+          <div className="panel-actions">{renderTopActions()}</div>
           <button className="primary-cta" type="button" onClick={() => setDashboardTab('pricing')}>
             Add service
           </button>

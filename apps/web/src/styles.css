@@ -502,32 +502,16 @@ h1 {
   align-content: start;
 }
 
-.dashboard-topbar {
-  padding: 14px 18px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  position: sticky;
-  top: 16px;
-  z-index: 3;
-}
-
-.topbar-brand {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  min-width: 0;
-}
-
-.topbar-copy strong,
 .account-text strong {
   font-size: 0.98rem;
 }
 
-.topbar-actions {
+.top-actions-row {
+  display: flex;
   align-items: center;
-  position: relative;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
 }
 
 .icon-button {
@@ -557,7 +541,7 @@ h1 {
   font-weight: 700;
 }
 
-.account-menu-wrap {
+.action-wrap {
   position: relative;
 }
 
@@ -603,6 +587,13 @@ h1 {
   width: 100%;
   background: transparent;
   color: var(--text-main);
+}
+
+.panel-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
 }
 
 .floating-panel {
@@ -705,8 +696,7 @@ button:disabled {
   }
 
   .auth-shell,
-  .dashboard-sidebar,
-  .dashboard-topbar {
+  .dashboard-sidebar {
     position: static;
   }
 
@@ -739,7 +729,6 @@ button:disabled {
   .auth-shell,
   .dashboard-sidebar,
   .dashboard-panel,
-  .dashboard-topbar,
   .floating-panel {
     padding: 18px;
     border-radius: 22px;
@@ -760,23 +749,6 @@ button:disabled {
   .profile-grid,
   .billing-strip {
     grid-template-columns: 1fr;
-  }
-
-  .dashboard-topbar {
-    align-items: stretch;
-  }
-
-  .topbar-brand,
-  .topbar-actions {
-    justify-content: space-between;
-  }
-
-  .account-button {
-    padding: 10px 12px;
-  }
-
-  .account-text {
-    display: none;
   }
 
   .sidebar-nav {

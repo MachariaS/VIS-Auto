@@ -228,6 +228,23 @@ function LogoutIcon() {
   );
 }
 
+function GridIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" />
+    </svg>
+  );
+}
+
+function GearIcon() {
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true">
+      <path d="M12 15a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h.18A1.65 1.65 0 0 0 10.91 3V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h.18a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v.18a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1Z" />
+    </svg>
+  );
+}
+
 export default function App() {
   const [health, setHealth] = useState(null);
   const [mode, setMode] = useState('login');
@@ -1077,21 +1094,34 @@ export default function App() {
           {showAccountMenu ? (
             <div className="dropdown-menu">
               <div className="dropdown-head">
-                <strong>{user?.name}</strong>
-                <span>{user?.email}</span>
+                <div className="account-summary">
+                  {profileImage ? (
+                    <span
+                      className="avatar-img"
+                      style={{ backgroundImage: `url(${profileImage})` }}
+                    />
+                  ) : (
+                    <span className="avatar-badge">
+                      {(user?.name || 'U').charAt(0).toUpperCase()}
+                    </span>
+                  )}
+                  <div className="account-text">
+                    <strong>{user?.name}</strong>
+                    <span>{user?.email}</span>
+                  </div>
+                </div>
               </div>
-              <button type="button" onClick={() => openDashboard('overview')}>
-                <UserIcon />
-                Dashboard
-              </button>
-              <button type="button" onClick={() => openDashboard('profile')}>
-                <UserIcon />
-                Profile
-              </button>
-              <button type="button" onClick={signOut}>
-                <LogoutIcon />
-                Sign out
-              </button>
+              <div className="icon-row">
+                <button type="button" aria-label="Dashboard" onClick={() => openDashboard('overview')}>
+                  <GridIcon />
+                </button>
+                <button type="button" aria-label="Settings" onClick={() => openDashboard('profile')}>
+                  <GearIcon />
+                </button>
+                <button type="button" aria-label="Sign out" onClick={signOut}>
+                  <LogoutIcon />
+                </button>
+              </div>
             </div>
           ) : null}
         </div>
@@ -1146,24 +1176,32 @@ export default function App() {
           {dashboardTab === 'profile' ? renderProfilePanel() : null}
         </div>
         {showNotifications ? (
-          <div className="notification-overlay" onClick={() => setShowNotifications(false)}>
-            <div
-              className="notification-drawer"
-              onClick={(event) => event.stopPropagation()}
-              role="dialog"
-              aria-label="Notifications"
-            >
-              <div className="panel-head compact">
-                <div>
-                  <p className="eyebrow">Notifications</p>
-                  <h3>Recent updates</h3>
-                </div>
+        <div className="notification-overlay" onClick={() => setShowNotifications(false)}>
+          <div
+            className="notification-drawer"
+            onClick={(event) => event.stopPropagation()}
+            role="dialog"
+            aria-label="Notifications"
+          >
+            <div className="drawer-head">
+              <div>
+                <p className="eyebrow">Notifications</p>
+                <h3>Recent updates</h3>
               </div>
-              <div className="notification-list">
-                {staticNotifications.map((item) => (
-                  <article className="notification-item" key={item.id}>
-                    <strong>{item.title}</strong>
-                    <p>{item.body}</p>
+              <button
+                className="icon-button ghost"
+                type="button"
+                aria-label="Close notifications"
+                onClick={() => setShowNotifications(false)}
+              >
+                ×
+              </button>
+            </div>
+            <div className="notification-list">
+              {staticNotifications.map((item) => (
+                <article className="notification-item" key={item.id}>
+                  <strong>{item.title}</strong>
+                  <p>{item.body}</p>
                   </article>
                 ))}
               </div>
@@ -1296,9 +1334,6 @@ export default function App() {
             <h3>Pricing first</h3>
           </div>
           <div className="panel-actions">{renderTopActions()}</div>
-          <button className="primary-cta" type="button" onClick={() => setDashboardTab('pricing')}>
-            Add service
-          </button>
         </div>
 
         <div className="hero-grid">

@@ -181,7 +181,8 @@ svg {
 
 .brand-badge,
 .brand-inline,
-.avatar-badge {
+.avatar-badge,
+.avatar-img {
   display: grid;
   place-items: center;
   background: linear-gradient(135deg, var(--accent-a) 0%, var(--accent-b) 100%);
@@ -208,6 +209,15 @@ svg {
   width: 42px;
   height: 42px;
   border-radius: 14px;
+}
+
+.avatar-img {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .eyebrow {
@@ -594,6 +604,38 @@ h1 {
   align-items: center;
   gap: 8px;
   margin-left: auto;
+}
+
+.notification-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(6px);
+  z-index: 9;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.notification-drawer {
+  width: min(520px, 100%);
+  max-height: min(70vh, 520px);
+  overflow: auto;
+  border-radius: 24px;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-elevated);
+  box-shadow: var(--shadow);
+  padding: 18px;
+}
+
+.profile-image-preview {
+  width: 80px;
+  height: 80px;
+  border-radius: 18px;
+  background-size: cover;
+  background-position: center;
+  margin-top: 8px;
+  border: 1px solid var(--border-soft);
 }
 
 .floating-panel {

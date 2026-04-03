@@ -4,6 +4,7 @@ const API_BASE = 'http://localhost:4000';
 const SESSION_STORAGE_KEY = 'vis-assist-session';
 const THEME_STORAGE_KEY = 'vis-assist-theme';
 const PROFILE_STORAGE_KEY = 'vis-assist-profile';
+const PROFILE_IMAGE_KEY = 'vis-assist-profile-image';
 
 const serviceTypeOptions = [
   { code: 'battery_jump', label: 'Battery Jump', short: 'Power restart' },
@@ -252,6 +253,7 @@ export default function App() {
   const [theme, setTheme] = useState('dark');
   const [profileSettings, setProfileSettings] = useState(getDefaultProfile(null));
   const [passwordForm, setPasswordForm] = useState(initialPasswordForm);
+  const [profileImage, setProfileImage] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
@@ -316,6 +318,7 @@ export default function App() {
     const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
     const storedProfile = window.localStorage.getItem(PROFILE_STORAGE_KEY);
     const storedSession = window.localStorage.getItem(SESSION_STORAGE_KEY);
+    const storedImage = window.localStorage.getItem(PROFILE_IMAGE_KEY);
 
     if (storedTheme === 'light' || storedTheme === 'dark') {
       setTheme(storedTheme);
@@ -327,6 +330,10 @@ export default function App() {
       } catch {
         window.localStorage.removeItem(PROFILE_STORAGE_KEY);
       }
+    }
+
+    if (storedImage) {
+      setProfileImage(storedImage);
     }
 
     if (storedSession) {
@@ -382,6 +389,15 @@ export default function App() {
 
     window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profileSettings));
   }, [profileSettings, sessionReady]);
+
+  useEffect(() => {
+    if (!sessionReady) return;
+    if (profileImage) {
+      window.localStorage.setItem(PROFILE_IMAGE_KEY, profileImage);
+    } else {
+      window.localStorage.removeItem(PROFILE_IMAGE_KEY);
+    }
+  }, [profileImage, sessionReady]);
 
   useEffect(() => {
     if (!user) {
@@ -1038,24 +1054,6 @@ export default function App() {
             <BellIcon />
             <span className="notification-count">3</span>
           </button>
-          {showNotifications ? (
-            <div className="floating-panel">
-              <div className="panel-head compact">
-                <div>
-                  <p className="eyebrow">Notifications</p>
-                  <h3>Recent updates</h3>
-                </div>
-              </div>
-              <div className="notification-list">
-                {staticNotifications.map((item) => (
-                  <article className="notification-item" key={item.id}>
-                    <strong>{item.title}</strong>
-                    <p>{item.body}</p>
-                  </article>
-                ))}
-              </div>
-            </div>
-          ) : null}
         </div>
         <div className="action-wrap">
           <button
@@ -1066,7 +1064,11 @@ export default function App() {
               setShowNotifications(false);
             }}
           >
-            <span className="avatar-badge">{(user?.name || 'U').charAt(0).toUpperCase()}</span>
+            {profileImage ? (
+              <span className="avatar-img" style={{ backgroundImage: `url(${profileImage})` }} />
+            ) : (
+              <span className="avatar-badge">{(user?.name || 'U').charAt(0).toUpperCase()}</span>
+            )}
             <div className="account-text">
               <strong>{user?.name}</strong>
               <span>{user?.accountType === 'provider' ? 'Provider' : 'Customer'}</span>
@@ -1143,6 +1145,31 @@ export default function App() {
           {dashboardTab === 'history' ? renderHistoryPanel() : null}
           {dashboardTab === 'profile' ? renderProfilePanel() : null}
         </div>
+        {showNotifications ? (
+          <div className="notification-overlay" onClick={() => setShowNotifications(false)}>
+            <div
+              className="notification-drawer"
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-label="Notifications"
+            >
+              <div className="panel-head compact">
+                <div>
+                  <p className="eyebrow">Notifications</p>
+                  <h3>Recent updates</h3>
+                </div>
+              </div>
+              <div className="notification-list">
+                {staticNotifications.map((item) => (
+                  <article className="notification-item" key={item.id}>
+                    <strong>{item.title}</strong>
+                    <p>{item.body}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </section>
     );
   }
@@ -1191,6 +1218,31 @@ export default function App() {
           {dashboardTab === 'pricing' ? renderProviderServicePanel() : null}
           {dashboardTab === 'profile' ? renderProfilePanel() : null}
         </div>
+        {showNotifications ? (
+          <div className="notification-overlay" onClick={() => setShowNotifications(false)}>
+            <div
+              className="notification-drawer"
+              onClick={(event) => event.stopPropagation()}
+              role="dialog"
+              aria-label="Notifications"
+            >
+              <div className="panel-head compact">
+                <div>
+                  <p className="eyebrow">Notifications</p>
+                  <h3>Recent updates</h3>
+                </div>
+              </div>
+              <div className="notification-list">
+                {staticNotifications.map((item) => (
+                  <article className="notification-item" key={item.id}>
+                    <strong>{item.title}</strong>
+                    <p>{item.body}</p>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : null}
       </section>
     );
   }
@@ -1844,29 +1896,49 @@ export default function App() {
                 onChange={(event) => handleProfileFieldChange('account', 'phone', event.target.value)}
               />
             </label>
+          <label>
+            <span>Location</span>
+            <input
+              value={profileSettings.account.location}
+              onChange={(event) =>
+                handleProfileFieldChange('account', 'location', event.target.value)
+              }
+            />
+          </label>
+          {user?.accountType === 'provider' ? (
             <label>
-              <span>Location</span>
+              <span>Business name</span>
               <input
-                value={profileSettings.account.location}
+                value={profileSettings.account.company}
                 onChange={(event) =>
-                  handleProfileFieldChange('account', 'location', event.target.value)
+                  handleProfileFieldChange('account', 'company', event.target.value)
                 }
               />
             </label>
-            {user?.accountType === 'provider' ? (
-              <label>
-                <span>Business name</span>
-                <input
-                  value={profileSettings.account.company}
-                  onChange={(event) =>
-                    handleProfileFieldChange('account', 'company', event.target.value)
-                  }
-                />
-              </label>
+          ) : null}
+          <label>
+            <span>Profile image</span>
+            <input
+              type="file"
+              accept="image/*"
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = () => setProfileImage(reader.result?.toString() || '');
+                reader.readAsDataURL(file);
+              }}
+            />
+            {profileImage ? (
+              <div
+                className="profile-image-preview"
+                style={{ backgroundImage: `url(${profileImage})` }}
+              />
             ) : null}
-          </div>
-          <button type="submit">Save profile</button>
-        </form>
+          </label>
+        </div>
+        <button type="submit">Save profile</button>
+      </form>
 
         <section className="dashboard-panel stack">
           <div className="panel-head">

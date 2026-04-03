@@ -278,7 +278,6 @@ export default function App() {
 
   const displayName = (profileSettings.account.displayName || user?.name || 'User').trim();
   const companyName = (profileSettings.account.company || displayName).trim();
-  const roleLabel = user?.accountType === 'provider' ? 'Provider' : 'Customer';
   const avatarLetter = (displayName || 'U').charAt(0).toUpperCase();
 
   const topbarLabel = useMemo(() => {
@@ -1095,7 +1094,6 @@ export default function App() {
             )}
             <div className="account-text compact">
               <strong>{displayName}</strong>
-              <span>{roleLabel}</span>
             </div>
             <span className="caret" aria-hidden="true">▾</span>
           </button>
@@ -1117,15 +1115,18 @@ export default function App() {
                   </div>
                 </div>
               </div>
-              <div className="icon-row">
-                <button type="button" aria-label="Dashboard" onClick={() => openDashboard('overview')}>
+              <div className="dropdown-list">
+                <button type="button" onClick={() => openDashboard('overview')}>
                   <GridIcon />
+                  <span>Dashboard</span>
                 </button>
-                <button type="button" aria-label="Settings" onClick={() => openDashboard('profile')}>
+                <button type="button" onClick={() => openDashboard('profile')}>
                   <GearIcon />
+                  <span>Settings</span>
                 </button>
-                <button type="button" aria-label="Sign out" onClick={signOut}>
+                <button type="button" onClick={signOut}>
                   <LogoutIcon />
+                  <span>Logout</span>
                 </button>
               </div>
             </div>

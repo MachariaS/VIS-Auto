@@ -604,21 +604,6 @@ h1 {
   gap: 10px;
 }
 
-.icon-row {
-  display: flex;
-  gap: 10px;
-  justify-content: flex-start;
-}
-
-.icon-row button {
-  width: 40px;
-  height: 40px;
-  border-radius: 999px;
-  background: var(--bg-soft);
-  display: grid;
-  place-items: center;
-}
-
 .dropdown-menu button {
   display: flex;
   align-items: center;
@@ -627,6 +612,17 @@ h1 {
   width: 100%;
   background: transparent;
   color: var(--text-main);
+}
+
+.dropdown-list {
+  display: grid;
+  gap: 6px;
+  padding: 8px 0 2px;
+}
+
+.dropdown-list button svg {
+  width: 18px;
+  height: 18px;
 }
 
 .panel-actions {

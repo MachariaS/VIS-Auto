@@ -276,6 +276,11 @@ export default function App() {
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
 
+  const displayName = (profileSettings.account.displayName || user?.name || 'User').trim();
+  const companyName = (profileSettings.account.company || displayName).trim();
+  const roleLabel = user?.accountType === 'provider' ? 'Provider' : 'Customer';
+  const avatarLetter = (displayName || 'U').charAt(0).toUpperCase();
+
   const topbarLabel = useMemo(() => {
     if (user?.accountType === 'provider') {
       return {
@@ -887,7 +892,7 @@ export default function App() {
           <p className="auth-copy">Your session is still active on this browser.</p>
         </div>
         <div className="session-card">
-          <strong>{user?.name}</strong>
+          <strong>{displayName}</strong>
           <span>{user?.email}</span>
           <span>{user?.accountType === 'provider' ? 'Provider account' : 'Customer account'}</span>
         </div>
@@ -1086,12 +1091,13 @@ export default function App() {
             {profileImage ? (
               <span className="avatar-img" style={{ backgroundImage: `url(${profileImage})` }} />
             ) : (
-              <span className="avatar-badge">{(user?.name || 'U').charAt(0).toUpperCase()}</span>
+              <span className="avatar-badge">{avatarLetter}</span>
             )}
-            <div className="account-text">
-              <strong>{user?.name}</strong>
-              <span>{user?.accountType === 'provider' ? 'Provider' : 'Customer'}</span>
+            <div className="account-text compact">
+              <strong>{displayName}</strong>
+              <span>{roleLabel}</span>
             </div>
+            <span className="caret" aria-hidden="true">▾</span>
           </button>
           {showAccountMenu ? (
             <div className="dropdown-menu">
@@ -1103,12 +1109,10 @@ export default function App() {
                       style={{ backgroundImage: `url(${profileImage})` }}
                     />
                   ) : (
-                    <span className="avatar-badge">
-                      {(user?.name || 'U').charAt(0).toUpperCase()}
-                    </span>
+                    <span className="avatar-badge">{avatarLetter}</span>
                   )}
                   <div className="account-text">
-                    <strong>{user?.name}</strong>
+                    <strong>{displayName}</strong>
                     <span>{user?.email}</span>
                   </div>
                 </div>
@@ -1138,7 +1142,7 @@ export default function App() {
           <div className="sidebar-head">
             <p className="eyebrow">Customer</p>
             <h2>VIS Garage</h2>
-            <span>{user?.name}</span>
+            <span>{displayName}</span>
           </div>
           <nav className="sidebar-nav">
             {[
@@ -1220,7 +1224,7 @@ export default function App() {
         <aside className="dashboard-sidebar">
           <div className="sidebar-head">
             <p className="eyebrow">Provider</p>
-            <h2>{user?.name}</h2>
+            <h2>{displayName}</h2>
             <span>{user?.email}</span>
           </div>
           <nav className="sidebar-nav">
@@ -1952,25 +1956,35 @@ export default function App() {
                   handleProfileFieldChange('account', 'company', event.target.value)
                 }
               />
-              </label>
-            ) : null}
-            <label className="full-row">
-              <span>Profile image</span>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(event) => {
-                const file = event.target.files?.[0];
-                if (!file) return;
-                const reader = new FileReader();
-                reader.onload = () => setProfileImage(reader.result?.toString() || '');
-                reader.readAsDataURL(file);
-                }}
-              />
-              {profileImage ? (
-                <div className="profile-image-preview" style={{ backgroundImage: `url(${profileImage})` }} />
-              ) : null}
             </label>
+          ) : null}
+            <div className="full-row image-row">
+              <label>
+                <span>{profileImage ? 'Replace image' : 'Upload image'}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(event) => {
+                    const file = event.target.files?.[0];
+                    if (!file) return;
+                    const reader = new FileReader();
+                    reader.onload = () => setProfileImage(reader.result?.toString() || '');
+                    reader.readAsDataURL(file);
+                  }}
+                />
+              </label>
+              <div className="image-preview-wrap">
+                {profileImage ? (
+                  <div
+                    className="profile-image-preview"
+                    style={{ backgroundImage: `url(${profileImage})` }}
+                    aria-label="Profile image preview"
+                  />
+                ) : (
+                  <div className="profile-image-placeholder">No image</div>
+                )}
+              </div>
+            </div>
           </div>
           <div className="button-row">
             <button className="small-button" type="submit">

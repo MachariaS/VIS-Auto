@@ -627,6 +627,19 @@ h1 {
   margin-left: auto;
 }
 
+.inline-status {
+  padding: 10px 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-soft);
+  font-size: 0.95rem;
+}
+
+.inline-status.success {
+  border-color: rgba(88, 201, 152, 0.5);
+  color: #b7f2d3;
+}
+
 .notification-overlay {
   position: fixed;
   inset: 0;
@@ -664,6 +677,23 @@ h1 {
   background-position: center;
   margin-top: 8px;
   border: 1px solid var(--border-soft);
+}
+
+.full-row {
+  grid-column: 1 / -1;
+}
+
+.button-row {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.small-button {
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--accent-a), var(--accent-b));
+  color: #111715;
+  font-weight: 700;
 }
 
 .floating-panel {

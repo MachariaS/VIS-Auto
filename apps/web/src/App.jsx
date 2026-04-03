@@ -271,6 +271,7 @@ export default function App() {
   const [profileSettings, setProfileSettings] = useState(getDefaultProfile(null));
   const [passwordForm, setPasswordForm] = useState(initialPasswordForm);
   const [profileImage, setProfileImage] = useState('');
+  const [profileNotice, setProfileNotice] = useState('');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
@@ -760,7 +761,8 @@ export default function App() {
 
   function handleSaveProfile(event) {
     event.preventDefault();
-    setMessage('Profile settings saved locally for this MVP session.');
+    setProfileNotice('Profile saved locally for this session.');
+    setTimeout(() => setProfileNotice(''), 3200);
   }
 
   function handlePasswordReset(event) {
@@ -1906,6 +1908,7 @@ export default function App() {
               <h3>Account details</h3>
             </div>
           </div>
+          {profileNotice ? <div className="inline-status success">{profileNotice}</div> : null}
           <div className="form-grid">
             <label>
               <span>Display name</span>
@@ -1949,31 +1952,32 @@ export default function App() {
                   handleProfileFieldChange('account', 'company', event.target.value)
                 }
               />
-            </label>
-          ) : null}
-          <label>
-            <span>Profile image</span>
-            <input
-              type="file"
-              accept="image/*"
-              onChange={(event) => {
+              </label>
+            ) : null}
+            <label className="full-row">
+              <span>Profile image</span>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={(event) => {
                 const file = event.target.files?.[0];
                 if (!file) return;
                 const reader = new FileReader();
                 reader.onload = () => setProfileImage(reader.result?.toString() || '');
                 reader.readAsDataURL(file);
-              }}
-            />
-            {profileImage ? (
-              <div
-                className="profile-image-preview"
-                style={{ backgroundImage: `url(${profileImage})` }}
+                }}
               />
-            ) : null}
-          </label>
-        </div>
-        <button type="submit">Save profile</button>
-      </form>
+              {profileImage ? (
+                <div className="profile-image-preview" style={{ backgroundImage: `url(${profileImage})` }} />
+              ) : null}
+            </label>
+          </div>
+          <div className="button-row">
+            <button className="small-button" type="submit">
+              Save profile
+            </button>
+          </div>
+        </form>
 
         <section className="dashboard-panel stack">
           <div className="panel-head">

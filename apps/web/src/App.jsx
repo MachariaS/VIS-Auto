@@ -279,6 +279,7 @@ export default function App() {
   const displayName = (profileSettings.account.displayName || user?.name || 'User').trim();
   const companyName = (profileSettings.account.company || displayName).trim();
   const avatarLetter = (displayName || 'U').charAt(0).toUpperCase();
+  const showGlobalBar = Boolean(user);
 
   const topbarLabel = useMemo(() => {
     if (user?.accountType === 'provider') {
@@ -1300,7 +1301,6 @@ export default function App() {
             <p className="eyebrow">Overview</p>
             <h3>Clean entry point</h3>
           </div>
-          <div className="panel-actions">{renderTopActions()}</div>
           <button className="primary-cta" type="button" onClick={() => setDashboardTab('request')}>
             New roadside request
           </button>
@@ -1340,7 +1340,6 @@ export default function App() {
             <p className="eyebrow">Provider hub</p>
             <h3>Pricing first</h3>
           </div>
-          <div className="panel-actions">{renderTopActions()}</div>
         </div>
 
         <div className="hero-grid">
@@ -2146,6 +2145,7 @@ export default function App() {
 
   return (
     <main className="app-shell">
+      {showGlobalBar ? <div className="global-topbar">{renderTopActions()}</div> : null}
       {step === 'dashboard' && user ? (
         user.accountType === 'provider' ? renderProviderDashboard() : renderCustomerDashboard()
       ) : (

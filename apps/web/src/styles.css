@@ -645,6 +645,16 @@ h1 {
   color: #b7f2d3;
 }
 
+.global-topbar {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 40;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
 .notification-overlay {
   position: fixed;
   inset: 0;

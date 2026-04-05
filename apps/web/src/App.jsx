@@ -217,22 +217,70 @@ function shouldLookupAfterWord(input = '') {
   return /[\s,]$/.test(input) && normalizeLocationQuery(input).length >= 3;
 }
 
-async function fallbackLocationSuggestions(query, countryCode = 'KE') {
-  const params = new URLSearchParams({
-    q: query,
-    format: 'jsonv2',
-    addressdetails: '1',
-    limit: '6',
-    countrycodes: (countryCode || 'KE').toLowerCase(),
-  });
+function parseAddressParts(addressValue = '', placeName = '') {
+  const parts = (addressValue || '')
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
 
-  const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
-  if (!response.ok) {
-    throw new Error('Fallback geocoder unavailable.');
+  if (parts.length === 0) {
+    return { road: '', town: '' };
   }
 
-  const results = await response.json();
-  return (results || []).map((item) => ({
+  const road = parts.find((part) => part !== placeName) || '';
+  const town = parts.length >= 2 ? parts[parts.length - 2] : '';
+
+  return { road, town };
+}
+
+async function fallbackLocationSuggestions(query, countryCode = 'KE') {
+  const normalized = normalizeLocationQuery(query || '');
+  const segments = normalized.split(',').map((item) => item.trim()).filter(Boolean);
+
+  const candidateQueries = [
+    normalized,
+    segments[0] || '',
+    segments.slice(1).join(', '),
+    normalized.replace(/\b(garage|limited|ltd|company|consultants?)\b/gi, '').trim(),
+  ].filter((value, index, arr) => value && arr.indexOf(value) === index);
+
+  async function lookupNominatim(candidateQuery, scopedCountryCode) {
+    const params = new URLSearchParams({
+      q: candidateQuery,
+      format: 'jsonv2',
+      addressdetails: '1',
+      limit: '6',
+    });
+
+    if (scopedCountryCode) {
+      params.set('countrycodes', scopedCountryCode.toLowerCase());
+    }
+
+    const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
+    if (!response.ok) {
+      return [];
+    }
+
+    return response.json();
+  }
+
+  let resolved = [];
+
+  for (const candidate of candidateQueries) {
+    const countryResults = await lookupNominatim(candidate, countryCode || 'KE');
+    if (Array.isArray(countryResults) && countryResults.length > 0) {
+      resolved = countryResults;
+      break;
+    }
+
+    const globalResults = await lookupNominatim(candidate, '');
+    if (Array.isArray(globalResults) && globalResults.length > 0) {
+      resolved = globalResults;
+      break;
+    }
+  }
+
+  return (resolved || []).map((item) => ({
     name: item.name || item.display_name || '',
     address: item.display_name || '',
     lat: item.lat || '',
@@ -1113,6 +1161,10 @@ export default function App() {
           nearLat: locationBias.latitude ?? undefined,
           nearLng: locationBias.longitude ?? undefined,
         });
+
+        if (!Array.isArray(results) || results.length === 0) {
+          results = await fallbackLocationSuggestions(trimmed, countryCode);
+        }
       } catch {
         results = await fallbackLocationSuggestions(trimmed, countryCode);
       }
@@ -1139,6 +1191,10 @@ export default function App() {
         ...current,
         [index]: mapped,
       }));
+
+      if (mapped.length === 0) {
+        setMessage('No location suggestions found. Try a shorter name or correct spelling.');
+      }
 
       setLastSuggestionQueryByIndex((current) => ({
         ...current,
@@ -1190,11 +1246,13 @@ export default function App() {
 
   function selectBusinessLocationSuggestion(index, suggestion) {
     const addressValue = suggestion.label || suggestion.formattedAddress || suggestion.name || '';
+    const parsedAddress = parseAddressParts(suggestion.formattedAddress || addressValue, suggestion.name || '');
+    const landmarkValue = suggestion.landmark || suggestion.name || '';
 
     updateBusinessLocation(index, 'address', addressValue);
-    updateBusinessLocation(index, 'town', suggestion.town || '');
-    updateBusinessLocation(index, 'road', suggestion.road || '');
-    updateBusinessLocation(index, 'landmark', suggestion.landmark || '');
+    updateBusinessLocation(index, 'town', suggestion.town || parsedAddress.town || '');
+    updateBusinessLocation(index, 'road', suggestion.road || parsedAddress.road || '');
+    updateBusinessLocation(index, 'landmark', landmarkValue);
     updateBusinessLocation(index, 'latitude', suggestion.latitude || '');
     updateBusinessLocation(index, 'longitude', suggestion.longitude || '');
 

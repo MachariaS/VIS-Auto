@@ -28,7 +28,17 @@ export class LocationsService {
     const googleApiKey = this.configService.get<string>('GOOGLE_MAPS_API_KEY');
 
     if (googleApiKey) {
-      return this.suggestWithGoogle(query, googleApiKey, dto.countryCode, dto.nearLat, dto.nearLng);
+      const googleResults = await this.suggestWithGoogle(
+        query,
+        googleApiKey,
+        dto.countryCode,
+        dto.nearLat,
+        dto.nearLng,
+      );
+
+      if (googleResults.length > 0) {
+        return googleResults;
+      }
     }
 
     return this.suggestWithNominatim(query, dto.countryCode, dto.nearLat, dto.nearLng);
@@ -62,16 +72,22 @@ export class LocationsService {
       } as NormalizedLocation;
     }
 
-    const suggestions = googleApiKey
-      ? await this.suggestWithGoogle(
-          query,
-          googleApiKey,
-          dto.countryCode,
-          dto.nearLat,
-          dto.nearLng,
-          1,
-        )
-      : await this.suggestWithNominatim(query, dto.countryCode, dto.nearLat, dto.nearLng, 1);
+    let suggestions: NormalizedLocation[] = [];
+
+    if (googleApiKey) {
+      suggestions = await this.suggestWithGoogle(
+        query,
+        googleApiKey,
+        dto.countryCode,
+        dto.nearLat,
+        dto.nearLng,
+        1,
+      );
+    }
+
+    if (suggestions.length === 0) {
+      suggestions = await this.suggestWithNominatim(query, dto.countryCode, dto.nearLat, dto.nearLng, 1);
+    }
 
     return suggestions[0] || null;
   }
@@ -114,9 +130,9 @@ export class LocationsService {
           return {
             name: prediction.structured_formatting?.main_text || prediction.description || query,
             address: prediction.description || '',
-            town: '',
-            road: '',
-            landmark: '',
+            town: this.extractTownFromPrediction(prediction),
+            road: this.extractRoadFromPrediction(prediction),
+            landmark: prediction.structured_formatting?.main_text || '',
             lat: '',
             lng: '',
             placeId: prediction.place_id || '',
@@ -127,6 +143,34 @@ export class LocationsService {
         const getComponent = (kind: string) =>
           details.address_components?.find((part: any) => part.types?.includes(kind))?.long_name || '';
 
+        const parsedAddress = this.parseFormattedAddress(details.formatted_address || '', details.name || '');
+        const town =
+          getComponent('locality') ||
+          getComponent('postal_town') ||
+          getComponent('administrative_area_level_3') ||
+          getComponent('sublocality_level_1') ||
+          getComponent('administrative_area_level_2') ||
+          parsedAddress.town ||
+          this.extractTownFromPrediction(prediction);
+
+        const road =
+          getComponent('route') ||
+          getComponent('street_address') ||
+          getComponent('premise') ||
+          parsedAddress.road ||
+          this.extractRoadFromPrediction(prediction);
+
+        const landmark =
+          getComponent('point_of_interest') ||
+          getComponent('establishment') ||
+          getComponent('premise') ||
+          getComponent('subpremise') ||
+          getComponent('neighborhood') ||
+          getComponent('sublocality_level_1') ||
+          details.name ||
+          prediction.structured_formatting?.main_text ||
+          '';
+
         return {
           name:
             details.name ||
@@ -135,13 +179,9 @@ export class LocationsService {
             prediction.structured_formatting?.main_text ||
             query,
           address: details.formatted_address || prediction.description || '',
-          town: getComponent('locality') || getComponent('administrative_area_level_2'),
-          road: getComponent('route'),
-          landmark:
-            getComponent('point_of_interest') ||
-            getComponent('sublocality') ||
-            getComponent('neighborhood') ||
-            '',
+          town,
+          road,
+          landmark,
           lat: String(details.geometry?.location?.lat || ''),
           lng: String(details.geometry?.location?.lng || ''),
           placeId: details.place_id || prediction.place_id || '',
@@ -211,6 +251,40 @@ export class LocationsService {
     } catch {
       return null;
     }
+  }
+
+  private extractTownFromPrediction(prediction: any) {
+    const terms = Array.isArray(prediction?.terms) ? prediction.terms : [];
+    if (terms.length >= 2) {
+      return terms[terms.length - 2]?.value || '';
+    }
+
+    return terms[0]?.value || '';
+  }
+
+  private extractRoadFromPrediction(prediction: any) {
+    const terms = Array.isArray(prediction?.terms) ? prediction.terms : [];
+    return terms.length > 0 ? terms[0]?.value || '' : '';
+  }
+
+  private parseFormattedAddress(formattedAddress: string, placeName: string) {
+    const normalized = (formattedAddress || '').trim();
+    if (!normalized) {
+      return { road: '', town: '' };
+    }
+
+    const parts = normalized.split(',').map((item) => item.trim()).filter(Boolean);
+    if (parts.length === 0) {
+      return { road: '', town: '' };
+    }
+
+    const roadCandidate = parts.find((part) => part !== placeName) || '';
+    const townCandidate = parts.length >= 2 ? parts[parts.length - 2] : '';
+
+    return {
+      road: roadCandidate,
+      town: townCandidate,
+    };
   }
 
   private async suggestWithNominatim(

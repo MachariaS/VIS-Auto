@@ -273,6 +273,16 @@ export default function App() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
+  const [brandLogoError, setBrandLogoError] = useState(false);
+
+  const providerBrandName = profileSettings.account.company?.trim() || 'VIS Auto';
+  const providerBrandLogo = profileSettings.account.logoUrl?.trim() || '/assets/vis-auto-logo.png';
+  const providerBrandInitials = providerBrandName
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 3)
+    .toUpperCase();
 
   const topbarLabel = useMemo(() => {
     if (user?.accountType === 'provider') {
@@ -844,11 +854,14 @@ export default function App() {
     return (
       <VisLandingPage
         isLoggedIn={Boolean(token && user)}
+        user={user}
         theme={theme}
         onToggleTheme={toggleTheme}
         onOpenLogin={openLogin}
         onOpenRegister={openRegister}
         onOpenDashboard={() => openDashboard()}
+        onOpenProfile={() => openDashboard('profile')}
+        onSignOut={signOut}
         health={health}
       />
     );
@@ -1179,13 +1192,31 @@ export default function App() {
     return (
       <section className="provider-shell-v2">
         <aside className="provider-sidebar-v2">
-          <div className="provider-brand-v2">
-            <div className="provider-brand-logo-v2">✦</div>
+          <button
+            className="provider-brand-v2 provider-brand-home-v2"
+            type="button"
+            onClick={() => {
+              setStep('entry');
+              setShowAccountMenu(false);
+              setShowNotifications(false);
+            }}
+          >
+            <div className="provider-brand-logo-v2">
+              {!brandLogoError ? (
+                <img
+                  src={providerBrandLogo}
+                  alt={`${providerBrandName} logo`}
+                  onError={() => setBrandLogoError(true)}
+                />
+              ) : (
+                <span>{providerBrandInitials || 'VIS'}</span>
+              )}
+            </div>
             <div>
-              <strong>Shine</strong>
+              <strong>{providerBrandName}</strong>
               <span>Service Providers</span>
             </div>
-          </div>
+          </button>
 
           <nav className="provider-nav-v2">
             {sidebarItems.map((item) => (

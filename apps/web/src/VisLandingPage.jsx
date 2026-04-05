@@ -113,17 +113,22 @@ const downloadLinks = [
 
 export default function VisLandingPage({
   isLoggedIn,
+  user,
   theme,
   onToggleTheme,
   onOpenLogin,
   onOpenRegister,
   onOpenDashboard,
+  onOpenProfile,
+  onSignOut,
   health,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   function closeMenu() {
     setMenuOpen(false);
+    setAccountMenuOpen(false);
   }
 
   function handleRegister(accountType = 'customer') {
@@ -139,6 +144,16 @@ export default function VisLandingPage({
   function handleDashboard() {
     closeMenu();
     onOpenDashboard();
+  }
+
+  function handleProfile() {
+    closeMenu();
+    onOpenProfile();
+  }
+
+  function handleSignOut() {
+    closeMenu();
+    onSignOut();
   }
 
   return (
@@ -177,9 +192,36 @@ export default function VisLandingPage({
             {theme === 'dark' ? <Sun /> : <Moon />}
           </button>
           {isLoggedIn ? (
-            <button type="button" onClick={handleDashboard} className="secondary-cta vis-inline-action">
-              Dashboard
-            </button>
+            <div className="vis-landing-account-wrap">
+              <button
+                type="button"
+                aria-label="Open account menu"
+                className="icon-button vis-user-menu-button"
+                onClick={() => {
+                  setAccountMenuOpen((current) => !current);
+                  setMenuOpen(false);
+                }}
+              >
+                <User />
+              </button>
+              {accountMenuOpen ? (
+                <div className="dropdown-menu vis-landing-account-menu">
+                  <div className="dropdown-head">
+                    <strong>{user?.name || 'Account'}</strong>
+                    <span>{user?.email || ''}</span>
+                  </div>
+                  <button type="button" onClick={handleDashboard}>
+                    Dashboard
+                  </button>
+                  <button type="button" onClick={handleProfile}>
+                    Profile
+                  </button>
+                  <button type="button" onClick={handleSignOut}>
+                    Logout
+                  </button>
+                </div>
+              ) : null}
+            </div>
           ) : (
             <>
               <button type="button" onClick={handleLogin} className="secondary-cta vis-inline-action">
@@ -231,6 +273,18 @@ export default function VisLandingPage({
                   Request demo
                 </button>
               </>
+            )}
+            {isLoggedIn ? (
+              <>
+                <button type="button" onClick={handleProfile} className="secondary-cta">
+                  Profile
+                </button>
+                <button type="button" onClick={handleSignOut} className="ghost-button">
+                  Logout
+                </button>
+              </>
+            ) : (
+              <></>
             )}
           </div>
         </div>

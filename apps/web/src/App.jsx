@@ -1171,6 +1171,7 @@ export default function App() {
 
       const mapped = (results || []).map((item) => ({
         name: item.name || '',
+        placeId: item.placeId || '',
         formattedAddress: item.address || '',
         label:
           item.name && item.road
@@ -1184,7 +1185,15 @@ export default function App() {
         mapUrl:
           item.lat && item.lng
             ? `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}`
-            : '',
+            : item.placeId && (item.address || item.name)
+              ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                  item.address || item.name,
+                )}&query_place_id=${encodeURIComponent(item.placeId)}`
+              : item.address || item.name
+                ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                    item.address || item.name,
+                  )}`
+                : '',
       }));
 
       setLocationSuggestionsByIndex((current) => ({
@@ -1248,6 +1257,16 @@ export default function App() {
     const addressValue = suggestion.label || suggestion.formattedAddress || suggestion.name || '';
     const parsedAddress = parseAddressParts(suggestion.formattedAddress || addressValue, suggestion.name || '');
     const landmarkValue = suggestion.landmark || suggestion.name || '';
+    const fallbackMapUrl = suggestion.placeId && (suggestion.formattedAddress || addressValue)
+      ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+          suggestion.formattedAddress || addressValue,
+        )}&query_place_id=${encodeURIComponent(suggestion.placeId)}`
+      : (suggestion.formattedAddress || addressValue)
+        ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+            suggestion.formattedAddress || addressValue,
+          )}`
+        : '';
+    const selectedMapUrl = suggestion.mapUrl || fallbackMapUrl;
 
     updateBusinessLocation(index, 'address', addressValue);
     updateBusinessLocation(index, 'town', suggestion.town || parsedAddress.town || '');
@@ -1256,11 +1275,11 @@ export default function App() {
     updateBusinessLocation(index, 'latitude', suggestion.latitude || '');
     updateBusinessLocation(index, 'longitude', suggestion.longitude || '');
 
-    if (suggestion.mapUrl) {
+    if (selectedMapUrl) {
       updateBusinessLocation(
         index,
         'mapUrl',
-        suggestion.mapUrl,
+        selectedMapUrl,
       );
     }
 

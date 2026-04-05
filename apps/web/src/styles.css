@@ -1595,6 +1595,17 @@ h1 {
   color: #f5faf6;
 }
 
+.provider-nav-disabled-v2 {
+  border-radius: 12px;
+  padding: 11px 12px;
+  border: 1px solid #d5ddd8;
+  text-align: left;
+  font-weight: 600;
+  background: #f1f4f2;
+  color: #90a096;
+  cursor: not-allowed;
+}
+
 .provider-upgrade-v2 {
   margin-top: 8px;
   border-radius: 16px;
@@ -1866,6 +1877,8 @@ h1 {
   background:
     radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.75), transparent 35%),
     linear-gradient(135deg, #d6e7da, #adc9b7);
+  background-size: cover;
+  background-position: center;
 }
 
 .provider-service-card-v2 strong {
@@ -2001,6 +2014,156 @@ h1 {
 .provider-note-v2 p {
   margin: 8px 0 0;
   color: #755b1e;
+}
+
+.provider-manage-grid {
+  display: grid;
+  gap: 14px;
+}
+
+.provider-service-composer {
+  display: grid;
+  gap: 10px;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.service-submit-button,
+.service-cancel-button {
+  width: auto;
+  min-width: 170px;
+  text-align: center;
+}
+
+.provider-manage-card {
+  border-radius: 24px;
+  border: 1px solid #dbe4dd;
+  background: #f8fbf8;
+  overflow: hidden;
+}
+
+.provider-manage-card-media {
+  min-height: 180px;
+  display: flex;
+  justify-content: flex-end;
+  align-items: flex-start;
+  padding: 12px;
+  background-size: cover;
+  background-position: center;
+}
+
+.provider-manage-pill {
+  border-radius: 999px;
+  background: rgba(7, 17, 10, 0.72);
+  color: #f8fafc;
+  padding: 7px 12px;
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.provider-manage-card-copy {
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.provider-manage-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.provider-manage-card-head strong {
+  color: #1d2d23;
+  font-size: 1.34rem;
+}
+
+.provider-manage-prices {
+  display: grid;
+  gap: 6px;
+  justify-items: end;
+  font-size: 0.9rem;
+  color: #5e7064;
+}
+
+.provider-manage-card-copy p {
+  margin: 0;
+  color: #4f6055;
+  max-width: 70ch;
+}
+
+.provider-option-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.provider-option-card {
+  border-radius: 20px;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-soft);
+  color: var(--text-main);
+  padding: 10px;
+  text-align: left;
+  display: grid;
+  gap: 10px;
+}
+
+.provider-option-card-active {
+  border-color: rgba(132, 204, 22, 0.7);
+  box-shadow: 0 0 0 2px rgba(132, 204, 22, 0.2);
+}
+
+.provider-option-media {
+  min-height: 126px;
+  border-radius: 14px;
+  border: 1px solid var(--border-soft);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 10px;
+  background-size: cover;
+  background-position: center;
+}
+
+.provider-option-media span {
+  border-radius: 999px;
+  background: rgba(7, 17, 10, 0.72);
+  color: #f8fafc;
+  padding: 6px 10px;
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.provider-option-copy {
+  display: grid;
+  gap: 4px;
+}
+
+.provider-option-copy strong {
+  color: var(--text-main);
+}
+
+.provider-option-copy p {
+  margin: 0;
+  color: var(--text-soft);
+}
+
+.provider-option-price {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-soft);
+  font-size: 0.86rem;
 }
 
 .empty-state {
@@ -2240,7 +2403,8 @@ button:disabled {
   .provider-order-tabs-v2,
   .provider-ring-grid-v2,
   .provider-stat-strip-v2,
-  .provider-service-grid-v2 {
+  .provider-service-grid-v2,
+  .provider-option-grid {
     grid-template-columns: 1fr;
   }
 
@@ -2250,6 +2414,14 @@ button:disabled {
 
   .provider-order-card {
     grid-template-columns: 1fr;
+  }
+
+  .provider-manage-card-head {
+    flex-direction: column;
+  }
+
+  .provider-manage-prices {
+    justify-items: start;
   }
 
   .provider-service-card {

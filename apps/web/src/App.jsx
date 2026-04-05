@@ -14,6 +14,14 @@ const serviceTypeOptions = [
   { code: 'lockout', label: 'Lockout', short: 'Entry support' },
 ];
 
+const serviceImageByCode = {
+  battery_jump: '/assets/battery_jumpstart.jpeg',
+  fuel_delivery: '/assets/fuel_delivery.jpeg',
+  tire_change: '/assets/tire_chang.jpeg',
+  towing: '/assets/car_towing.jpeg',
+  lockout: '/assets/lockout.jpeg',
+};
+
 const futureCustomerModules = [
   { title: 'Diagnostics', meta: 'Coming next', detail: 'Fault alerts and probable causes.' },
   { title: 'Live Fuel', meta: 'Planned', detail: 'Consumption trends and refill history.' },
@@ -154,6 +162,14 @@ function getFuelUnitPrice(service, form) {
     : service.fuelPricing?.gasoline?.regular ?? 0;
 }
 
+function getServiceImageUrl(service) {
+  if (!service) {
+    return '/assets/other_services.jpeg';
+  }
+
+  return service.serviceImageUrl || serviceImageByCode[service.serviceCode] || '/assets/other_services.jpeg';
+}
+
 function getDefaultProfile(user) {
   return {
     account: {
@@ -247,6 +263,7 @@ export default function App() {
   const [vehicleForm, setVehicleForm] = useState(initialVehicle);
   const [providerServiceForm, setProviderServiceForm] = useState(initialProviderService);
   const [editingProviderServiceId, setEditingProviderServiceId] = useState('');
+  const [showProviderServiceComposer, setShowProviderServiceComposer] = useState(false);
   const [roadsideForm, setRoadsideForm] = useState(initialRoadsideRequest);
   const [dashboardTab, setDashboardTab] = useState('overview');
   const [serviceFilter, setServiceFilter] = useState('battery_jump');
@@ -635,6 +652,7 @@ export default function App() {
         serviceCode: providerServiceForm.serviceCode,
       });
       setEditingProviderServiceId('');
+      setShowProviderServiceComposer(false);
       setDashboardTab('services');
       setMessage(
         editingProviderServiceId
@@ -801,6 +819,7 @@ export default function App() {
     setVehicleForm(initialVehicle);
     setProviderServiceForm(initialProviderService);
     setEditingProviderServiceId('');
+    setShowProviderServiceComposer(false);
     setRoadsideForm(initialRoadsideRequest);
     setDashboardTab('overview');
     setServiceFilter('battery_jump');
@@ -1147,14 +1166,14 @@ export default function App() {
 
   function renderProviderDashboard() {
     const sidebarItems = [
-      ['overview', 'Dashboard'],
-      ['services', 'Manage Services'],
-      ['pricing', 'Manage Vendors'],
-      ['services', 'Order History'],
-      ['profile', 'Ratings & Reviews'],
-      ['overview', 'Heat Map'],
-      ['pricing', 'Offers'],
-      ['profile', 'Settings'],
+      { id: 'overview', label: 'Dashboard' },
+      { id: 'services', label: 'Manage Services' },
+      { id: 'services', label: 'Manage Vendors' },
+      { id: 'services', label: 'Order History' },
+      { id: 'services', label: 'Ratings & Reviews' },
+      { id: 'overview', label: 'Heat Map' },
+      { id: 'services', label: 'Offers' },
+      { id: 'profile', label: 'Settings' },
     ];
 
     return (
@@ -1169,14 +1188,14 @@ export default function App() {
           </div>
 
           <nav className="provider-nav-v2">
-            {sidebarItems.map(([id, label]) => (
+            {sidebarItems.map((item) => (
               <button
-                key={`${id}-${label}`}
-                className={dashboardTab === id ? 'provider-nav-active-v2' : 'provider-nav-idle-v2'}
+                key={`${item.id || 'na'}-${item.label}`}
+                className={dashboardTab === item.id ? 'provider-nav-active-v2' : 'provider-nav-idle-v2'}
                 type="button"
-                onClick={() => setDashboardTab(id)}
+                onClick={() => setDashboardTab(item.id)}
               >
-                {label}
+                {item.label}
               </button>
             ))}
             <button className="provider-nav-idle-v2" type="button" onClick={signOut}>
@@ -1348,6 +1367,8 @@ export default function App() {
             id: service.id,
             title: service.serviceName,
             provider: user?.name || 'Your Team',
+            serviceCode: service.serviceCode,
+            serviceImageUrl: service.serviceImageUrl,
             rating: (4.1 + index * 0.2).toFixed(1),
             price: formatCurrency(service.basePriceKsh),
             tone: ['peach', 'mint', 'sky', 'sand'][index % 4],
@@ -1357,6 +1378,8 @@ export default function App() {
               id: 'demo-1',
               title: 'Beauty',
               provider: 'George & Albert Pvt. Ltd',
+              serviceCode: 'battery_jump',
+              serviceImageUrl: '/assets/other_services.jpeg',
               rating: '4.5',
               price: '$36.00',
               tone: 'peach',
@@ -1365,6 +1388,8 @@ export default function App() {
               id: 'demo-2',
               title: 'Painter',
               provider: 'Sebastian & Co workers',
+              serviceCode: 'tire_change',
+              serviceImageUrl: '/assets/other_services.jpeg',
               rating: '4.4',
               price: '$44.00',
               tone: 'mint',
@@ -1373,6 +1398,8 @@ export default function App() {
               id: 'demo-3',
               title: 'Car Wash',
               provider: 'Shift Car Studio',
+              serviceCode: 'towing',
+              serviceImageUrl: '/assets/other_services.jpeg',
               rating: '4.7',
               price: '$18.00',
               tone: 'sky',
@@ -1381,6 +1408,8 @@ export default function App() {
               id: 'demo-4',
               title: 'Drain Cleaning',
               provider: 'Swift Fix Team',
+              serviceCode: 'lockout',
+              serviceImageUrl: '/assets/other_services.jpeg',
               rating: '4.3',
               price: '$24.00',
               tone: 'sand',
@@ -1394,7 +1423,16 @@ export default function App() {
             <p>Welcome to</p>
             <h3>StarShine</h3>
           </div>
-          <button className="primary-cta" type="button" onClick={() => setDashboardTab('pricing')}>
+          <button
+            className="primary-cta"
+            type="button"
+            onClick={() => {
+              setDashboardTab('services');
+              setEditingProviderServiceId('');
+              setProviderServiceForm(initialProviderService);
+              setShowProviderServiceComposer(true);
+            }}
+          >
             Add Service
           </button>
         </div>
@@ -1445,7 +1483,12 @@ export default function App() {
               <div className="provider-service-grid-v2">
                 {showcaseServices.map((service) => (
                   <article className={`provider-service-card-v2 ${service.tone}`} key={service.id}>
-                    <div className="provider-service-art-v2" />
+                    <div
+                      className="provider-service-art-v2"
+                      style={{
+                        backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.06), rgba(15, 23, 42, 0.46)), url(${getServiceImageUrl(service)})`,
+                      }}
+                    />
                     <strong>{service.title}</strong>
                     <p>{service.provider}</p>
                     <div className="provider-service-meta-v2">
@@ -1595,6 +1638,9 @@ export default function App() {
             <h3>{editingProviderServiceId ? 'Edit service' : 'Add service'}</h3>
           </div>
         </div>
+
+        {message ? <div className="status-banner">{message}</div> : null}
+
         <div className="form-grid">
           <label>
             <span>Name</span>
@@ -1711,21 +1757,24 @@ export default function App() {
           </div>
         ) : null}
 
-        <button type="submit" disabled={loading}>
-          {loading ? 'Saving...' : editingProviderServiceId ? 'Update service' : 'Publish service'}
-        </button>
-        {editingProviderServiceId ? (
-          <button
-            className="ghost-button"
-            type="button"
-            onClick={() => {
-              setEditingProviderServiceId('');
-              setProviderServiceForm(initialProviderService);
-            }}
-          >
-            Cancel edit
+        <div className="form-actions">
+          <button className="primary-cta service-submit-button" type="submit" disabled={loading}>
+            {loading ? 'Saving...' : editingProviderServiceId ? 'Update service' : 'Publish service'}
           </button>
-        ) : null}
+          {editingProviderServiceId ? (
+            <button
+              className="ghost-button service-cancel-button"
+              type="button"
+              onClick={() => {
+                setEditingProviderServiceId('');
+                setProviderServiceForm(initialProviderService);
+                setShowProviderServiceComposer(false);
+              }}
+            >
+              Cancel edit
+            </button>
+          ) : null}
+        </div>
       </form>
     );
   }
@@ -1842,6 +1891,43 @@ export default function App() {
           </label>
         </div>
 
+        <section className="provider-option-grid">
+          {filteredProviderOptions.map((service) => (
+            <button
+              key={service.id}
+              type="button"
+              className={
+                roadsideForm.providerServiceId === service.id
+                  ? 'provider-option-card provider-option-card-active'
+                  : 'provider-option-card'
+              }
+              onClick={() =>
+                setRoadsideForm({
+                  ...roadsideForm,
+                  providerServiceId: service.id,
+                })
+              }
+            >
+              <div
+                className="provider-option-media"
+                style={{
+                  backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.06), rgba(15, 23, 42, 0.48)), url(${getServiceImageUrl(service)})`,
+                }}
+              >
+                <span>{serviceTypeOptions.find((item) => item.code === service.serviceCode)?.label}</span>
+              </div>
+              <div className="provider-option-copy">
+                <strong>{service.providerName}</strong>
+                <p>{service.serviceName}</p>
+                <div className="provider-option-price">
+                  <span>{formatCurrency(service.basePriceKsh)}</span>
+                  <span>{formatCurrency(service.pricePerKmKsh)}/km</span>
+                </div>
+              </div>
+            </button>
+          ))}
+        </section>
+
         <button className="ghost-button" type="button" onClick={handleUseCurrentLocation}>
           Use current location
         </button>
@@ -1952,10 +2038,6 @@ export default function App() {
   }
 
   function renderProviderServiceList() {
-    if (providerServices.length === 0) {
-      return <div className="dashboard-panel empty-state">No services published yet.</div>;
-    }
-
     return (
       <section className="dashboard-panel stack">
         <div className="panel-head">
@@ -1963,54 +2045,83 @@ export default function App() {
             <p className="eyebrow">Published</p>
             <h3>Service catalog</h3>
           </div>
-          <button className="primary-cta" type="button" onClick={() => setDashboardTab('pricing')}>
-            Add service
+          <button
+            className="primary-cta"
+            type="button"
+            onClick={() => {
+              setEditingProviderServiceId('');
+              setProviderServiceForm(initialProviderService);
+              setShowProviderServiceComposer((current) => !current);
+            }}
+          >
+            {showProviderServiceComposer ? 'Hide form' : 'Add service'}
           </button>
         </div>
-        <div className="card-list">
-          {providerServices.map((service) => (
-            <article className="info-card" key={service.id}>
-              <div className="info-top">
-                <strong>{service.serviceName}</strong>
-                <span className="mini-pill">
-                  {serviceTypeOptions.find((option) => option.code === service.serviceCode)?.label}
-                </span>
-              </div>
-              <p>{service.description || 'No description yet.'}</p>
-              <div className="info-meta">
-                <span>Base {formatCurrency(service.basePriceKsh)}</span>
-                <span>{formatCurrency(service.pricePerKmKsh)}/km</span>
-              </div>
-              <button
-                className="ghost-button"
-                type="button"
-                onClick={() => {
-                  setEditingProviderServiceId(service.id);
-                  setProviderServiceForm({
-                    serviceName: service.serviceName,
-                    serviceCode: service.serviceCode,
-                    basePriceKsh: String(service.basePriceKsh),
-                    pricePerKmKsh: String(service.pricePerKmKsh),
-                    description: service.description ?? '',
-                    gasolineRegularPrice: service.fuelPricing?.gasoline?.regular
-                      ? String(service.fuelPricing.gasoline.regular)
-                      : '',
-                    gasolineVPowerPrice: service.fuelPricing?.gasoline?.vpower
-                      ? String(service.fuelPricing.gasoline.vpower)
-                      : '',
-                    dieselPrice: service.fuelPricing?.diesel?.standard
-                      ? String(service.fuelPricing.diesel.standard)
-                      : '',
-                  });
-                  setDashboardTab('pricing');
-                  setMessage(`Editing ${service.serviceName}.`);
-                }}
-              >
-                Edit service
-              </button>
-            </article>
-          ))}
-        </div>
+
+        {showProviderServiceComposer ? (
+          <div className="provider-service-composer">{renderProviderServicePanel()}</div>
+        ) : null}
+
+        {providerServices.length === 0 ? (
+          <div className="empty-state">No services published yet. Click Add service to create your first service.</div>
+        ) : (
+          <div className="provider-manage-grid">
+            {providerServices.map((service) => (
+              <article className="provider-manage-card" key={service.id}>
+                <div
+                  className="provider-manage-card-media"
+                  style={{
+                    backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.02), rgba(15, 23, 42, 0.42)), url(${getServiceImageUrl(service)})`,
+                  }}
+                >
+                  <span className="provider-manage-pill">
+                    {serviceTypeOptions.find((option) => option.code === service.serviceCode)?.label}
+                  </span>
+                </div>
+
+                <div className="provider-manage-card-copy">
+                  <div className="provider-manage-card-head">
+                    <strong>{service.serviceName}</strong>
+                    <div className="provider-manage-prices">
+                      <span>Base {formatCurrency(service.basePriceKsh)}</span>
+                      <span>{formatCurrency(service.pricePerKmKsh)}/km</span>
+                    </div>
+                  </div>
+
+                  <p>{service.description || 'No description yet.'}</p>
+
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    onClick={() => {
+                      setEditingProviderServiceId(service.id);
+                      setProviderServiceForm({
+                        serviceName: service.serviceName,
+                        serviceCode: service.serviceCode,
+                        basePriceKsh: String(service.basePriceKsh),
+                        pricePerKmKsh: String(service.pricePerKmKsh),
+                        description: service.description ?? '',
+                        gasolineRegularPrice: service.fuelPricing?.gasoline?.regular
+                          ? String(service.fuelPricing.gasoline.regular)
+                          : '',
+                        gasolineVPowerPrice: service.fuelPricing?.gasoline?.vpower
+                          ? String(service.fuelPricing.gasoline.vpower)
+                          : '',
+                        dieselPrice: service.fuelPricing?.diesel?.standard
+                          ? String(service.fuelPricing.diesel.standard)
+                          : '',
+                      });
+                      setShowProviderServiceComposer(true);
+                      setMessage(`Editing ${service.serviceName}.`);
+                    }}
+                  >
+                    Edit service
+                  </button>
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
       </section>
     );
   }

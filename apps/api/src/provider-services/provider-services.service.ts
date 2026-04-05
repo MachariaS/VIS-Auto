@@ -33,6 +33,14 @@ export interface ProviderService {
   createdAt: string;
 }
 
+const defaultServiceImageByCode: Record<ProviderService['serviceCode'], string> = {
+  battery_jump: '/assets/battery_jumpstart.jpeg',
+  fuel_delivery: '/assets/fuel_delivery.jpeg',
+  tire_change: '/assets/tire_chang.jpeg',
+  towing: '/assets/car_towing.jpeg',
+  lockout: '/assets/lockout.jpeg',
+};
+
 @Injectable()
 export class ProviderServicesService {
   constructor(
@@ -67,7 +75,7 @@ export class ProviderServicesService {
       providerName: provider.name,
       serviceName: dto.serviceName.trim(),
       serviceCategory: dto.serviceCategory?.trim() || undefined,
-      serviceImageUrl: dto.serviceImageUrl?.trim() || undefined,
+      serviceImageUrl: this.resolveServiceImageUrl(dto.serviceCode, dto.serviceImageUrl),
       serviceCode: dto.serviceCode,
       basePriceKsh: dto.basePriceKsh,
       pricePerKmKsh: dto.pricePerKmKsh,
@@ -118,7 +126,7 @@ export class ProviderServicesService {
     const updated = this.providerServicesRepository.merge(existing, {
       serviceName: dto.serviceName.trim(),
       serviceCategory: dto.serviceCategory?.trim() || undefined,
-      serviceImageUrl: dto.serviceImageUrl?.trim() || undefined,
+      serviceImageUrl: this.resolveServiceImageUrl(dto.serviceCode, dto.serviceImageUrl),
       serviceCode: dto.serviceCode,
       basePriceKsh: dto.basePriceKsh,
       pricePerKmKsh: dto.pricePerKmKsh,
@@ -172,7 +180,21 @@ export class ProviderServicesService {
   private toProviderService(service: ProviderServiceEntity): ProviderService {
     return {
       ...service,
+      serviceImageUrl:
+        service.serviceImageUrl || defaultServiceImageByCode[service.serviceCode] || '/assets/other_services.jpeg',
       createdAt: service.createdAt.toISOString(),
     };
+  }
+
+  private resolveServiceImageUrl(
+    serviceCode: ProviderService['serviceCode'],
+    serviceImageUrl?: string,
+  ): string {
+    const customImageUrl = serviceImageUrl?.trim();
+    if (customImageUrl) {
+      return customImageUrl;
+    }
+
+    return defaultServiceImageByCode[serviceCode] || '/assets/other_services.jpeg';
   }
 }

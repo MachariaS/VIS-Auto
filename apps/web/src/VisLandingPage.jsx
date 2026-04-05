@@ -165,7 +165,6 @@ export default function VisLandingPage({
           </div>
           <div className="vis-brand-copy">
             <strong>VIS Auto</strong>
-            <span>Connected vehicle intelligence</span>
           </div>
         </a>
 
@@ -556,7 +555,6 @@ export default function VisLandingPage({
             </div>
             <div>
               <strong>VIS Auto</strong>
-              <span>Connected vehicle intelligence</span>
             </div>
           </div>
           <p>

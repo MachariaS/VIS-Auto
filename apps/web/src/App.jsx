@@ -275,14 +275,9 @@ export default function App() {
   const [sessionReady, setSessionReady] = useState(false);
   const [brandLogoError, setBrandLogoError] = useState(false);
 
-  const providerBrandName = profileSettings.account.company?.trim() || 'VIS Auto';
-  const providerBrandLogo = profileSettings.account.logoUrl?.trim() || '/assets/vis-auto-logo.png';
-  const providerBrandInitials = providerBrandName
-    .split(' ')
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 3)
-    .toUpperCase();
+  const providerBrandName = 'VIS Auto';
+  const providerBrandLogo = '/assets/vis-auto-logo.png';
+  const providerBrandInitials = 'VIS';
 
   const topbarLabel = useMemo(() => {
     if (user?.accountType === 'provider') {
@@ -1214,7 +1209,6 @@ export default function App() {
             </div>
             <div>
               <strong>{providerBrandName}</strong>
-              <span>Service Providers</span>
             </div>
           </button>
 

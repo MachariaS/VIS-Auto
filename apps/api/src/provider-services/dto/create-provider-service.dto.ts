@@ -5,6 +5,14 @@ export class CreateProviderServiceDto {
   @MinLength(2)
   serviceName!: string;
 
+  @IsOptional()
+  @IsString()
+  serviceCategory?: string;
+
+  @IsOptional()
+  @IsString()
+  serviceImageUrl?: string;
+
   @IsIn(['battery_jump', 'fuel_delivery', 'tire_change', 'towing', 'lockout'])
   serviceCode!: 'battery_jump' | 'fuel_delivery' | 'tire_change' | 'towing' | 'lockout';
 

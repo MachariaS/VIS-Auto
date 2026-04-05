@@ -324,7 +324,32 @@ export default function App() {
 
     if (storedProfile) {
       try {
-        setProfileSettings(JSON.parse(storedProfile));
+        const parsedProfile = JSON.parse(storedProfile);
+        setProfileSettings((current) => ({
+          ...getDefaultProfile(null),
+          ...current,
+          ...parsedProfile,
+          account: {
+            ...getDefaultProfile(null).account,
+            ...current.account,
+            ...parsedProfile.account,
+          },
+          notifications: {
+            ...getDefaultProfile(null).notifications,
+            ...current.notifications,
+            ...parsedProfile.notifications,
+          },
+          preferences: {
+            ...getDefaultProfile(null).preferences,
+            ...current.preferences,
+            ...parsedProfile.preferences,
+          },
+          subscription: {
+            ...getDefaultProfile(null).subscription,
+            ...current.subscription,
+            ...parsedProfile.subscription,
+          },
+        }));
       } catch {
         window.localStorage.removeItem(PROFILE_STORAGE_KEY);
       }
@@ -708,6 +733,7 @@ export default function App() {
       },
     }));
   }
+
 
   function toggleTheme() {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
@@ -1120,50 +1146,113 @@ export default function App() {
   }
 
   function renderProviderDashboard() {
+    const sidebarItems = [
+      ['overview', 'Dashboard'],
+      ['services', 'Manage Services'],
+      ['pricing', 'Manage Vendors'],
+      ['services', 'Order History'],
+      ['profile', 'Ratings & Reviews'],
+      ['overview', 'Heat Map'],
+      ['pricing', 'Offers'],
+      ['profile', 'Settings'],
+    ];
+
     return (
-      <section className="dashboard-shell">
-        <aside className="dashboard-sidebar">
-          <div className="sidebar-head">
-            <p className="eyebrow">Provider</p>
-            <h2>{user?.name}</h2>
-            <span>{user?.email}</span>
+      <section className="provider-shell-v2">
+        <aside className="provider-sidebar-v2">
+          <div className="provider-brand-v2">
+            <div className="provider-brand-logo-v2">✦</div>
+            <div>
+              <strong>Shine</strong>
+              <span>Service Providers</span>
+            </div>
           </div>
-          <nav className="sidebar-nav">
-            {[
-              ['overview', 'Overview'],
-              ['services', 'Services'],
-              ['pricing', editingProviderServiceId ? 'Edit' : 'Add'],
-              ['profile', 'Profile'],
-            ].map(([id, label]) => (
+
+          <nav className="provider-nav-v2">
+            {sidebarItems.map(([id, label]) => (
               <button
-                key={id}
-                className={dashboardTab === id ? 'nav-active' : 'nav-idle'}
+                key={`${id}-${label}`}
+                className={dashboardTab === id ? 'provider-nav-active-v2' : 'provider-nav-idle-v2'}
                 type="button"
                 onClick={() => setDashboardTab(id)}
               >
                 {label}
               </button>
             ))}
+            <button className="provider-nav-idle-v2" type="button" onClick={signOut}>
+              Logout
+            </button>
           </nav>
-          <div className="sidebar-metrics">
-            <div className="metric-card">
-              <span>Published</span>
-              <strong>{requestStats.services}</strong>
-            </div>
-            <div className="metric-card">
-              <span>Status</span>
-              <strong>Ready</strong>
-            </div>
+
+          <div className="provider-upgrade-v2">
+            <strong>Upgrade Membership</strong>
+            <p>Upgrade your membership in $500 for next 5 years.</p>
+            <button className="secondary-cta" type="button">
+              Upgrade now
+            </button>
           </div>
         </aside>
 
-        <div className="dashboard-main">
-          {renderDashboardTopbar()}
-          {renderNotificationsTray()}
-          {dashboardTab === 'overview' ? renderProviderOverview() : null}
-          {dashboardTab === 'services' ? renderProviderServiceList() : null}
-          {dashboardTab === 'pricing' ? renderProviderServicePanel() : null}
-          {dashboardTab === 'profile' ? renderProfilePanel() : null}
+        <div className="provider-main-v2">
+          <header className="provider-topbar-v2">
+            <div className="provider-topbar-search-v2">
+              <input type="search" placeholder="Search projects here..." aria-label="Search projects" />
+            </div>
+
+            <div className="provider-topbar-actions-v2">
+              <button
+                className="icon-button notification-button"
+                type="button"
+                onClick={() => {
+                  setShowNotifications((current) => !current);
+                  setShowAccountMenu(false);
+                }}
+                aria-label="Notifications"
+              >
+                <BellIcon />
+                <span className="notification-count">3</span>
+              </button>
+
+              <div className="account-menu-wrap">
+                <button
+                  className="provider-profile-chip-v2"
+                  type="button"
+                  onClick={() => {
+                    setShowAccountMenu((current) => !current);
+                    setShowNotifications(false);
+                  }}
+                >
+                  <span className="avatar-badge">{(user?.name || 'U').charAt(0).toUpperCase()}</span>
+                  <span>{user?.name || 'Provider'}</span>
+                </button>
+                {showAccountMenu ? (
+                  <div className="dropdown-menu">
+                    <div className="dropdown-head">
+                      <strong>{user?.name}</strong>
+                      <span>{user?.email}</span>
+                    </div>
+                    <button type="button" onClick={() => setDashboardTab('overview')}>
+                      Dashboard
+                    </button>
+                    <button type="button" onClick={() => setDashboardTab('profile')}>
+                      Profile
+                    </button>
+                    <button type="button" onClick={signOut}>
+                      Sign out
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </div>
+          </header>
+
+          <div className="provider-content-v2">
+            {renderNotificationsTray()}
+            {dashboardTab === 'overview' ? renderProviderOverview() : null}
+            {dashboardTab === 'services' ? renderProviderServiceList() : null}
+            {dashboardTab === 'pricing' ? renderProviderServicePanel() : null}
+            {dashboardTab === 'profile' ? renderProfilePanel() : null}
+          </div>
         </div>
       </section>
     );
@@ -1209,30 +1298,206 @@ export default function App() {
   }
 
   function renderProviderOverview() {
+    const dashboardStatCards = [
+      { value: '365', label: 'Registered Users', icon: '◉', tone: 'violet' },
+      { value: '86%', label: 'Total Increase Revenue', icon: '$', tone: 'orange' },
+      { value: '02', label: 'Pending Orders', icon: '▦', tone: 'gold' },
+      { value: '136', label: 'Completed Orders', icon: '✓', tone: 'green' },
+    ];
+
+    const orderStats = [
+      { value: '25', label: 'Completed Services', percent: 78, color: '#22c55e' },
+      { value: '$214', label: 'Total Earnings', percent: 66, color: '#f97316' },
+      { value: '4.5', label: 'Ratings', percent: 82, color: '#eab308' },
+      { value: '2', label: 'User Joined', percent: 40, color: '#a855f7' },
+    ];
+
+    const orderRows = [
+      {
+        code: '#ABC0036',
+        title: 'House-help room cleaning',
+        meta: 'Cleaning',
+        date: '08-04-2022',
+        amount: '$36.00',
+        status: 'Ongoing',
+        tone: 'ongoing',
+      },
+      {
+        code: '#ABC0035',
+        title: 'Hair cutting & colour',
+        meta: 'Salon',
+        date: '07-04-2022',
+        amount: '$20.00',
+        status: 'Completed',
+        tone: 'completed',
+      },
+      {
+        code: '#ABC0033',
+        title: 'Full body massage with checkup',
+        meta: 'Spa',
+        date: '03-04-2022',
+        amount: '$55.00',
+        status: 'Pending',
+        tone: 'pending',
+      },
+    ];
+
+    const showcaseServices =
+      providerServices.length > 0
+        ? providerServices.slice(0, 4).map((service, index) => ({
+            id: service.id,
+            title: service.serviceName,
+            provider: user?.name || 'Your Team',
+            rating: (4.1 + index * 0.2).toFixed(1),
+            price: formatCurrency(service.basePriceKsh),
+            tone: ['peach', 'mint', 'sky', 'sand'][index % 4],
+          }))
+        : [
+            {
+              id: 'demo-1',
+              title: 'Beauty',
+              provider: 'George & Albert Pvt. Ltd',
+              rating: '4.5',
+              price: '$36.00',
+              tone: 'peach',
+            },
+            {
+              id: 'demo-2',
+              title: 'Painter',
+              provider: 'Sebastian & Co workers',
+              rating: '4.4',
+              price: '$44.00',
+              tone: 'mint',
+            },
+            {
+              id: 'demo-3',
+              title: 'Car Wash',
+              provider: 'Shift Car Studio',
+              rating: '4.7',
+              price: '$18.00',
+              tone: 'sky',
+            },
+            {
+              id: 'demo-4',
+              title: 'Drain Cleaning',
+              provider: 'Swift Fix Team',
+              rating: '4.3',
+              price: '$24.00',
+              tone: 'sand',
+            },
+          ];
+
     return (
-      <section className="dashboard-panel">
-        <div className="panel-head">
+      <section className="provider-home-v2">
+        <div className="provider-home-head-v2">
           <div>
-            <p className="eyebrow">Provider hub</p>
-            <h3>Pricing first</h3>
+            <p>Welcome to</p>
+            <h3>StarShine</h3>
           </div>
           <button className="primary-cta" type="button" onClick={() => setDashboardTab('pricing')}>
-            Add service
+            Add Service
           </button>
         </div>
 
-        <div className="hero-grid">
-          <article className="spotlight-card">
-            <span>Provider catalog</span>
-            <strong>Live on customer side</strong>
-            <p>Your base charge, rate per km, and fuel pricing drive customer estimates.</p>
-          </article>
-          <article className="spotlight-card alt">
-            <span>Roadmap</span>
-            <strong>Dispatch-ready UI</strong>
-            <p>Incoming jobs, availability, payouts, and reviews fit into this layout next.</p>
-          </article>
+        <div className="provider-stat-strip-v2">
+          {dashboardStatCards.map((card) => (
+            <article className={`provider-stat-card-v2 ${card.tone}`} key={card.label}>
+              <div>
+                <strong>{card.value}</strong>
+                <span>{card.label}</span>
+              </div>
+              <div className="provider-stat-icon-v2">{card.icon}</div>
+            </article>
+          ))}
         </div>
+
+        <div className="provider-grid-v2">
+          <section className="provider-orders-stats-v2">
+            <div className="provider-section-head-v2">
+              <h4>Orders Statistics</h4>
+              <span>Monthly</span>
+            </div>
+
+            <div className="provider-ring-grid-v2">
+              {orderStats.map((item) => (
+                <article className="provider-ring-card-v2" key={item.label}>
+                  <div
+                    className="provider-ring-v2"
+                    style={{
+                      background: `conic-gradient(${item.color} ${item.percent}%, rgba(148, 163, 184, 0.22) ${item.percent}% 100%)`,
+                    }}
+                  >
+                    <span>{item.value}</span>
+                  </div>
+                  <p>{item.label}</p>
+                </article>
+              ))}
+            </div>
+
+            <div className="provider-popular-v2">
+              <div className="provider-section-head-v2">
+                <h4>Popular Services</h4>
+                <button className="ghost-button" type="button" onClick={() => setDashboardTab('services')}>
+                  Manage
+                </button>
+              </div>
+
+              <div className="provider-service-grid-v2">
+                {showcaseServices.map((service) => (
+                  <article className={`provider-service-card-v2 ${service.tone}`} key={service.id}>
+                    <div className="provider-service-art-v2" />
+                    <strong>{service.title}</strong>
+                    <p>{service.provider}</p>
+                    <div className="provider-service-meta-v2">
+                      <span>★ {service.rating} Reviews</span>
+                      <strong>{service.price}</strong>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </section>
+
+          <section className="provider-orders-v2">
+            <div className="provider-section-head-v2">
+              <h4>Orders</h4>
+            </div>
+            <div className="provider-order-tabs-v2">
+              {['All', 'Ongoing', 'Pending', 'Completed', 'Cancelled'].map((tab, index) => (
+                <button key={tab} className={index === 0 ? 'provider-order-tab-active-v2' : 'provider-order-tab-v2'} type="button">
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            <div className="provider-order-list-v2">
+              {orderRows.map((order) => (
+                <article className="provider-order-card-v2" key={order.code}>
+                  <div className="provider-order-thumb-v2" />
+                  <div className="provider-order-content-v2">
+                    <div className="provider-order-head-v2">
+                      <strong>{order.code}</strong>
+                      <span>{order.amount}</span>
+                    </div>
+                    <p>{order.title}</p>
+                    <div className="provider-order-meta-v2">
+                      <span>{order.meta}</span>
+                      <span>{order.date}</span>
+                    </div>
+                    <div className={`provider-order-status-v2 ${order.tone}`}>{order.status}</div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        {providerServices.length === 0 ? (
+          <article className="provider-note-v2">
+            <strong>No services published yet.</strong>
+            <p>Use Add Service to publish your first offering and start appearing in customer requests.</p>
+          </article>
+        ) : null}
 
         <div className="module-grid">
           {futureProviderModules.map((module) => (
@@ -1698,6 +1963,9 @@ export default function App() {
             <p className="eyebrow">Published</p>
             <h3>Service catalog</h3>
           </div>
+          <button className="primary-cta" type="button" onClick={() => setDashboardTab('pricing')}>
+            Add service
+          </button>
         </div>
         <div className="card-list">
           {providerServices.map((service) => (
@@ -1997,7 +2265,7 @@ export default function App() {
       ) : step === 'auth' || step === 'otp' ? (
         <section className="auth-page">{renderAuthPanel()}</section>
       ) : (
-        <div className="entry-layout">
+        <div className="entry-layout landing-entry">
           {renderLandingPanel()}
         </div>
       )}

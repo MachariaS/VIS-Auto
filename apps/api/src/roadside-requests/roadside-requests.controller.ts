@@ -13,6 +13,11 @@ export class RoadsideRequestsController {
     return this.roadsideRequestsService.listByUser(req.user.sub);
   }
 
+  @Get('provider')
+  listProvider(@Request() req: AuthenticatedRequest) {
+    return this.roadsideRequestsService.listByProvider(req.user.sub);
+  }
+
   @Post()
   create(@Request() req: AuthenticatedRequest, @Body() dto: CreateRoadsideRequestDto) {
     return this.roadsideRequestsService.create(req.user.sub, dto);

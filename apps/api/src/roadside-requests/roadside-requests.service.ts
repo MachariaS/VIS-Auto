@@ -51,6 +51,15 @@ export class RoadsideRequestsService {
     return requests.map((request) => this.toRoadsideRequest(request));
   }
 
+  async listByProvider(providerId: string) {
+    const requests = await this.roadsideRequestsRepository.find({
+      where: { providerId },
+      order: { createdAt: 'DESC' },
+    });
+
+    return requests.map((request) => this.toRoadsideRequest(request));
+  }
+
   async create(userId: string, dto: CreateRoadsideRequestDto) {
     const userVehicles = await this.vehiclesService.listByUser(userId);
     const vehicle = userVehicles.find((item) => item.id === dto.vehicleId);

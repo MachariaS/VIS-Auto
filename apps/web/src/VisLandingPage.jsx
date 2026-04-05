@@ -177,15 +177,19 @@ export default function VisLandingPage({
             {theme === 'dark' ? <Sun /> : <Moon />}
           </button>
           {isLoggedIn ? (
-            <button type="button" onClick={handleDashboard} className="secondary-cta">
+            <button type="button" onClick={handleDashboard} className="secondary-cta vis-inline-action">
               Dashboard
             </button>
           ) : (
             <>
-              <button type="button" onClick={handleLogin} className="secondary-cta">
+              <button type="button" onClick={handleLogin} className="secondary-cta vis-inline-action">
                 Login
               </button>
-              <button type="button" onClick={() => handleRegister('customer')} className="primary-cta">
+              <button
+                type="button"
+                onClick={() => handleRegister('customer')}
+                className="primary-cta vis-inline-action"
+              >
                 Register
               </button>
             </>

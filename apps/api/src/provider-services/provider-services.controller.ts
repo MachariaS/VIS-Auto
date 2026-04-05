@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Put, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard, type AuthenticatedRequest } from '../auth/jwt-auth.guard';
 import { CreateProviderServiceDto } from './dto/create-provider-service.dto';
 import { ProviderServicesService } from './provider-services.service';
@@ -30,5 +30,10 @@ export class ProviderServicesController {
     @Body() dto: CreateProviderServiceDto,
   ) {
     return this.providerServicesService.update(req.user.sub, serviceId, dto);
+  }
+
+  @Delete(':serviceId')
+  delete(@Request() req: AuthenticatedRequest, @Param('serviceId') serviceId: string) {
+    return this.providerServicesService.delete(req.user.sub, serviceId);
   }
 }

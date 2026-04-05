@@ -26,6 +26,12 @@ export class ProviderServiceEntity {
   @Column({ type: 'text', nullable: true })
   description?: string;
 
+  @Column({ type: 'text', nullable: true })
+  serviceCategory?: string;
+
+  @Column({ type: 'text', nullable: true })
+  serviceImageUrl?: string;
+
   @Column({ type: 'jsonb', nullable: true })
   fuelPricing?: {
     gasoline?: {

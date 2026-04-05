@@ -15,6 +15,8 @@ export interface ProviderService {
   providerId: string;
   providerName: string;
   serviceName: string;
+  serviceCategory?: string;
+  serviceImageUrl?: string;
   serviceCode: 'battery_jump' | 'fuel_delivery' | 'tire_change' | 'towing' | 'lockout';
   basePriceKsh: number;
   pricePerKmKsh: number;
@@ -64,6 +66,8 @@ export class ProviderServicesService {
       providerId,
       providerName: provider.name,
       serviceName: dto.serviceName.trim(),
+      serviceCategory: dto.serviceCategory?.trim() || undefined,
+      serviceImageUrl: dto.serviceImageUrl?.trim() || undefined,
       serviceCode: dto.serviceCode,
       basePriceKsh: dto.basePriceKsh,
       pricePerKmKsh: dto.pricePerKmKsh,
@@ -81,6 +85,23 @@ export class ProviderServicesService {
     return service ? this.toProviderService(service) : null;
   }
 
+  async delete(providerId: string, serviceId: string) {
+    await this.validateProviderAccount(providerId);
+
+    const existing = await this.providerServicesRepository.findOneBy({
+      id: serviceId,
+      providerId,
+    });
+
+    if (!existing) {
+      throw new NotFoundException('Provider service not found.');
+    }
+
+    await this.providerServicesRepository.remove(existing);
+
+    return { id: serviceId, deleted: true };
+  }
+
   async update(providerId: string, serviceId: string, dto: CreateProviderServiceDto) {
     await this.validateProviderAccount(providerId);
     this.validateServicePayload(dto);
@@ -96,6 +117,8 @@ export class ProviderServicesService {
 
     const updated = this.providerServicesRepository.merge(existing, {
       serviceName: dto.serviceName.trim(),
+      serviceCategory: dto.serviceCategory?.trim() || undefined,
+      serviceImageUrl: dto.serviceImageUrl?.trim() || undefined,
       serviceCode: dto.serviceCode,
       basePriceKsh: dto.basePriceKsh,
       pricePerKmKsh: dto.pricePerKmKsh,

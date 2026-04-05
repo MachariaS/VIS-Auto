@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import VisLandingPage from './VisLandingPage';
 
 const API_BASE = 'http://localhost:4000';
 const SESSION_STORAGE_KEY = 'vis-assist-session';
@@ -720,6 +721,24 @@ export default function App() {
     }));
   }
 
+  function openLogin() {
+    setMode('login');
+    setStep('auth');
+    setShowAccountMenu(false);
+    setShowNotifications(false);
+  }
+
+  function openRegister(accountType = 'customer') {
+    setMode('register');
+    setStep('auth');
+    setRegisterForm((current) => ({
+      ...current,
+      accountType,
+    }));
+    setShowAccountMenu(false);
+    setShowNotifications(false);
+  }
+
   function handlePreferenceThemeChange(nextTheme) {
     setTheme(nextTheme);
     handleProfileFieldChange('preferences', 'theme', nextTheme);
@@ -738,7 +757,7 @@ export default function App() {
 
   function resetFlow(nextMode = 'login') {
     setMode(nextMode);
-    setStep('entry');
+    setStep('auth');
     setDevOtp('');
     setVerifyForm(initialVerify);
     setMessage('');
@@ -778,102 +797,22 @@ export default function App() {
 
   function renderLandingPanel() {
     return (
-      <section className="landing-shell">
-        <div className="landing-topbar">
-          <div className="masthead">
-            <div className="brand-badge">VIS</div>
-            <div>
-              <p className="eyebrow">Vehicle Intelligence System</p>
-              <h1>Roadside help first. Vehicle intelligence next.</h1>
-            </div>
-          </div>
-          {token && user ? (
-            <button className="secondary-cta" type="button" onClick={() => openDashboard()}>
-              Open dashboard
-            </button>
-          ) : null}
-        </div>
-
-        <p className="landing-copy">
-          Request help fast, publish provider pricing, and grow into diagnostics, maintenance, car
-          history, valuation, and parts search.
-        </p>
-
-        <div className="cta-row">
-          <button className="primary-cta" type="button" onClick={() => setMode('login')}>
-            Request service
-          </button>
-          <button
-            className="secondary-cta"
-            type="button"
-            onClick={() => {
-              setMode('register');
-              setRegisterForm((current) => ({ ...current, accountType: 'provider' }));
-            }}
-          >
-            Provide a service
-          </button>
-          {token && user ? (
-            <button className="ghost-button" type="button" onClick={() => openDashboard()}>
-              Resume session
-            </button>
-          ) : null}
-        </div>
-
-        <div className="service-strip">
-          {serviceTypeOptions.map((service) => (
-            <article className="service-tile" key={service.code}>
-              <strong>{service.label}</strong>
-              <span>{service.short}</span>
-            </article>
-          ))}
-        </div>
-
-        <div className="future-strip">
-          <div className="future-callout">
-            <span>Next up</span>
-            <strong>Diagnostics, car health, service history, and provider operations.</strong>
-          </div>
-          <div className="status-pill">
-            <span className={`dot ${health?.status === 'ok' ? 'live' : ''}`} />
-            {health?.status === 'ok' ? 'API live' : 'API offline'}
-          </div>
-        </div>
-      </section>
-    );
-  }
-
-  function renderResumePanel() {
-    return (
-      <div className="auth-shell">
-        <div className="auth-head">
-          <span className="mini-pill">Session</span>
-          <h2>Welcome back</h2>
-          <p className="auth-copy">Your session is still active on this browser.</p>
-        </div>
-        <div className="session-card">
-          <strong>{user?.name}</strong>
-          <span>{user?.email}</span>
-          <span>{user?.accountType === 'provider' ? 'Provider account' : 'Customer account'}</span>
-        </div>
-        <button type="button" onClick={() => openDashboard()}>
-          Go to dashboard
-        </button>
-        <button className="ghost-button" type="button" onClick={signOut}>
-          Switch account
-        </button>
-      </div>
+      <VisLandingPage
+        isLoggedIn={Boolean(token && user)}
+        theme={theme}
+        onToggleTheme={toggleTheme}
+        onOpenLogin={openLogin}
+        onOpenRegister={openRegister}
+        onOpenDashboard={() => openDashboard()}
+        health={health}
+      />
     );
   }
 
   function renderAuthPanel() {
-    if (token && user && step === 'entry') {
-      return renderResumePanel();
-    }
-
     if (step === 'otp') {
       return (
-        <form className="auth-shell" onSubmit={handleVerify}>
+        <form className="auth-shell" id="auth" onSubmit={handleVerify}>
           <div className="auth-head">
             <span className="mini-pill">OTP</span>
             <h2>Verify sign in</h2>
@@ -900,7 +839,17 @@ export default function App() {
     }
 
     return (
-      <div className="auth-shell">
+      <div className="auth-shell" id="auth">
+        <div className="auth-head">
+          <span className="mini-pill">Access</span>
+          <h2>{mode === 'register' ? 'Join fast' : 'Welcome back'}</h2>
+          <p className="auth-copy">
+            {mode === 'register'
+              ? 'Create a new VIS Auto account to get started.'
+              : 'Use your existing VIS Auto account to continue.'}
+          </p>
+        </div>
+
         <div className="auth-tabs">
           <button
             className={mode === 'login' ? 'switch-active' : 'switch-idle'}
@@ -1015,6 +964,10 @@ export default function App() {
         </div>
 
         {message ? <div className="status-banner">{message}</div> : null}
+
+        <button className="ghost-button" type="button" onClick={() => setStep('entry')}>
+          Back to home
+        </button>
       </div>
     );
   }
@@ -2041,10 +1994,11 @@ export default function App() {
     <main className="app-shell">
       {step === 'dashboard' && user ? (
         user.accountType === 'provider' ? renderProviderDashboard() : renderCustomerDashboard()
+      ) : step === 'auth' || step === 'otp' ? (
+        <section className="auth-page">{renderAuthPanel()}</section>
       ) : (
         <div className="entry-layout">
           {renderLandingPanel()}
-          {renderAuthPanel()}
         </div>
       )}
     </main>

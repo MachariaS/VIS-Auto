@@ -84,30 +84,27 @@ export class LocationsService {
     nearLng?: number,
     limit = 5,
   ): Promise<NormalizedLocation[]> {
-    const params = new URLSearchParams({
+    const baseParams = new URLSearchParams({
       input: query,
       key,
       language: 'en',
     });
 
     if (countryCode) {
-      params.set('components', `country:${countryCode.toUpperCase()}`);
+      baseParams.set('components', `country:${countryCode.toUpperCase()}`);
     }
 
     if (nearLat !== undefined && nearLng !== undefined) {
-      params.set('location', `${nearLat},${nearLng}`);
-      params.set('radius', '50000');
+      baseParams.set('location', `${nearLat},${nearLng}`);
+      baseParams.set('radius', '50000');
     }
 
-    const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?${params.toString()}`;
-    const response = await fetch(url);
+    let predictions = await this.fetchGooglePredictions(baseParams, limit, 'establishment');
 
-    if (!response.ok) {
-      return [];
+    // Fallback to broader matching when a strict business-only lookup returns nothing.
+    if (predictions.length === 0) {
+      predictions = await this.fetchGooglePredictions(baseParams, limit);
     }
-
-    const data = await response.json();
-    const predictions = Array.isArray(data.predictions) ? data.predictions.slice(0, limit) : [];
 
     const detailedResults = await Promise.all(
       predictions.map(async (prediction: any) => {
@@ -154,6 +151,35 @@ export class LocationsService {
     );
 
     return detailedResults;
+  }
+
+  private async fetchGooglePredictions(
+    baseParams: URLSearchParams,
+    limit: number,
+    type?: string,
+  ) {
+    const params = new URLSearchParams(baseParams.toString());
+    if (type) {
+      params.set('types', type);
+    }
+
+    try {
+      const url = `https://maps.googleapis.com/maps/api/place/autocomplete/json?${params.toString()}`;
+      const response = await fetch(url);
+
+      if (!response.ok) {
+        return [];
+      }
+
+      const data = await response.json();
+      if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+        return [];
+      }
+
+      return Array.isArray(data.predictions) ? data.predictions.slice(0, limit) : [];
+    } catch {
+      return [];
+    }
   }
 
   private async fetchGooglePlaceDetails(placeId: string, key: string) {

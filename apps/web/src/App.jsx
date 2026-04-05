@@ -1118,7 +1118,12 @@ export default function App() {
       }
 
       const mapped = (results || []).map((item) => ({
-        label: item.address || item.name || '',
+        name: item.name || '',
+        formattedAddress: item.address || '',
+        label:
+          item.name && item.road
+            ? `${item.name}, ${item.road}`
+            : item.name || item.address || '',
         latitude: item.lat || '',
         longitude: item.lng || '',
         town: item.town || '',
@@ -1184,7 +1189,9 @@ export default function App() {
   }
 
   function selectBusinessLocationSuggestion(index, suggestion) {
-    updateBusinessLocation(index, 'address', suggestion.label);
+    const addressValue = suggestion.label || suggestion.formattedAddress || suggestion.name || '';
+
+    updateBusinessLocation(index, 'address', addressValue);
     updateBusinessLocation(index, 'town', suggestion.town || '');
     updateBusinessLocation(index, 'road', suggestion.road || '');
     updateBusinessLocation(index, 'landmark', suggestion.landmark || '');
@@ -1206,7 +1213,7 @@ export default function App() {
 
     setLastSuggestionQueryByIndex((current) => ({
       ...current,
-      [index]: normalizeLocationQuery(suggestion.label || ''),
+      [index]: normalizeLocationQuery(addressValue),
     }));
 
     setMessage('Location details auto-filled from search suggestion.');
@@ -2893,7 +2900,10 @@ export default function App() {
                                 className="location-suggestion-item-v2"
                                 onClick={() => selectBusinessLocationSuggestion(index, suggestion)}
                               >
-                                {suggestion.label}
+                                <span>{suggestion.label}</span>
+                                {suggestion.formattedAddress ? (
+                                  <small>{suggestion.formattedAddress}</small>
+                                ) : null}
                               </button>
                             ))}
                           </div>

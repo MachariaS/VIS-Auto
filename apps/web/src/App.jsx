@@ -3019,9 +3019,7 @@ export default function App() {
                       <input
                         placeholder="https://maps.app.goo.gl/..."
                         value={location.mapUrl || ''}
-                        onChange={(event) =>
-                          updateBusinessLocation(index, 'mapUrl', event.target.value)
-                        }
+                        readOnly
                       />
                     </label>
                   </div>
@@ -3034,6 +3032,16 @@ export default function App() {
                     >
                       {locationResolvingIndex === index ? 'Resolving...' : 'Resolve location from map'}
                     </button>
+                    {location.mapUrl ? (
+                      <a
+                        className="secondary-cta"
+                        href={location.mapUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                      >
+                        Open map
+                      </a>
+                    ) : null}
                     {location.latitude && location.longitude ? (
                       <span className="location-meta-v2">
                         Heatmap point ready: {location.latitude}, {location.longitude}

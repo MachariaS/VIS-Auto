@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import VisLandingPage from './VisLandingPage';
 
 const API_BASE = 'http://localhost:4000';
@@ -13,6 +13,41 @@ const serviceTypeOptions = [
   { code: 'towing', label: 'Towing', short: 'Recovery move' },
   { code: 'lockout', label: 'Lockout', short: 'Entry support' },
 ];
+
+const providerServiceCatalogOptions = [
+  'General Service',
+  'Paint and Body Works',
+  'Engine Diagnostics',
+  'Brake Service',
+  'Electrical Repairs',
+  'Suspension and Alignment',
+  'AC and Climate Service',
+  'Car Detailing',
+];
+
+const providerVehicleTypeOptions = [
+  'Sedan',
+  'Hatchback',
+  'SUV',
+  'Van',
+  'Pickup',
+  'Truck',
+  'Bus',
+  'Motorcycle',
+  'EV',
+  'Hybrid',
+];
+
+const countryOptions = [
+  { code: 'KE', label: 'Kenya' },
+  { code: 'UG', label: 'Uganda' },
+  { code: 'TZ', label: 'Tanzania' },
+  { code: 'RW', label: 'Rwanda' },
+  { code: 'BI', label: 'Burundi' },
+  { code: 'SS', label: 'South Sudan' },
+];
+
+const branchTypeOptions = ['Main Branch', 'Satellite Branch', 'Affiliate Branch'];
 
 const serviceImageByCode = {
   battery_jump: '/assets/battery_jumpstart.jpeg',
@@ -170,6 +205,81 @@ function getServiceImageUrl(service) {
   return service.serviceImageUrl || serviceImageByCode[service.serviceCode] || '/assets/other_services.jpeg';
 }
 
+function mergeUniqueList(list = [], additions = []) {
+  return Array.from(new Set([...(list || []), ...(additions || [])])).filter(Boolean);
+}
+
+function normalizeLocationQuery(query = '') {
+  return query.trim().replace(/[\s,]+/g, ' ');
+}
+
+function shouldLookupAfterWord(input = '') {
+  return /[\s,]$/.test(input) && normalizeLocationQuery(input).length >= 3;
+}
+
+async function fallbackLocationSuggestions(query, countryCode = 'KE') {
+  const params = new URLSearchParams({
+    q: query,
+    format: 'jsonv2',
+    addressdetails: '1',
+    limit: '6',
+    countrycodes: (countryCode || 'KE').toLowerCase(),
+  });
+
+  const response = await fetch(`https://nominatim.openstreetmap.org/search?${params.toString()}`);
+  if (!response.ok) {
+    throw new Error('Fallback geocoder unavailable.');
+  }
+
+  const results = await response.json();
+  return (results || []).map((item) => ({
+    name: item.name || item.display_name || '',
+    address: item.display_name || '',
+    lat: item.lat || '',
+    lng: item.lon || '',
+    town:
+      item.address?.city
+      || item.address?.town
+      || item.address?.village
+      || item.address?.suburb
+      || item.address?.county
+      || '',
+    road: item.address?.road || item.address?.pedestrian || item.address?.path || '',
+    landmark:
+      item.address?.attraction
+      || item.address?.building
+      || item.address?.amenity
+      || item.address?.shop
+      || '',
+  }));
+}
+
+function extractGoogleMapsQuery(mapUrl = '') {
+  if (!mapUrl || typeof mapUrl !== 'string') {
+    return null;
+  }
+
+  try {
+    const url = new URL(mapUrl.trim());
+    const q = url.searchParams.get('q') || url.searchParams.get('query');
+    if (q) {
+      return { query: decodeURIComponent(q) };
+    }
+
+    const atSegment = url.pathname.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
+    if (atSegment) {
+      return {
+        latitude: atSegment[1],
+        longitude: atSegment[2],
+      };
+    }
+  } catch {
+    return null;
+  }
+
+  return null;
+}
+
 function getDefaultProfile(user) {
   return {
     account: {
@@ -195,6 +305,46 @@ function getDefaultProfile(user) {
       status: 'Trial active',
       renewalDate: '2026-05-15',
       billingEmail: user?.email ?? '',
+    },
+    business: {
+      brief: '',
+      locations: [
+        {
+          branchName: 'Main Branch',
+          address: 'Nairobi, Kenya',
+          countryCode: 'KE',
+          town: 'Nairobi',
+          road: '',
+          landmark: '',
+          mapUrl: '',
+          latitude: '',
+          longitude: '',
+        },
+      ],
+      offeredServices: ['General Service', 'Paint and Body Works'],
+      supportedVehicleTypes: ['Sedan', 'SUV'],
+      kyc: {
+        kraPin: '',
+        certificateOfIncorporation: '',
+        businessPermitNumber: '',
+        taxComplianceCertificate: '',
+      },
+      contacts: {
+        primaryPhone: '',
+        supportPhone: '',
+        supportEmail: user?.email ?? '',
+        website: '',
+        whatsapp: '',
+        instagram: '',
+        facebook: '',
+        linkedin: '',
+        x: '',
+      },
+    },
+    vendors: {
+      requestPolicy: 'approval_required',
+      pendingRequests: [],
+      activePartners: [],
     },
   };
 }
@@ -274,6 +424,12 @@ export default function App() {
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
   const [brandLogoError, setBrandLogoError] = useState(false);
+  const [locationResolvingIndex, setLocationResolvingIndex] = useState(null);
+  const [locationSearchingIndex, setLocationSearchingIndex] = useState(null);
+  const [locationSuggestionsByIndex, setLocationSuggestionsByIndex] = useState({});
+  const [lastSuggestionQueryByIndex, setLastSuggestionQueryByIndex] = useState({});
+  const [locationBias, setLocationBias] = useState({ latitude: null, longitude: null });
+  const locationSuggestionTimeoutsRef = useRef({});
 
   const providerBrandName = 'VIS Auto';
   const providerBrandLogo = '/assets/vis-auto-logo.png';
@@ -285,7 +441,8 @@ export default function App() {
         overview: 'Provider overview',
         services: 'Published services',
         pricing: editingProviderServiceId ? 'Edit service' : 'Add service',
-        profile: 'Profile and settings',
+        profile: 'My profile',
+        settings: 'Settings',
       }[dashboardTab] || 'Provider dashboard';
     }
 
@@ -370,6 +527,39 @@ export default function App() {
             ...getDefaultProfile(null).subscription,
             ...current.subscription,
             ...parsedProfile.subscription,
+          },
+          business: {
+            ...getDefaultProfile(null).business,
+            ...current.business,
+            ...parsedProfile.business,
+            kyc: {
+              ...getDefaultProfile(null).business.kyc,
+              ...current.business?.kyc,
+              ...parsedProfile.business?.kyc,
+            },
+            contacts: {
+              ...getDefaultProfile(null).business.contacts,
+              ...current.business?.contacts,
+              ...parsedProfile.business?.contacts,
+            },
+            locations:
+              parsedProfile.business?.locations?.length > 0
+                ? parsedProfile.business.locations
+                : current.business?.locations || getDefaultProfile(null).business.locations,
+            offeredServices: mergeUniqueList(
+              getDefaultProfile(null).business.offeredServices,
+              parsedProfile.business?.offeredServices || current.business?.offeredServices,
+            ),
+            supportedVehicleTypes: mergeUniqueList(
+              getDefaultProfile(null).business.supportedVehicleTypes,
+              parsedProfile.business?.supportedVehicleTypes ||
+                current.business?.supportedVehicleTypes,
+            ),
+          },
+          vendors: {
+            ...getDefaultProfile(null).vendors,
+            ...current.vendors,
+            ...parsedProfile.vendors,
           },
         }));
       } catch {
@@ -478,6 +668,60 @@ export default function App() {
       }));
     }
   }, [providerCatalog, roadsideForm.providerServiceId, serviceFilter]);
+
+  useEffect(() => {
+    if (user?.accountType !== 'provider' || providerServices.length === 0) {
+      return;
+    }
+
+    const apiServiceNames = providerServices.map((item) => item.serviceName).filter(Boolean);
+
+    setProfileSettings((current) => {
+      const merged = mergeUniqueList(current.business?.offeredServices || [], apiServiceNames);
+      const currentKey = (current.business?.offeredServices || []).join('||');
+      const mergedKey = merged.join('||');
+
+      if (currentKey === mergedKey) {
+        return current;
+      }
+
+      return {
+        ...current,
+        business: {
+          ...current.business,
+          offeredServices: merged,
+        },
+      };
+    });
+  }, [providerServices, user?.accountType]);
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocationBias({
+          latitude: Number(position.coords.latitude.toFixed(6)),
+          longitude: Number(position.coords.longitude.toFixed(6)),
+        });
+      },
+      () => {
+        setLocationBias({ latitude: null, longitude: null });
+      },
+      {
+        enableHighAccuracy: false,
+        timeout: 6000,
+      },
+    );
+  }, []);
+
+  useEffect(() => () => {
+    Object.values(locationSuggestionTimeoutsRef.current).forEach((timerId) => {
+      clearTimeout(timerId);
+    });
+  }, []);
 
   useEffect(() => {
     if (!sessionReady || !token || !user || step !== 'dashboard') {
@@ -755,6 +999,270 @@ export default function App() {
         [field]: value,
       },
     }));
+  }
+
+  function handleBusinessNestedFieldChange(group, field, value) {
+    setProfileSettings((current) => ({
+      ...current,
+      business: {
+        ...current.business,
+        [group]: {
+          ...current.business[group],
+          [field]: value,
+        },
+      },
+    }));
+  }
+
+  function toggleBusinessListField(field, value) {
+    setProfileSettings((current) => {
+      const existing = current.business[field] || [];
+      const nextValues = existing.includes(value)
+        ? existing.filter((item) => item !== value)
+        : [...existing, value];
+
+      return {
+        ...current,
+        business: {
+          ...current.business,
+          [field]: nextValues,
+        },
+      };
+    });
+  }
+
+  function addBusinessLocation() {
+    setProfileSettings((current) => ({
+      ...current,
+      business: {
+        ...current.business,
+        locations: [
+          ...(current.business.locations || []),
+          {
+            branchName: 'Satellite Branch',
+            address: '',
+            countryCode: 'KE',
+            town: '',
+            road: '',
+            landmark: '',
+            mapUrl: '',
+            latitude: '',
+            longitude: '',
+          },
+        ],
+      },
+    }));
+  }
+
+  function updateBusinessLocation(index, field, value) {
+    setProfileSettings((current) => ({
+      ...current,
+      business: {
+        ...current.business,
+        locations: (current.business.locations || []).map((location, position) =>
+          position === index ? { ...location, [field]: value } : location,
+        ),
+      },
+    }));
+  }
+
+  function removeBusinessLocation(index) {
+    setProfileSettings((current) => {
+      const locations = current.business.locations || [];
+      if (locations.length <= 1) {
+        return current;
+      }
+
+      return {
+        ...current,
+        business: {
+          ...current.business,
+          locations: locations.filter((_, position) => position !== index),
+        },
+      };
+    });
+  }
+
+  async function searchBusinessLocationSuggestions(index, query) {
+    const trimmed = normalizeLocationQuery(query || '');
+
+    if (trimmed.length < 3) {
+      setLocationSuggestionsByIndex((current) => ({
+        ...current,
+        [index]: [],
+      }));
+      return;
+    }
+
+    if (lastSuggestionQueryByIndex[index] === trimmed) {
+      return;
+    }
+
+    setLocationSearchingIndex(index);
+
+    try {
+      const branch = profileSettings.business.locations?.[index];
+      const countryCode = branch?.countryCode || 'KE';
+
+      let results = [];
+
+      try {
+        results = await request('/locations/suggest', {
+          query: trimmed,
+          countryCode,
+          nearLat: locationBias.latitude ?? undefined,
+          nearLng: locationBias.longitude ?? undefined,
+        });
+      } catch {
+        results = await fallbackLocationSuggestions(trimmed, countryCode);
+      }
+
+      const mapped = (results || []).map((item) => ({
+        label: item.address || item.name || '',
+        latitude: item.lat || '',
+        longitude: item.lng || '',
+        town: item.town || '',
+        road: item.road || '',
+        landmark: item.landmark || '',
+        mapUrl:
+          item.lat && item.lng
+            ? `https://www.google.com/maps/search/?api=1&query=${item.lat},${item.lng}`
+            : '',
+      }));
+
+      setLocationSuggestionsByIndex((current) => ({
+        ...current,
+        [index]: mapped,
+      }));
+
+      setLastSuggestionQueryByIndex((current) => ({
+        ...current,
+        [index]: trimmed,
+      }));
+    } catch (error) {
+      setMessage(error.message || 'Unable to fetch location suggestions.');
+
+      setLastSuggestionQueryByIndex((current) => ({
+        ...current,
+        [index]: '',
+      }));
+    } finally {
+      setLocationSearchingIndex((current) => (current === index ? null : current));
+    }
+  }
+
+  function scheduleBusinessLocationSuggestions(index, query) {
+    const trimmed = normalizeLocationQuery(query || '');
+    const existingTimer = locationSuggestionTimeoutsRef.current[index];
+
+    if (existingTimer) {
+      clearTimeout(existingTimer);
+      delete locationSuggestionTimeoutsRef.current[index];
+    }
+
+    if (trimmed.length < 3) {
+      setLocationSuggestionsByIndex((current) => ({
+        ...current,
+        [index]: [],
+      }));
+      setLastSuggestionQueryByIndex((current) => ({
+        ...current,
+        [index]: '',
+      }));
+      return;
+    }
+
+    if (shouldLookupAfterWord(query || '')) {
+      void searchBusinessLocationSuggestions(index, query);
+      return;
+    }
+
+    locationSuggestionTimeoutsRef.current[index] = setTimeout(() => {
+      void searchBusinessLocationSuggestions(index, query);
+      delete locationSuggestionTimeoutsRef.current[index];
+    }, 500);
+  }
+
+  function selectBusinessLocationSuggestion(index, suggestion) {
+    updateBusinessLocation(index, 'address', suggestion.label);
+    updateBusinessLocation(index, 'town', suggestion.town || '');
+    updateBusinessLocation(index, 'road', suggestion.road || '');
+    updateBusinessLocation(index, 'landmark', suggestion.landmark || '');
+    updateBusinessLocation(index, 'latitude', suggestion.latitude || '');
+    updateBusinessLocation(index, 'longitude', suggestion.longitude || '');
+
+    if (suggestion.mapUrl) {
+      updateBusinessLocation(
+        index,
+        'mapUrl',
+        suggestion.mapUrl,
+      );
+    }
+
+    setLocationSuggestionsByIndex((current) => ({
+      ...current,
+      [index]: [],
+    }));
+
+    setLastSuggestionQueryByIndex((current) => ({
+      ...current,
+      [index]: normalizeLocationQuery(suggestion.label || ''),
+    }));
+
+    setMessage('Location details auto-filled from search suggestion.');
+  }
+
+  async function resolveBusinessLocation(index) {
+    const location = profileSettings.business.locations?.[index];
+    if (!location) {
+      return;
+    }
+
+    setLocationResolvingIndex(index);
+
+    try {
+      const composedQuery =
+        [location.address, location.road, location.town, location.landmark].filter(Boolean).join(', ');
+
+      if (!composedQuery && !location.mapUrl) {
+        setMessage('Add a map link or address details first so we can resolve location.');
+        return;
+      }
+
+      const bestMatch = await request('/locations/resolve', {
+        query: composedQuery || undefined,
+        mapUrl: location.mapUrl || undefined,
+        countryCode: location.countryCode || 'KE',
+        nearLat: locationBias.latitude ?? undefined,
+        nearLng: locationBias.longitude ?? undefined,
+      });
+
+      if (!bestMatch) {
+        setMessage('No map match found. Try adding town, road, and a nearby landmark.');
+        return;
+      }
+
+      updateBusinessLocation(index, 'latitude', bestMatch.lat || '');
+      updateBusinessLocation(index, 'longitude', bestMatch.lng || '');
+      updateBusinessLocation(index, 'address', bestMatch.address || location.address);
+      updateBusinessLocation(index, 'town', bestMatch.town || location.town);
+      updateBusinessLocation(index, 'road', bestMatch.road || location.road);
+      updateBusinessLocation(index, 'landmark', bestMatch.landmark || location.landmark);
+
+      if (bestMatch.lat && bestMatch.lng) {
+        updateBusinessLocation(
+          index,
+          'mapUrl',
+          `https://www.google.com/maps/search/?api=1&query=${bestMatch.lat},${bestMatch.lng}`,
+        );
+      }
+
+      setMessage('Location resolved for heatmap and branch details.');
+    } catch (error) {
+      setMessage(error.message || 'Unable to resolve location at the moment.');
+    } finally {
+      setLocationResolvingIndex(null);
+    }
   }
 
 
@@ -1180,8 +1688,8 @@ export default function App() {
       { id: 'services', label: 'Order History' },
       { id: 'services', label: 'Ratings & Reviews' },
       { id: 'overview', label: 'Heat Map' },
-      { id: 'services', label: 'Offers' },
-      { id: 'profile', label: 'Settings' },
+      { id: 'profile', label: 'My Profile' },
+      { id: 'settings', label: 'Settings' },
     ];
 
     return (
@@ -1296,6 +1804,7 @@ export default function App() {
             {dashboardTab === 'services' ? renderProviderServiceList() : null}
             {dashboardTab === 'pricing' ? renderProviderServicePanel() : null}
             {dashboardTab === 'profile' ? renderProfilePanel() : null}
+            {dashboardTab === 'settings' ? renderSettingsPanel() : null}
           </div>
         </div>
       </section>
@@ -2186,18 +2695,77 @@ export default function App() {
   }
 
   function renderProfilePanel() {
+    if (user?.accountType !== 'provider') {
+      return (
+        <section className="profile-grid">
+          <form className="dashboard-panel stack" onSubmit={handleSaveProfile}>
+            <div className="panel-head">
+              <div>
+                <p className="eyebrow">Profile</p>
+                <h3>Account details</h3>
+              </div>
+            </div>
+            <div className="form-grid">
+              <label>
+                <span>Display name</span>
+                <input
+                  value={profileSettings.account.displayName}
+                  onChange={(event) =>
+                    handleProfileFieldChange('account', 'displayName', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                <span>Email</span>
+                <input
+                  value={profileSettings.account.email}
+                  onChange={(event) =>
+                    handleProfileFieldChange('account', 'email', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                <span>Phone</span>
+                <input
+                  placeholder="+254..."
+                  value={profileSettings.account.phone}
+                  onChange={(event) =>
+                    handleProfileFieldChange('account', 'phone', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                <span>Location</span>
+                <input
+                  value={profileSettings.account.location}
+                  onChange={(event) =>
+                    handleProfileFieldChange('account', 'location', event.target.value)
+                  }
+                />
+              </label>
+            </div>
+            <button className="primary-cta" type="submit">
+              Save profile
+            </button>
+          </form>
+        </section>
+      );
+    }
+
     return (
-      <section className="profile-grid">
+      <section className="profile-stack-v2">
         <form className="dashboard-panel stack" onSubmit={handleSaveProfile}>
           <div className="panel-head">
             <div>
-              <p className="eyebrow">Profile</p>
-              <h3>Account details</h3>
+              <p className="eyebrow">My profile</p>
+              <h3>Business identity and operations</h3>
             </div>
           </div>
+          {message ? <div className="status-banner">{message}</div> : null}
+
           <div className="form-grid">
             <label>
-              <span>Display name</span>
+              <span>Business display name</span>
               <input
                 value={profileSettings.account.displayName}
                 onChange={(event) =>
@@ -2206,44 +2774,434 @@ export default function App() {
               />
             </label>
             <label>
-              <span>Email</span>
+              <span>Business legal name</span>
+              <input
+                value={profileSettings.account.company}
+                onChange={(event) =>
+                  handleProfileFieldChange('account', 'company', event.target.value)
+                }
+              />
+            </label>
+            <label>
+              <span>Primary email</span>
               <input
                 value={profileSettings.account.email}
                 onChange={(event) => handleProfileFieldChange('account', 'email', event.target.value)}
               />
             </label>
             <label>
-              <span>Phone</span>
+              <span>Primary phone</span>
               <input
                 placeholder="+254..."
-                value={profileSettings.account.phone}
-                onChange={(event) => handleProfileFieldChange('account', 'phone', event.target.value)}
-              />
-            </label>
-            <label>
-              <span>Location</span>
-              <input
-                value={profileSettings.account.location}
+                value={profileSettings.business.contacts.primaryPhone}
                 onChange={(event) =>
-                  handleProfileFieldChange('account', 'location', event.target.value)
+                  handleBusinessNestedFieldChange('contacts', 'primaryPhone', event.target.value)
                 }
               />
             </label>
-            {user?.accountType === 'provider' ? (
+          </div>
+
+          <label>
+            <span>Business brief</span>
+            <textarea
+              value={profileSettings.business.brief}
+              placeholder="Describe your garage, specialties, and why drivers trust you."
+              onChange={(event) => handleProfileFieldChange('business', 'brief', event.target.value)}
+            />
+          </label>
+
+          <section className="soft-block profile-soft-block">
+            <div className="panel-head compact">
+              <div>
+                <p className="eyebrow">Locations</p>
+                <h3>Business geolocation points</h3>
+              </div>
+              <button className="secondary-cta" type="button" onClick={addBusinessLocation}>
+                Add location
+              </button>
+            </div>
+
+            <div className="location-grid-v2">
+              {(profileSettings.business.locations || []).map((location, index) => (
+                <article className="location-card-v2" key={`${location.branchName}-${index}`}>
+                  <div className="form-grid">
+                    <label>
+                      <span>Branch type</span>
+                      <select
+                        value={location.branchName}
+                        onChange={(event) =>
+                          updateBusinessLocation(index, 'branchName', event.target.value)
+                        }
+                      >
+                        {branchTypeOptions.map((branchType) => (
+                          <option key={branchType} value={branchType}>
+                            {branchType}
+                          </option>
+                        ))}
+                        {!branchTypeOptions.includes(location.branchName) ? (
+                          <option value={location.branchName}>{location.branchName}</option>
+                        ) : null}
+                      </select>
+                    </label>
+                    <label>
+                      <span>Country</span>
+                      <select
+                        value={location.countryCode || 'KE'}
+                        onChange={(event) =>
+                          updateBusinessLocation(index, 'countryCode', event.target.value)
+                        }
+                      >
+                        {countryOptions.map((country) => (
+                          <option key={country.code} value={country.code}>
+                            {country.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>Address</span>
+                      <div className="location-autocomplete-v2">
+                        <input
+                          placeholder="Search business or building name"
+                          value={location.address}
+                          onChange={(event) => {
+                            const value = event.target.value;
+                            updateBusinessLocation(index, 'address', value);
+                            scheduleBusinessLocationSuggestions(index, value);
+                          }}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                              event.preventDefault();
+                              const existingTimer = locationSuggestionTimeoutsRef.current[index];
+                              if (existingTimer) {
+                                clearTimeout(existingTimer);
+                                delete locationSuggestionTimeoutsRef.current[index];
+                              }
+                              void searchBusinessLocationSuggestions(index, event.currentTarget.value);
+                            }
+                          }}
+                        />
+                        {locationSearchingIndex === index ? (
+                          <div className="location-hint-v2">Searching location...</div>
+                        ) : null}
+                        {(locationSuggestionsByIndex[index] || []).length > 0 ? (
+                          <div className="location-suggestions-v2" role="listbox">
+                            {(locationSuggestionsByIndex[index] || []).map((suggestion) => (
+                              <button
+                                key={`${suggestion.label}-${suggestion.latitude}-${suggestion.longitude}`}
+                                type="button"
+                                className="location-suggestion-item-v2"
+                                onClick={() => selectBusinessLocationSuggestion(index, suggestion)}
+                              >
+                                {suggestion.label}
+                              </button>
+                            ))}
+                          </div>
+                        ) : null}
+                      </div>
+                    </label>
+                    <label>
+                      <span>Town</span>
+                      <input
+                        value={location.town || ''}
+                        onChange={(event) =>
+                          updateBusinessLocation(index, 'town', event.target.value)
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>Road</span>
+                      <input
+                        value={location.road || ''}
+                        onChange={(event) =>
+                          updateBusinessLocation(index, 'road', event.target.value)
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>Nearest landmark</span>
+                      <input
+                        value={location.landmark || ''}
+                        onChange={(event) =>
+                          updateBusinessLocation(index, 'landmark', event.target.value)
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>Google Maps link</span>
+                      <input
+                        placeholder="https://maps.app.goo.gl/..."
+                        value={location.mapUrl || ''}
+                        onChange={(event) =>
+                          updateBusinessLocation(index, 'mapUrl', event.target.value)
+                        }
+                      />
+                    </label>
+                  </div>
+                  <div className="location-actions-v2">
+                    <button
+                      className="secondary-cta"
+                      type="button"
+                      disabled={locationResolvingIndex === index}
+                      onClick={() => resolveBusinessLocation(index)}
+                    >
+                      {locationResolvingIndex === index ? 'Resolving...' : 'Resolve location from map'}
+                    </button>
+                    {location.latitude && location.longitude ? (
+                      <span className="location-meta-v2">
+                        Heatmap point ready: {location.latitude}, {location.longitude}
+                      </span>
+                    ) : (
+                      <span className="location-meta-v2">Heatmap point will auto-fill after resolve.</span>
+                    )}
+                  </div>
+                  {(profileSettings.business.locations || []).length > 1 ? (
+                    <button
+                      className="ghost-button danger"
+                      type="button"
+                      onClick={() => removeBusinessLocation(index)}
+                    >
+                      Remove location
+                    </button>
+                  ) : null}
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="soft-block profile-soft-block">
+            <div className="panel-head compact">
+              <div>
+                <p className="eyebrow">Capabilities</p>
+                <h3>Services and supported vehicles</h3>
+              </div>
+            </div>
+
+            <div className="tag-cloud-v2">
+              {providerServiceCatalogOptions.map((service) => (
+                <button
+                  key={service}
+                  type="button"
+                  className={
+                    profileSettings.business.offeredServices.includes(service)
+                      ? 'chip-active'
+                      : 'chip'
+                  }
+                  onClick={() => toggleBusinessListField('offeredServices', service)}
+                >
+                  {service}
+                </button>
+              ))}
+            </div>
+
+            <div className="tag-cloud-v2">
+              {providerVehicleTypeOptions.map((vehicleType) => (
+                <button
+                  key={vehicleType}
+                  type="button"
+                  className={
+                    profileSettings.business.supportedVehicleTypes.includes(vehicleType)
+                      ? 'chip-active'
+                      : 'chip'
+                  }
+                  onClick={() => toggleBusinessListField('supportedVehicleTypes', vehicleType)}
+                >
+                  {vehicleType}
+                </button>
+              ))}
+            </div>
+          </section>
+
+          <section className="soft-block profile-soft-block">
+            <div className="panel-head compact">
+              <div>
+                <p className="eyebrow">KYC</p>
+                <h3>Registration and compliance documents</h3>
+              </div>
+            </div>
+            <div className="form-grid">
               <label>
-                <span>Business name</span>
+                <span>KRA PIN</span>
                 <input
-                  value={profileSettings.account.company}
+                  value={profileSettings.business.kyc.kraPin}
                   onChange={(event) =>
-                    handleProfileFieldChange('account', 'company', event.target.value)
+                    handleBusinessNestedFieldChange('kyc', 'kraPin', event.target.value)
                   }
                 />
               </label>
-            ) : null}
-          </div>
-          <button type="submit">Save profile</button>
-        </form>
+              <label>
+                <span>Certificate of incorporation</span>
+                <input
+                  value={profileSettings.business.kyc.certificateOfIncorporation}
+                  onChange={(event) =>
+                    handleBusinessNestedFieldChange(
+                      'kyc',
+                      'certificateOfIncorporation',
+                      event.target.value,
+                    )
+                  }
+                />
+              </label>
+              <label>
+                <span>Business permit number</span>
+                <input
+                  value={profileSettings.business.kyc.businessPermitNumber}
+                  onChange={(event) =>
+                    handleBusinessNestedFieldChange('kyc', 'businessPermitNumber', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                <span>Tax compliance certificate</span>
+                <input
+                  value={profileSettings.business.kyc.taxComplianceCertificate}
+                  onChange={(event) =>
+                    handleBusinessNestedFieldChange(
+                      'kyc',
+                      'taxComplianceCertificate',
+                      event.target.value,
+                    )
+                  }
+                />
+              </label>
+            </div>
+          </section>
 
+          <section className="soft-block profile-soft-block">
+            <div className="panel-head compact">
+              <div>
+                <p className="eyebrow">Contacts and socials</p>
+                <h3>Reachability and channels</h3>
+              </div>
+            </div>
+            <div className="form-grid">
+              <label>
+                <span>Support phone</span>
+                <input
+                  value={profileSettings.business.contacts.supportPhone}
+                  onChange={(event) =>
+                    handleBusinessNestedFieldChange('contacts', 'supportPhone', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                <span>Support email</span>
+                <input
+                  value={profileSettings.business.contacts.supportEmail}
+                  onChange={(event) =>
+                    handleBusinessNestedFieldChange('contacts', 'supportEmail', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                <span>Website</span>
+                <input
+                  value={profileSettings.business.contacts.website}
+                  onChange={(event) =>
+                    handleBusinessNestedFieldChange('contacts', 'website', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                <span>WhatsApp</span>
+                <input
+                  value={profileSettings.business.contacts.whatsapp}
+                  onChange={(event) =>
+                    handleBusinessNestedFieldChange('contacts', 'whatsapp', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                <span>Instagram</span>
+                <input
+                  value={profileSettings.business.contacts.instagram}
+                  onChange={(event) =>
+                    handleBusinessNestedFieldChange('contacts', 'instagram', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                <span>Facebook</span>
+                <input
+                  value={profileSettings.business.contacts.facebook}
+                  onChange={(event) =>
+                    handleBusinessNestedFieldChange('contacts', 'facebook', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                <span>LinkedIn</span>
+                <input
+                  value={profileSettings.business.contacts.linkedin}
+                  onChange={(event) =>
+                    handleBusinessNestedFieldChange('contacts', 'linkedin', event.target.value)
+                  }
+                />
+              </label>
+              <label>
+                <span>X (Twitter)</span>
+                <input
+                  value={profileSettings.business.contacts.x}
+                  onChange={(event) =>
+                    handleBusinessNestedFieldChange('contacts', 'x', event.target.value)
+                  }
+                />
+              </label>
+            </div>
+          </section>
+
+          <section className="soft-block profile-soft-block">
+            <div className="panel-head compact">
+              <div>
+                <p className="eyebrow">Vendor network</p>
+                <h3>Provider-to-provider subcontracting workflow</h3>
+              </div>
+            </div>
+            <label>
+              <span>Request policy</span>
+              <select
+                value={profileSettings.vendors.requestPolicy}
+                onChange={(event) => handleProfileFieldChange('vendors', 'requestPolicy', event.target.value)}
+              >
+                <option value="approval_required">Approval required (recommended)</option>
+                <option value="auto_approve">Auto-approve trusted providers</option>
+              </select>
+            </label>
+            <div className="billing-strip">
+              <article className="billing-card">
+                <span>Pending vendor requests</span>
+                <strong>{profileSettings.vendors.pendingRequests.length}</strong>
+              </article>
+              <article className="billing-card">
+                <span>Active vendor partners</span>
+                <strong>{profileSettings.vendors.activePartners.length}</strong>
+              </article>
+              <article className="billing-card">
+                <span>Subcontractor mode</span>
+                <strong>
+                  {profileSettings.vendors.requestPolicy === 'approval_required'
+                    ? 'Manual approval'
+                    : 'Auto approval'}
+                </strong>
+              </article>
+            </div>
+            <p className="section-note">
+              Next step recommendation: allow providers to send vendor requests to other providers,
+              then permit job subcontracting only after explicit acceptance and KYC checks.
+            </p>
+          </section>
+
+          <button className="primary-cta" type="submit">
+            Save my profile
+          </button>
+        </form>
+      </section>
+    );
+  }
+
+  function renderSettingsPanel() {
+    return (
+      <section className="settings-grid-v2">
         <section className="dashboard-panel stack">
           <div className="panel-head">
             <div>

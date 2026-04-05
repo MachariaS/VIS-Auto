@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { join } from 'path';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
@@ -10,6 +11,7 @@ import { ProviderServiceEntity } from './provider-services/provider-service.enti
 import { RoadsideRequestEntity } from './roadside-requests/roadside-request.entity';
 import { VehiclesModule } from './vehicles/vehicles.module';
 import { RoadsideRequestsModule } from './roadside-requests/roadside-requests.module';
+import { LocationsModule } from './locations/locations.module';
 import { UsersModule } from './users/users.module';
 import { UserEntity } from './users/user.entity';
 import { VehicleEntity } from './vehicles/vehicle.entity';
@@ -18,6 +20,7 @@ import { VehicleEntity } from './vehicles/vehicle.entity';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
+      envFilePath: [join(__dirname, '..', '.env'), join(process.cwd(), '.env')],
     }),
     TypeOrmModule.forRoot({
       type: 'postgres',
@@ -38,6 +41,7 @@ import { VehicleEntity } from './vehicles/vehicle.entity';
     UsersModule,
     AuthModule,
     ProviderServicesModule,
+    LocationsModule,
     VehiclesModule,
     RoadsideRequestsModule,
   ],

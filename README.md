@@ -33,6 +33,8 @@ POST /provider-services
 PUT  /provider-services/:serviceId
 GET  /roadside-requests
 POST /roadside-requests
+POST /locations/suggest
+POST /locations/resolve
 ```
 
 Notes:
@@ -54,3 +56,14 @@ The web app runs on `http://localhost:3000` and talks to the API on `http://loca
 
 ## Environment
 Copy `apps/api/.env.example` to `apps/api/.env` if you want to override the JWT or database settings.
+
+For Google-level location suggestions, set:
+
+```text
+GOOGLE_MAPS_API_KEY=your_google_maps_key
+```
+
+Enable these APIs for that key in Google Cloud:
+- Places API
+- Place Details API
+- Geocoding API

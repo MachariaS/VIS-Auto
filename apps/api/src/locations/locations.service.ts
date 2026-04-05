@@ -15,6 +15,58 @@ type NormalizedLocation = {
   source: 'google' | 'nominatim';
 };
 
+type GooglePredictionTerm = {
+  value?: string;
+};
+
+type GooglePrediction = {
+  description?: string;
+  place_id?: string;
+  structured_formatting?: {
+    main_text?: string;
+  };
+  terms?: GooglePredictionTerm[];
+};
+
+type GoogleAddressComponent = {
+  long_name?: string;
+  types?: string[];
+};
+
+type GooglePlaceDetails = {
+  place_id?: string;
+  name?: string;
+  formatted_address?: string;
+  geometry?: {
+    location?: {
+      lat?: number;
+      lng?: number;
+    };
+  };
+  address_components?: GoogleAddressComponent[];
+};
+
+type NominatimAddress = {
+  shop?: string;
+  building?: string;
+  attraction?: string;
+  amenity?: string;
+  town?: string;
+  city?: string;
+  county?: string;
+  road?: string;
+  suburb?: string;
+  neighbourhood?: string;
+};
+
+type NominatimResultItem = {
+  display_name?: string;
+  lat?: string | number;
+  lon?: string | number;
+  place_id?: string | number;
+  address?: NominatimAddress;
+};
+
 @Injectable()
 export class LocationsService {
   constructor(private readonly configService: ConfigService) {}
@@ -41,18 +93,24 @@ export class LocationsService {
       }
     }
 
-    return this.suggestWithNominatim(query, dto.countryCode, dto.nearLat, dto.nearLng);
+    return this.suggestWithNominatim(
+      query,
+      dto.countryCode,
+      dto.nearLat,
+      dto.nearLng,
+    );
   }
 
   async resolve(dto: LocationResolveDto) {
     const googleApiKey = this.configService.get<string>('GOOGLE_MAPS_API_KEY');
-    const expandedMapUrl = dto.mapUrl ? await this.expandShortMapUrl(dto.mapUrl) : undefined;
+    const expandedMapUrl = dto.mapUrl
+      ? await this.expandShortMapUrl(dto.mapUrl)
+      : undefined;
 
-    const mapDerived = this.extractFromMapUrl(expandedMapUrl || dto.mapUrl || '');
-    const query =
-      mapDerived.query ||
-      dto.query?.trim() ||
-      '';
+    const mapDerived = this.extractFromMapUrl(
+      expandedMapUrl || dto.mapUrl || '',
+    );
+    const query = mapDerived.query || dto.query?.trim() || '';
 
     if (!query && !(mapDerived.lat && mapDerived.lng)) {
       return null;
@@ -86,7 +144,13 @@ export class LocationsService {
     }
 
     if (suggestions.length === 0) {
-      suggestions = await this.suggestWithNominatim(query, dto.countryCode, dto.nearLat, dto.nearLng, 1);
+      suggestions = await this.suggestWithNominatim(
+        query,
+        dto.countryCode,
+        dto.nearLat,
+        dto.nearLng,
+        1,
+      );
     }
 
     return suggestions[0] || null;
@@ -115,7 +179,11 @@ export class LocationsService {
       baseParams.set('radius', '50000');
     }
 
-    let predictions = await this.fetchGooglePredictions(baseParams, limit, 'establishment');
+    let predictions = await this.fetchGooglePredictions(
+      baseParams,
+      limit,
+      'establishment',
+    );
 
     // Fallback to broader matching when a strict business-only lookup returns nothing.
     if (predictions.length === 0) {
@@ -123,12 +191,18 @@ export class LocationsService {
     }
 
     const detailedResults = await Promise.all(
-      predictions.map(async (prediction: any) => {
-        const details = await this.fetchGooglePlaceDetails(prediction.place_id, key);
+      predictions.map(async (prediction) => {
+        const details = await this.fetchGooglePlaceDetails(
+          prediction.place_id || '',
+          key,
+        );
 
         if (!details) {
           return {
-            name: prediction.structured_formatting?.main_text || prediction.description || query,
+            name:
+              prediction.structured_formatting?.main_text ||
+              prediction.description ||
+              query,
             address: prediction.description || '',
             town: this.extractTownFromPrediction(prediction),
             road: this.extractRoadFromPrediction(prediction),
@@ -141,9 +215,13 @@ export class LocationsService {
         }
 
         const getComponent = (kind: string) =>
-          details.address_components?.find((part: any) => part.types?.includes(kind))?.long_name || '';
+          details.address_components?.find((part) => part.types?.includes(kind))
+            ?.long_name || '';
 
-        const parsedAddress = this.parseFormattedAddress(details.formatted_address || '', details.name || '');
+        const parsedAddress = this.parseFormattedAddress(
+          details.formatted_address || '',
+          details.name || '',
+        );
         const town =
           getComponent('locality') ||
           getComponent('postal_town') ||
@@ -197,7 +275,7 @@ export class LocationsService {
     baseParams: URLSearchParams,
     limit: number,
     type?: string,
-  ) {
+  ): Promise<GooglePrediction[]> {
     const params = new URLSearchParams(baseParams.toString());
     if (type) {
       params.set('types', type);
@@ -211,12 +289,27 @@ export class LocationsService {
         return [];
       }
 
-      const data = await response.json();
-      if (data.status !== 'OK' && data.status !== 'ZERO_RESULTS') {
+      const payload: unknown = await response.json();
+      if (!this.isRecord(payload)) {
         return [];
       }
 
-      return Array.isArray(data.predictions) ? data.predictions.slice(0, limit) : [];
+      const status = this.getString(payload, 'status');
+      if (status !== 'OK' && status !== 'ZERO_RESULTS') {
+        return [];
+      }
+
+      const predictions = payload['predictions'];
+      if (!Array.isArray(predictions)) {
+        return [];
+      }
+
+      return predictions
+        .filter((prediction): prediction is Record<string, unknown> =>
+          this.isRecord(prediction),
+        )
+        .map((prediction) => this.toGooglePrediction(prediction))
+        .slice(0, limit);
     } catch {
       return [];
     }
@@ -242,18 +335,28 @@ export class LocationsService {
         return null;
       }
 
-      const data = await response.json();
-      if (data.status !== 'OK' || !data.result) {
+      const payload: unknown = await response.json();
+      if (!this.isRecord(payload)) {
         return null;
       }
 
-      return data.result;
+      const status = this.getString(payload, 'status');
+      if (status !== 'OK') {
+        return null;
+      }
+
+      const result = payload['result'];
+      if (!this.isRecord(result)) {
+        return null;
+      }
+
+      return this.toGooglePlaceDetails(result);
     } catch {
       return null;
     }
   }
 
-  private extractTownFromPrediction(prediction: any) {
+  private extractTownFromPrediction(prediction: GooglePrediction) {
     const terms = Array.isArray(prediction?.terms) ? prediction.terms : [];
     if (terms.length >= 2) {
       return terms[terms.length - 2]?.value || '';
@@ -262,7 +365,7 @@ export class LocationsService {
     return terms[0]?.value || '';
   }
 
-  private extractRoadFromPrediction(prediction: any) {
+  private extractRoadFromPrediction(prediction: GooglePrediction) {
     const terms = Array.isArray(prediction?.terms) ? prediction.terms : [];
     return terms.length > 0 ? terms[0]?.value || '' : '';
   }
@@ -273,7 +376,10 @@ export class LocationsService {
       return { road: '', town: '' };
     }
 
-    const parts = normalized.split(',').map((item) => item.trim()).filter(Boolean);
+    const parts = normalized
+      .split(',')
+      .map((item) => item.trim())
+      .filter(Boolean);
     if (parts.length === 0) {
       return { road: '', town: '' };
     }
@@ -306,7 +412,10 @@ export class LocationsService {
     }
 
     if (nearLat !== undefined && nearLng !== undefined) {
-      params.set('viewbox', `${nearLng - 0.6},${nearLat + 0.6},${nearLng + 0.6},${nearLat - 0.6}`);
+      params.set(
+        'viewbox',
+        `${nearLng - 0.6},${nearLat + 0.6},${nearLng + 0.6},${nearLat - 0.6}`,
+      );
       params.set('bounded', '0');
     }
 
@@ -322,34 +431,179 @@ export class LocationsService {
       return [];
     }
 
-    const results = await response.json();
+    const payload: unknown = await response.json();
+    if (!Array.isArray(payload)) {
+      return [];
+    }
 
-    return (results || []).map((item: any) => {
-      const address = item.address || {};
-      return {
-        name:
-          address.shop ||
-          address.building ||
-          address.attraction ||
-          address.amenity ||
-          query,
-        address: item.display_name || '',
-        town: address.town || address.city || address.county || '',
-        road: address.road || '',
-        landmark:
-          address.suburb ||
-          address.neighbourhood ||
-          address.amenity ||
-          address.attraction ||
-          '',
-        lat: String(item.lat || ''),
-        lng: String(item.lon || ''),
-        placeId: String(item.place_id || ''),
-        source: 'nominatim',
-      } as NormalizedLocation;
-    });
+    return payload
+      .filter((item): item is Record<string, unknown> => this.isRecord(item))
+      .map((item) => {
+        const nominatimItem = this.toNominatimResultItem(item);
+        const address = nominatimItem.address || {};
+
+        return {
+          name:
+            address.shop ||
+            address.building ||
+            address.attraction ||
+            address.amenity ||
+            query,
+          address: nominatimItem.display_name || '',
+          town: address.town || address.city || address.county || '',
+          road: address.road || '',
+          landmark:
+            address.suburb ||
+            address.neighbourhood ||
+            address.amenity ||
+            address.attraction ||
+            '',
+          lat: String(nominatimItem.lat || ''),
+          lng: String(nominatimItem.lon || ''),
+          placeId: String(nominatimItem.place_id || ''),
+          source: 'nominatim',
+        } as NormalizedLocation;
+      });
   }
 
+  private isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === 'object' && value !== null;
+  }
+
+  private getString(source: Record<string, unknown>, key: string): string {
+    const value = source[key];
+    return typeof value === 'string' ? value : '';
+  }
+
+  private getNumber(
+    source: Record<string, unknown>,
+    key: string,
+  ): number | undefined {
+    const value = source[key];
+    return typeof value === 'number' ? value : undefined;
+  }
+
+  private getStringArray(
+    source: Record<string, unknown>,
+    key: string,
+  ): string[] {
+    const value = source[key];
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value.filter((item): item is string => typeof item === 'string');
+  }
+
+  private toGooglePrediction(
+    prediction: Record<string, unknown>,
+  ): GooglePrediction {
+    const structuredFormatting = this.isRecord(
+      prediction['structured_formatting'],
+    )
+      ? prediction['structured_formatting']
+      : undefined;
+
+    const terms = Array.isArray(prediction['terms'])
+      ? prediction['terms']
+          .filter((term): term is Record<string, unknown> =>
+            this.isRecord(term),
+          )
+          .map((term) => ({ value: this.getString(term, 'value') }))
+      : undefined;
+
+    return {
+      description: this.getString(prediction, 'description'),
+      place_id: this.getString(prediction, 'place_id'),
+      structured_formatting: structuredFormatting
+        ? {
+            main_text: this.getString(structuredFormatting, 'main_text'),
+          }
+        : undefined,
+      terms,
+    };
+  }
+
+  private toGooglePlaceDetails(
+    result: Record<string, unknown>,
+  ): GooglePlaceDetails {
+    const geometry = this.isRecord(result['geometry'])
+      ? result['geometry']
+      : undefined;
+    const location =
+      geometry && this.isRecord(geometry['location'])
+        ? geometry['location']
+        : undefined;
+
+    const components = Array.isArray(result['address_components'])
+      ? result['address_components']
+          .filter((item): item is Record<string, unknown> =>
+            this.isRecord(item),
+          )
+          .map((item) => ({
+            long_name: this.getString(item, 'long_name'),
+            types: this.getStringArray(item, 'types'),
+          }))
+      : undefined;
+
+    return {
+      place_id: this.getString(result, 'place_id'),
+      name: this.getString(result, 'name'),
+      formatted_address: this.getString(result, 'formatted_address'),
+      geometry: location
+        ? {
+            location: {
+              lat: this.getNumber(location, 'lat'),
+              lng: this.getNumber(location, 'lng'),
+            },
+          }
+        : undefined,
+      address_components: components,
+    };
+  }
+
+  private toNominatimResultItem(
+    item: Record<string, unknown>,
+  ): NominatimResultItem {
+    const addressRecord = this.isRecord(item['address'])
+      ? item['address']
+      : undefined;
+    const address: NominatimAddress | undefined = addressRecord
+      ? {
+          shop: this.getString(addressRecord, 'shop'),
+          building: this.getString(addressRecord, 'building'),
+          attraction: this.getString(addressRecord, 'attraction'),
+          amenity: this.getString(addressRecord, 'amenity'),
+          town: this.getString(addressRecord, 'town'),
+          city: this.getString(addressRecord, 'city'),
+          county: this.getString(addressRecord, 'county'),
+          road: this.getString(addressRecord, 'road'),
+          suburb: this.getString(addressRecord, 'suburb'),
+          neighbourhood: this.getString(addressRecord, 'neighbourhood'),
+        }
+      : undefined;
+
+    const latRaw = item['lat'];
+    const lonRaw = item['lon'];
+    const placeIdRaw = item['place_id'];
+
+    return {
+      display_name: this.getString(item, 'display_name'),
+      lat:
+        typeof latRaw === 'string' || typeof latRaw === 'number'
+          ? latRaw
+          : undefined,
+      lon:
+        typeof lonRaw === 'string' || typeof lonRaw === 'number'
+          ? lonRaw
+          : undefined,
+      place_id:
+        typeof placeIdRaw === 'string' || typeof placeIdRaw === 'number'
+          ? placeIdRaw
+          : undefined,
+      address,
+    };
+  }
   private async expandShortMapUrl(mapUrl: string) {
     try {
       const response = await fetch(mapUrl, {
@@ -370,7 +624,8 @@ export class LocationsService {
 
     try {
       const parsed = new URL(mapUrl.trim());
-      const q = parsed.searchParams.get('q') || parsed.searchParams.get('query') || '';
+      const q =
+        parsed.searchParams.get('q') || parsed.searchParams.get('query') || '';
       const atMatch = parsed.pathname.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/);
 
       return {

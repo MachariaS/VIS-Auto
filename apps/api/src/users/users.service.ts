@@ -8,6 +8,7 @@ import { User } from './user.types';
 interface CreateUserInput {
   email: string;
   name: string;
+  phone?: string;
   accountType: 'customer' | 'provider';
   password: string;
 }
@@ -30,6 +31,7 @@ export class UsersService {
     const user = this.usersRepository.create({
       email,
       name: input.name.trim(),
+      phone: input.phone?.trim() || undefined,
       accountType: input.accountType,
       passwordHash: await hash(input.password, 10),
     });
@@ -68,6 +70,7 @@ export class UsersService {
       id: user.id,
       email: user.email,
       name: user.name,
+      phone: user.phone,
       accountType: user.accountType,
       createdAt:
         user.createdAt instanceof Date ? user.createdAt.toISOString() : String(user.createdAt),

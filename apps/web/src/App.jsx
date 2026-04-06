@@ -179,6 +179,7 @@ const orderStatusCopy = {
 const initialRegister = {
   name: '',
   email: '',
+  phone: '',
   accountType: 'customer',
   password: '',
 };
@@ -425,7 +426,7 @@ function getDefaultProfile(user) {
     account: {
       displayName: user?.name ?? '',
       email: user?.email ?? '',
-      phone: '',
+      phone: user?.phone ?? '',
       company: user?.accountType === 'provider' ? user?.name ?? '' : '',
       location: 'Nairobi, Kenya',
     },
@@ -1026,6 +1027,7 @@ export default function App() {
         ...current.account,
         displayName: current.account.displayName || user.name || '',
         email: current.account.email || user.email || '',
+        phone: current.account.phone || user.phone || '',
         company:
           current.account.company || (user.accountType === 'provider' ? user.name || '' : ''),
       },
@@ -2101,6 +2103,16 @@ export default function App() {
                 value={registerForm.email}
                 onChange={(event) =>
                   setRegisterForm({ ...registerForm, email: event.target.value })
+                }
+              />
+            </label>
+            <label>
+              <span>Phone</span>
+              <input
+                placeholder="+254..."
+                value={registerForm.phone}
+                onChange={(event) =>
+                  setRegisterForm({ ...registerForm, phone: event.target.value })
                 }
               />
             </label>

@@ -1,4 +1,4 @@
-import { IsEmail, IsIn, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
 
 export class RegisterDto {
   @IsString()
@@ -7,6 +7,11 @@ export class RegisterDto {
 
   @IsEmail()
   email!: string;
+
+  @IsOptional()
+  @IsString()
+  @MinLength(7)
+  phone?: string;
 
   @IsIn(['customer', 'provider'])
   accountType!: 'customer' | 'provider';

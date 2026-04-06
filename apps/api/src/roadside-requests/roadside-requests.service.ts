@@ -35,6 +35,7 @@ export interface RoadsideRequest {
     id: string;
     name: string;
     email: string;
+    phone?: string;
   };
   vehicle?: {
     id: string;
@@ -94,6 +95,24 @@ export class RoadsideRequestsService {
 
     if (request.providerId !== providerId) {
       throw new NotFoundException('Roadside request not found for this provider.');
+    }
+
+    if (request.status === status) {
+      return this.toRoadsideRequest(request, true);
+    }
+
+    const allowedTransitions: Record<RoadsideRequestEntity['status'], ProviderManagedStatus[]> = {
+      searching: ['provider_assigned', 'cancelled'],
+      provider_assigned: ['in_progress', 'cancelled'],
+      in_progress: ['completed', 'cancelled'],
+      completed: [],
+      cancelled: [],
+    };
+
+    if (!allowedTransitions[request.status].includes(status)) {
+      throw new BadRequestException(
+        `Invalid transition from ${request.status} to ${status}.`,
+      );
     }
 
     request.status = status;
@@ -218,6 +237,7 @@ export class RoadsideRequestsService {
             id: customer.id,
             name: customer.name,
             email: customer.email,
+            phone: customer.phone,
           }
         : undefined,
       vehicle: vehicle

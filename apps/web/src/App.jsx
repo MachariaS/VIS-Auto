@@ -635,6 +635,65 @@ export default function App() {
   );
 
   const providerOrders = useMemo(() => {
+    if (user?.accountType === 'provider' && requests.length > 0) {
+      return requests.map((requestItem, index) => {
+        const mappedStatus =
+          requestItem.status === 'completed'
+            ? 'delivered'
+            : requestItem.status === 'searching'
+              ? 'processing'
+              : 'collected';
+
+        const fuelSurcharge = Number(requestItem.fuelDetails?.fuelCostKsh || 0);
+
+        return {
+          id: `#${String(index + 2632)}`,
+          reference: requestItem.id,
+          customer: {
+            name: `Customer ${String(requestItem.userId || '').slice(0, 6) || index + 1}`,
+            email: `${String(requestItem.userId || 'customer').slice(0, 8)}@visauto.app`,
+            phone: 'Not shared',
+          },
+          paymentMethod: requestItem.fuelDetails ? 'Paid' : 'Cash',
+          etaMinutes: Number(requestItem.etaMinutes || 0),
+          orderType: requestItem.fuelDetails ? 'Delivery' : 'Collection',
+          status: mappedStatus,
+          totalAmountKsh: Number(requestItem.estimatedPriceKsh || 0),
+          createdAt: requestItem.createdAt,
+          vendorName: requestItem.providerName || 'Integrated provider',
+          service: requestItem.issueType || 'Roadside Service',
+          serviceCode: requestItem.providerServiceId || 'service',
+          delivery: {
+            addressLine: requestItem.address || 'N/A',
+            building: requestItem.landmark || 'N/A',
+            street: requestItem.address || 'N/A',
+            town: 'Nairobi',
+            postcode: '00100',
+          },
+          items: [
+            {
+              id: `${requestItem.id}-service`,
+              title: requestItem.issueType || 'Roadside service',
+              subtitle: requestItem.providerName || 'Integrated provider',
+              quantity: 1,
+              price: Math.max(Number(requestItem.estimatedPriceKsh || 0) - fuelSurcharge, 0),
+            },
+            ...(fuelSurcharge > 0
+              ? [
+                  {
+                    id: `${requestItem.id}-fuel`,
+                    title: 'Fuel surcharge',
+                    subtitle: `${requestItem.fuelDetails?.litres || 0}L ${requestItem.fuelDetails?.fuelType || ''}`,
+                    quantity: 1,
+                    price: fuelSurcharge,
+                  },
+                ]
+              : []),
+          ],
+        };
+      });
+    }
+
     const seedCustomers = [
       {
         name: 'Brooklyn Zoe',
@@ -746,7 +805,7 @@ export default function App() {
         ],
       };
     });
-  }, [activeVendorPartners, providerServices]);
+  }, [activeVendorPartners, providerServices, requests, user?.accountType]);
 
   const filteredProviderOrders = useMemo(() => {
     const fromDate = ordersFromDate ? new Date(`${ordersFromDate}T00:00:00`) : null;
@@ -1159,15 +1218,16 @@ export default function App() {
   }
 
   async function loadProviderDashboard(accessToken) {
-    const [serviceData, catalogData] = await Promise.all([
+    const [serviceData, catalogData, providerRequestData] = await Promise.all([
       request('/provider-services', undefined, 'GET', accessToken),
       request('/provider-services/catalog', undefined, 'GET', accessToken).catch(() => []),
+      request('/roadside-requests/provider', undefined, 'GET', accessToken).catch(() => []),
     ]);
 
     setProviderServices(serviceData);
     setProviderCatalog(Array.isArray(catalogData) ? catalogData : []);
     setVehicles([]);
-    setRequests([]);
+    setRequests(Array.isArray(providerRequestData) ? providerRequestData : []);
   }
 
   async function handleRegister(event) {

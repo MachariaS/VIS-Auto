@@ -637,7 +637,7 @@ export default function App() {
   );
 
   const providerOrders = useMemo(() => {
-    if (user?.accountType === 'provider' && requests.length > 0) {
+    if (user?.accountType === 'provider') {
       return requests.map((requestItem, index) => {
         const mappedStatus =
           requestItem.status === 'completed'
@@ -706,125 +706,8 @@ export default function App() {
       });
     }
 
-    const seedCustomers = [
-      {
-        name: 'Brooklyn Zoe',
-        email: 'brooklyn.zoe@visauto.app',
-        phone: '+254 701 225 512',
-      },
-      {
-        name: 'Alice Krejcova',
-        email: 'alice.krejcova@visauto.app',
-        phone: '+254 711 425 670',
-      },
-      {
-        name: 'Jurriaan van',
-        email: 'jurriaan.van@visauto.app',
-        phone: '+254 733 118 902',
-      },
-      {
-        name: 'Ya Chin-Ho',
-        email: 'ya.ho@visauto.app',
-        phone: '+254 725 441 760',
-      },
-      {
-        name: 'Shamikh Al',
-        email: 'shamikh.al@visauto.app',
-        phone: '+254 713 506 441',
-      },
-      {
-        name: 'Niek Bove',
-        email: 'niek.bove@visauto.app',
-        phone: '+254 705 617 115',
-      },
-      {
-        name: 'Uruewa Himona',
-        email: 'uruewa.himona@visauto.app',
-        phone: '+254 722 317 509',
-      },
-    ];
-
-    const statusPattern = [
-      'delivered',
-      'collected',
-      'cancelled',
-      'collected',
-      'delivered',
-      'cancelled',
-      'delivered',
-    ];
-
-    const servicePool =
-      providerServices.length > 0
-        ? providerServices.map((serviceItem) => ({
-            code: serviceItem.serviceCode,
-            name: serviceItem.serviceName,
-            price: Number(serviceItem.basePriceKsh || 0),
-          }))
-        : serviceTypeOptions.map((serviceOption, index) => ({
-            code: serviceOption.code,
-            name: serviceOption.label,
-            price: 1500 + index * 350,
-          }));
-
-    const vendorPool = activeVendorPartners.length > 0 ? activeVendorPartners : demoIntegratedVendors;
-
-    return seedCustomers.map((customer, index) => {
-      const status = statusPattern[index % statusPattern.length];
-      const sourceStatus =
-        status === 'delivered'
-          ? 'completed'
-          : status === 'cancelled'
-            ? 'cancelled'
-            : 'in_progress';
-      const service = servicePool[index % servicePool.length];
-      const vendor = vendorPool[index % vendorPool.length];
-      const etaMinutes = [13, 49, 7, 49, 13, 0, 15][index % 7];
-      const orderType = index % 2 === 0 ? 'Delivery' : 'Collection';
-      const baseTotal = 6400 + index * 1450 + Number(service.price || 0);
-
-      return {
-        id: `#26${String(32 + index).padStart(2, '0')}`,
-        reference: `ORD-2026-${1001 + index}`,
-          sourceStatus,
-        customer,
-        paymentMethod: index % 2 === 0 ? 'Cash' : 'Paid',
-        etaMinutes,
-        orderType,
-        status,
-        totalAmountKsh: baseTotal,
-        createdAt: `2026-04-${String(4 + (index % 6)).padStart(2, '0')}T${String(
-          8 + (index % 6),
-        ).padStart(2, '0')}:24:00`,
-        vendorName: vendor.name,
-        service: service.name,
-        serviceCode: service.code,
-        delivery: {
-          addressLine: `${14 + index} Anglesey Road`,
-          building: `${vendor.name} Court`,
-          street: 'Argwings Kodhek Rd',
-          town: 'Nairobi',
-          postcode: `00${14 + index}`,
-        },
-        items: [
-          {
-            id: `${index}-1`,
-            title: service.name,
-            subtitle: `Integrated by ${vendor.name}`,
-            quantity: 1,
-            price: Number(service.price || 0) + 800,
-          },
-          {
-            id: `${index}-2`,
-            title: 'Dispatch & logistics',
-            subtitle: `${orderType} workflow`,
-            quantity: 1,
-            price: 1200 + index * 90,
-          },
-        ],
-      };
-    });
-  }, [activeVendorPartners, providerServices, requests, user?.accountType]);
+    return [];
+  }, [requests, user?.accountType]);
 
   const filteredProviderOrders = useMemo(() => {
     const fromDate = ordersFromDate ? new Date(`${ordersFromDate}T00:00:00`) : null;
@@ -2586,49 +2469,77 @@ export default function App() {
   }
 
   function renderProviderOverview() {
+    const completedRequests = requests.filter((item) => item.status === 'completed');
+    const activeRequests = requests.filter(
+      (item) => item.status === 'searching' || item.status === 'provider_assigned' || item.status === 'in_progress',
+    );
+    const cancelledRequests = requests.filter((item) => item.status === 'cancelled');
+    const uniqueCustomers = new Set(requests.map((item) => item.userId).filter(Boolean)).size;
+    const completedRevenue = completedRequests.reduce(
+      (total, item) => total + Number(item.estimatedPriceKsh || 0),
+      0,
+    );
+
     const dashboardStatCards = [
-      { value: '365', label: 'Registered Users', icon: '◉', tone: 'violet' },
-      { value: '86%', label: 'Total Increase Revenue', icon: '$', tone: 'orange' },
-      { value: '02', label: 'Pending Orders', icon: '▦', tone: 'gold' },
-      { value: '136', label: 'Completed Orders', icon: '✓', tone: 'green' },
+      { value: String(uniqueCustomers), label: 'Unique Customers', icon: '◉', tone: 'violet' },
+      { value: formatCurrency(completedRevenue), label: 'Completed Revenue', icon: '$', tone: 'orange' },
+      { value: String(activeRequests.length).padStart(2, '0'), label: 'Pending Orders', icon: '▦', tone: 'gold' },
+      { value: String(completedRequests.length).padStart(2, '0'), label: 'Completed Orders', icon: '✓', tone: 'green' },
     ];
+
+    const totalOrders = requests.length || 1;
+    const completionPercent = Math.round((completedRequests.length / totalOrders) * 100);
+    const activePercent = Math.round((activeRequests.length / totalOrders) * 100);
+    const serviceCoveragePercent = Math.round(
+      ((providerServices.length || 0) / Math.max(serviceTypeOptions.length, 1)) * 100,
+    );
 
     const orderStats = [
-      { value: '25', label: 'Completed Services', percent: 78, color: '#22c55e' },
-      { value: '$214', label: 'Total Earnings', percent: 66, color: '#f97316' },
-      { value: '4.5', label: 'Ratings', percent: 82, color: '#eab308' },
-      { value: '2', label: 'User Joined', percent: 40, color: '#a855f7' },
+      {
+        value: String(completedRequests.length),
+        label: 'Completed Services',
+        percent: completionPercent,
+        color: '#22c55e',
+      },
+      {
+        value: formatCurrency(completedRevenue),
+        label: 'Total Earnings',
+        percent: completionPercent,
+        color: '#f97316',
+      },
+      {
+        value: String(activeRequests.length),
+        label: 'Active Orders',
+        percent: activePercent,
+        color: '#eab308',
+      },
+      {
+        value: `${providerServices.length}`,
+        label: 'Service Coverage',
+        percent: serviceCoveragePercent,
+        color: '#a855f7',
+      },
     ];
 
-    const orderRows = [
-      {
-        code: '#ABC0036',
-        title: 'House-help room cleaning',
-        meta: 'Cleaning',
-        date: '08-04-2022',
-        amount: '$36.00',
-        status: 'Ongoing',
-        tone: 'ongoing',
-      },
-      {
-        code: '#ABC0035',
-        title: 'Hair cutting & colour',
-        meta: 'Salon',
-        date: '07-04-2022',
-        amount: '$20.00',
-        status: 'Completed',
-        tone: 'completed',
-      },
-      {
-        code: '#ABC0033',
-        title: 'Full body massage with checkup',
-        meta: 'Spa',
-        date: '03-04-2022',
-        amount: '$55.00',
-        status: 'Pending',
-        tone: 'pending',
-      },
-    ];
+    const orderRows = requests.slice(0, 5).map((item, index) => ({
+      code: `#${String(index + 2632)}`,
+      title: item.issueType || 'Roadside service',
+      meta: item.providerName || user?.name || 'Provider',
+      date: new Date(item.createdAt).toLocaleDateString('en-KE'),
+      amount: formatCurrency(Number(item.estimatedPriceKsh || 0)),
+      status:
+        item.status === 'completed'
+          ? 'Completed'
+          : item.status === 'cancelled'
+            ? 'Cancelled'
+            : 'Ongoing',
+      tone:
+        item.status === 'completed'
+          ? 'completed'
+          : item.status === 'cancelled'
+            ? 'pending'
+            : 'ongoing',
+    }));
 
     const showcaseServices =
       providerServices.length > 0
@@ -2783,23 +2694,30 @@ export default function App() {
             </div>
 
             <div className="provider-order-list-v2">
-              {orderRows.map((order) => (
-                <article className="provider-order-card-v2" key={order.code}>
-                  <div className="provider-order-thumb-v2" />
-                  <div className="provider-order-content-v2">
-                    <div className="provider-order-head-v2">
-                      <strong>{order.code}</strong>
-                      <span>{order.amount}</span>
-                    </div>
-                    <p>{order.title}</p>
-                    <div className="provider-order-meta-v2">
-                      <span>{order.meta}</span>
-                      <span>{order.date}</span>
-                    </div>
-                    <div className={`provider-order-status-v2 ${order.tone}`}>{order.status}</div>
-                  </div>
+              {orderRows.length === 0 ? (
+                <article className="provider-note-v2">
+                  <strong>No orders yet.</strong>
+                  <p>Orders from customers will appear here as soon as they are created.</p>
                 </article>
-              ))}
+              ) : (
+                orderRows.map((order) => (
+                  <article className="provider-order-card-v2" key={order.code}>
+                    <div className="provider-order-thumb-v2" />
+                    <div className="provider-order-content-v2">
+                      <div className="provider-order-head-v2">
+                        <strong>{order.code}</strong>
+                        <span>{order.amount}</span>
+                      </div>
+                      <p>{order.title}</p>
+                      <div className="provider-order-meta-v2">
+                        <span>{order.meta}</span>
+                        <span>{order.date}</span>
+                      </div>
+                      <div className={`provider-order-status-v2 ${order.tone}`}>{order.status}</div>
+                    </div>
+                  </article>
+                ))
+              )}
             </div>
           </section>
         </div>

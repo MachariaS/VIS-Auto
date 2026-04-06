@@ -91,6 +91,77 @@ const staticNotifications = [
   },
 ];
 
+const demoIntegratedVendors = [
+  {
+    id: 'vendor-shoreline-garage',
+    name: 'Shoreline Garage',
+    category: 'Engine Diagnostics',
+    joinDate: '2024-08-12',
+    completedOrders: 148,
+    rating: 4.7,
+    demand: 'High demand',
+    imageUrl: '/assets/battery_jumpstart.jpeg',
+    bio: 'Certified diagnostics and electrical fault tracing for passenger vehicles.',
+  },
+  {
+    id: 'vendor-torque-works',
+    name: 'Torque Works',
+    category: 'Suspension & Alignment',
+    joinDate: '2024-11-03',
+    completedOrders: 92,
+    rating: 4.5,
+    demand: 'Steady demand',
+    imageUrl: '/assets/tire_chang.jpeg',
+    bio: 'Wheel alignment, suspension checks, and steering-system balancing.',
+  },
+  {
+    id: 'vendor-urban-detailers',
+    name: 'Urban Detailers',
+    category: 'Detailing',
+    joinDate: '2025-01-20',
+    completedOrders: 77,
+    rating: 4.3,
+    demand: 'Low demand',
+    imageUrl: '/assets/other_services.jpeg',
+    bio: 'Interior and exterior detailing services for post-repair handover quality.',
+  },
+  {
+    id: 'vendor-pulse-roadside',
+    name: 'Pulse Roadside Team',
+    category: 'Fuel & Rescue',
+    joinDate: '2025-03-09',
+    completedOrders: 134,
+    rating: 4.8,
+    demand: 'High demand',
+    imageUrl: '/assets/fuel_delivery.jpeg',
+    bio: 'Fast fuel response and roadside emergency recovery in urban and peri-urban routes.',
+  },
+];
+
+const demoPendingIntegrationRequests = [
+  {
+    id: 'req-ridgeway-auto-care',
+    name: 'Ridgeway Auto Care',
+    category: 'Brake Service',
+    requestedAt: '2026-04-04',
+    submittedBy: 'operations@ridgewayauto.co.ke',
+    notes: 'Requested onboarding for brake pads, rotor replacement, and emergency checks.',
+  },
+  {
+    id: 'req-kinetic-mobile-tech',
+    name: 'Kinetic Mobile Tech',
+    category: 'Roadside Electrical',
+    requestedAt: '2026-04-05',
+    submittedBy: 'admin@kineticmobile.tech',
+    notes: 'Wants integration for battery tests, alternator diagnostics, and jump-start support.',
+  },
+];
+
+const vendorStatusCopy = {
+  pending: 'Pending Review',
+  integrated: 'Newly Integrated',
+};
+
 const initialRegister = {
   name: '',
   email: '',
@@ -207,6 +278,13 @@ function getServiceImageUrl(service) {
 
 function mergeUniqueList(list = [], additions = []) {
   return Array.from(new Set([...(list || []), ...(additions || [])])).filter(Boolean);
+}
+
+function toVendorId(value = '') {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
 }
 
 function normalizeLocationQuery(query = '') {
@@ -391,8 +469,9 @@ function getDefaultProfile(user) {
     },
     vendors: {
       requestPolicy: 'approval_required',
-      pendingRequests: [],
-      activePartners: [],
+      pendingRequests: demoPendingIntegrationRequests,
+      activePartners: demoIntegratedVendors,
+      rejectedRequests: [],
     },
   };
 }
@@ -471,6 +550,7 @@ export default function App() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const [sessionReady, setSessionReady] = useState(false);
+  const [selectedVendorRequestId, setSelectedVendorRequestId] = useState('');
   const [brandLogoError, setBrandLogoError] = useState(false);
   const [locationResolvingIndex, setLocationResolvingIndex] = useState(null);
   const [locationSearchingIndex, setLocationSearchingIndex] = useState(null);
@@ -488,6 +568,9 @@ export default function App() {
       return {
         overview: 'Provider overview',
         services: 'Published services',
+        vendors: 'Vendors and integrations',
+        orders: 'Order history',
+        ratings: 'Ratings and reviews',
         pricing: editingProviderServiceId ? 'Edit service' : 'Add service',
         profile: 'My profile',
         settings: 'Settings',
@@ -514,6 +597,24 @@ export default function App() {
   );
 
   const filteredProviderOptions = providerCatalog.filter((item) => item.serviceCode === serviceFilter);
+  const activeVendorPartners = profileSettings.vendors?.activePartners || [];
+  const pendingVendorRequests = profileSettings.vendors?.pendingRequests || [];
+  const rejectedVendorRequests = profileSettings.vendors?.rejectedRequests || [];
+  const vendorNotificationCount = user?.accountType === 'provider' ? pendingVendorRequests.length : 0;
+  const notificationCount = staticNotifications.length + vendorNotificationCount;
+  const focusedVendorRequest = pendingVendorRequests.find(
+    (requestItem) => requestItem.id === selectedVendorRequestId,
+  ) || pendingVendorRequests[0] || null;
+
+  const vendorStats = useMemo(
+    () => ({
+      active: activeVendorPartners.length,
+      pending: pendingVendorRequests.length,
+      rejected: rejectedVendorRequests.length,
+    }),
+    [activeVendorPartners.length, pendingVendorRequests.length, rejectedVendorRequests.length],
+  );
+
   const selectedProviderService = providerCatalog.find(
     (item) => item.id === roadsideForm.providerServiceId,
   );
@@ -744,6 +845,70 @@ export default function App() {
   }, [providerServices, user?.accountType]);
 
   useEffect(() => {
+    if (pendingVendorRequests.length === 0) {
+      if (selectedVendorRequestId) {
+        setSelectedVendorRequestId('');
+      }
+      return;
+    }
+
+    if (!pendingVendorRequests.some((requestItem) => requestItem.id === selectedVendorRequestId)) {
+      setSelectedVendorRequestId(pendingVendorRequests[0].id);
+    }
+  }, [pendingVendorRequests, selectedVendorRequestId]);
+
+  useEffect(() => {
+    if (user?.accountType !== 'provider' || providerCatalog.length === 0) {
+      return;
+    }
+
+    setProfileSettings((current) => {
+      const vendors = current.vendors || {};
+      const activePartners = vendors.activePartners || [];
+      const pendingRequests = vendors.pendingRequests || [];
+      const rejectedRequests = vendors.rejectedRequests || [];
+
+      const knownNames = new Set([
+        ...activePartners.map((partner) => partner.name),
+        ...pendingRequests.map((requestItem) => requestItem.name),
+        ...rejectedRequests.map((requestItem) => requestItem.name),
+      ]);
+
+      const discoveredNames = Array.from(
+        new Set(
+          providerCatalog
+            .map((item) => item.providerName)
+            .filter(Boolean)
+            .filter((name) => name !== user?.name),
+        ),
+      );
+
+      const additions = discoveredNames
+        .filter((name) => !knownNames.has(name))
+        .map((name) => ({
+          id: `req-${toVendorId(name)}`,
+          name,
+          category: 'General Service',
+          requestedAt: new Date().toISOString().slice(0, 10),
+          submittedBy: 'auto-generated from provider catalog',
+          notes: '',
+        }));
+
+      if (additions.length === 0) {
+        return current;
+      }
+
+      return {
+        ...current,
+        vendors: {
+          ...vendors,
+          pendingRequests: [...pendingRequests, ...additions],
+        },
+      };
+    });
+  }, [providerCatalog, user?.accountType, user?.name]);
+
+  useEffect(() => {
     if (!navigator.geolocation) {
       return;
     }
@@ -813,9 +978,13 @@ export default function App() {
   }
 
   async function loadProviderDashboard(accessToken) {
-    const serviceData = await request('/provider-services', undefined, 'GET', accessToken);
+    const [serviceData, catalogData] = await Promise.all([
+      request('/provider-services', undefined, 'GET', accessToken),
+      request('/provider-services/catalog', undefined, 'GET', accessToken).catch(() => []),
+    ]);
+
     setProviderServices(serviceData);
-    setProviderCatalog([]);
+    setProviderCatalog(Array.isArray(catalogData) ? catalogData : []);
     setVehicles([]);
     setRequests([]);
   }
@@ -1349,6 +1518,100 @@ export default function App() {
     }
   }
 
+  function openVendorRequestReview(requestId) {
+    setDashboardTab('vendors');
+    setSelectedVendorRequestId(requestId);
+    setShowNotifications(false);
+    setShowAccountMenu(false);
+  }
+
+  function acceptVendorRequest(requestId) {
+    let acceptedName = '';
+
+    setProfileSettings((current) => {
+      const vendors = current.vendors || {};
+      const pendingRequests = vendors.pendingRequests || [];
+      const activePartners = vendors.activePartners || [];
+      const requestItem = pendingRequests.find((entry) => entry.id === requestId);
+
+      if (!requestItem) {
+        return current;
+      }
+
+      acceptedName = requestItem.name;
+
+      const alreadyIntegrated = activePartners.some((partner) => partner.name === requestItem.name);
+      const nextActivePartners = alreadyIntegrated
+        ? activePartners
+        : [
+            {
+              id: `vendor-${toVendorId(requestItem.name)}`,
+              name: requestItem.name,
+              category: requestItem.category || 'General Service',
+              joinDate: new Date().toISOString().slice(0, 10),
+              completedOrders: 0,
+              rating: 0,
+              demand: 'New integration',
+              bio: requestItem.notes || 'Recently approved vendor integration.',
+            },
+            ...activePartners,
+          ];
+
+      return {
+        ...current,
+        vendors: {
+          ...vendors,
+          activePartners: nextActivePartners,
+          pendingRequests: pendingRequests.filter((entry) => entry.id !== requestId),
+        },
+      };
+    });
+
+    setMessage(
+      acceptedName
+        ? `${acceptedName} integration approved.`
+        : 'Integration request approved.',
+    );
+  }
+
+  function rejectVendorRequest(requestId) {
+    let rejectedName = '';
+
+    setProfileSettings((current) => {
+      const vendors = current.vendors || {};
+      const pendingRequests = vendors.pendingRequests || [];
+      const rejectedRequests = vendors.rejectedRequests || [];
+      const requestItem = pendingRequests.find((entry) => entry.id === requestId);
+
+      if (!requestItem) {
+        return current;
+      }
+
+      rejectedName = requestItem.name;
+
+      return {
+        ...current,
+        vendors: {
+          ...vendors,
+          pendingRequests: pendingRequests.filter((entry) => entry.id !== requestId),
+          rejectedRequests: [
+            {
+              ...requestItem,
+              reviewedAt: new Date().toISOString().slice(0, 10),
+            },
+            ...rejectedRequests,
+          ],
+        },
+      };
+    });
+
+    setMessage(
+      rejectedName
+        ? `${rejectedName} integration rejected.`
+        : 'Integration request rejected.',
+    );
+  }
+
 
   function toggleTheme() {
     const nextTheme = theme === 'dark' ? 'light' : 'dark';
@@ -1644,7 +1907,7 @@ export default function App() {
             aria-label="Notifications"
           >
             <BellIcon />
-            <span className="notification-count">3</span>
+            <span className="notification-count">{notificationCount}</span>
           </button>
           <div className="account-menu-wrap">
             <button
@@ -1692,6 +1955,16 @@ export default function App() {
       return null;
     }
 
+    const integrationAlerts =
+      user?.accountType === 'provider'
+        ? pendingVendorRequests.map((requestItem) => ({
+            id: `integration-${requestItem.id}`,
+            title: `Integration request: ${requestItem.name}`,
+            body: `${requestItem.category || 'General service'} • Requested ${requestItem.requestedAt || 'today'}`,
+            requestId: requestItem.id,
+          }))
+        : [];
+
     return (
       <section className="floating-panel">
         <div className="panel-head compact">
@@ -1701,6 +1974,19 @@ export default function App() {
           </div>
         </div>
         <div className="notification-list">
+          {integrationAlerts.map((item) => (
+            <article className="notification-item" key={item.id}>
+              <strong>{item.title}</strong>
+              <p>{item.body}</p>
+              <button
+                className="link-button"
+                type="button"
+                onClick={() => openVendorRequestReview(item.requestId)}
+              >
+                Open review
+              </button>
+            </article>
+          ))}
           {staticNotifications.map((item) => (
             <article className="notification-item" key={item.id}>
               <strong>{item.title}</strong>
@@ -1768,11 +2054,11 @@ export default function App() {
     const sidebarItems = [
       { id: 'overview', label: 'Dashboard' },
       { id: 'services', label: 'Manage Services' },
-      { id: 'services', label: 'Manage Vendors' },
-      { id: 'services', label: 'Order History' },
-      { id: 'services', label: 'Ratings & Reviews' },
-      { id: 'overview', label: 'Heat Map' },
-      { id: 'profile', label: 'My Profile' },
+      { id: 'vendors', label: 'Manage Vendors' },
+      { id: 'orders', label: 'Order History' },
+      { id: 'ratings', label: 'Ratings & Reviews' },
+      { id: 'overview', label: 'Heat Map', disabled: true },
+      { id: 'offers', label: 'Offers', disabled: true },
       { id: 'settings', label: 'Settings' },
     ];
 
@@ -1808,9 +2094,19 @@ export default function App() {
             {sidebarItems.map((item) => (
               <button
                 key={`${item.id || 'na'}-${item.label}`}
-                className={dashboardTab === item.id ? 'provider-nav-active-v2' : 'provider-nav-idle-v2'}
+                className={
+                  item.disabled
+                    ? 'provider-nav-disabled-v2'
+                    : dashboardTab === item.id
+                      ? 'provider-nav-active-v2'
+                      : 'provider-nav-idle-v2'
+                }
                 type="button"
-                onClick={() => setDashboardTab(item.id)}
+                onClick={() => {
+                  if (!item.disabled) {
+                    setDashboardTab(item.id);
+                  }
+                }}
               >
                 {item.label}
               </button>
@@ -1846,7 +2142,7 @@ export default function App() {
                 aria-label="Notifications"
               >
                 <BellIcon />
-                <span className="notification-count">3</span>
+                <span className="notification-count">{notificationCount}</span>
               </button>
 
               <div className="account-menu-wrap">
@@ -1886,6 +2182,9 @@ export default function App() {
             {renderNotificationsTray()}
             {dashboardTab === 'overview' ? renderProviderOverview() : null}
             {dashboardTab === 'services' ? renderProviderServiceList() : null}
+            {dashboardTab === 'vendors' ? renderVendorsPanel() : null}
+            {dashboardTab === 'orders' ? renderOrdersPanel() : null}
+            {dashboardTab === 'ratings' ? renderRatingsPanel() : null}
             {dashboardTab === 'pricing' ? renderProviderServicePanel() : null}
             {dashboardTab === 'profile' ? renderProfilePanel() : null}
             {dashboardTab === 'settings' ? renderSettingsPanel() : null}
@@ -2169,6 +2468,209 @@ export default function App() {
             </article>
           ))}
         </div>
+      </section>
+    );
+  }
+
+  function renderVendorsPanel() {
+    return (
+      <section className="provider-home-v2 vendor-board-v2">
+        <div className="panel-head">
+          <div>
+            <p className="eyebrow">Manage vendors</p>
+            <h3>Manage Vendors</h3>
+          </div>
+          <button
+            className="secondary-cta"
+            type="button"
+            onClick={() => {
+              setShowNotifications(true);
+              setShowAccountMenu(false);
+            }}
+          >
+            Review requests ({vendorStats.pending})
+          </button>
+        </div>
+
+        <div className="provider-stat-strip-v2 vendor-stat-strip-v2">
+          <article className="provider-stat-card-v2 vendor-stat-card-v2 active" key="active-vendors">
+            <div>
+              <span>Registered vendors</span>
+              <strong>{vendorStats.active}</strong>
+            </div>
+          </article>
+          <article className="provider-stat-card-v2 vendor-stat-card-v2 pending" key="pending-vendors">
+            <div>
+              <span>Pending verification</span>
+              <strong>{vendorStats.pending}</strong>
+            </div>
+          </article>
+          <article className="provider-stat-card-v2 vendor-stat-card-v2 rejected" key="rejected-vendors">
+            <div>
+              <span>Rejected requests</span>
+              <strong>{vendorStats.rejected}</strong>
+            </div>
+          </article>
+        </div>
+
+        <div className="vendor-workspace-v2">
+          <section className="vendor-cards-v2">
+            {activeVendorPartners.length === 0 ? (
+              <article className="provider-note-v2">
+                <strong>No integrated vendors yet.</strong>
+                <p>Approved vendors will appear here after you accept integration requests.</p>
+              </article>
+            ) : (
+              activeVendorPartners.map((vendor) => (
+                <article className="vendor-card-v2" key={vendor.id}>
+                  {(() => {
+                    const isPendingReview =
+                      Number(vendor.completedOrders || 0) === 0 && Number(vendor.rating || 0) === 0;
+                    const vendorState = isPendingReview ? 'pending' : 'integrated';
+                    const vendorStateLabel = isPendingReview
+                      ? vendorStatusCopy.pending
+                      : vendorStatusCopy.integrated;
+
+                    return (
+                      <>
+                  <div
+                    className="vendor-avatar-v2"
+                    style={{
+                      backgroundImage: `linear-gradient(180deg, rgba(13, 22, 17, 0.04), rgba(13, 22, 17, 0.22)), url(${vendor.imageUrl || '/assets/other_services.jpeg'})`,
+                    }}
+                  >
+                    <span className="vendor-demand-pill-v2">{vendor.demand || 'Integrated'}</span>
+                  </div>
+                  <div className="vendor-copy-v2">
+                    <div className="vendor-copy-head-v2">
+                      <strong>{vendor.name}</strong>
+                    </div>
+                    <div className="vendor-state-row-v2">
+                      <span className={`vendor-state-pill-v2 ${vendorState}`}>
+                        {vendorStateLabel}
+                      </span>
+                    </div>
+                    <div className="vendor-metrics-v2">
+                      <article>
+                        <label>Category</label>
+                        <strong>{vendor.category || 'General Service'}</strong>
+                      </article>
+                      <article>
+                        <label>Join Date</label>
+                        <strong>{vendor.joinDate || 'N/A'}</strong>
+                      </article>
+                      <article>
+                        <label>Completed Orders</label>
+                        <strong>{vendor.completedOrders || 0}</strong>
+                      </article>
+                      <article>
+                        <label>Ratings</label>
+                        <strong>{(vendor.rating ?? 0).toFixed(1)}</strong>
+                      </article>
+                    </div>
+                  </div>
+                      </>
+                    );
+                  })()}
+                </article>
+              ))
+            )}
+          </section>
+
+          <aside className="vendor-review-v2">
+            <div className="provider-section-head-v2">
+              <h4>Integration requests</h4>
+              <span>{vendorStats.pending} open</span>
+            </div>
+
+            {pendingVendorRequests.length === 0 ? (
+              <div className="empty-state">No pending requests. New requests will appear here automatically.</div>
+            ) : (
+              <>
+                <div className="vendor-queue-v2">
+                  {pendingVendorRequests.map((requestItem) => (
+                    <button
+                      className={
+                        focusedVendorRequest?.id === requestItem.id
+                          ? 'vendor-queue-item-v2 active'
+                          : 'vendor-queue-item-v2'
+                      }
+                      type="button"
+                      key={requestItem.id}
+                      onClick={() => setSelectedVendorRequestId(requestItem.id)}
+                    >
+                      <strong>{requestItem.name}</strong>
+                      <span>{requestItem.category || 'General Service'}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {focusedVendorRequest ? (
+                  <article className="vendor-review-card-v2">
+                    <strong>{focusedVendorRequest.name}</strong>
+                    <div className="vendor-state-row-v2">
+                      <span className="vendor-state-pill-v2 pending">{vendorStatusCopy.pending}</span>
+                    </div>
+                    <div className="vendor-review-meta-v2">
+                      <span>Category: {focusedVendorRequest.category || 'General Service'}</span>
+                      <span>Requested: {focusedVendorRequest.requestedAt || 'N/A'}</span>
+                      <span>Contact: {focusedVendorRequest.submittedBy || 'N/A'}</span>
+                    </div>
+                    <div className="form-actions">
+                      <button
+                        className="primary-cta"
+                        type="button"
+                        onClick={() => acceptVendorRequest(focusedVendorRequest.id)}
+                      >
+                        Accept integration
+                      </button>
+                      <button
+                        className="ghost-button danger"
+                        type="button"
+                        onClick={() => rejectVendorRequest(focusedVendorRequest.id)}
+                      >
+                        Reject request
+                      </button>
+                    </div>
+                  </article>
+                ) : null}
+              </>
+            )}
+          </aside>
+        </div>
+      </section>
+    );
+  }
+
+  function renderOrdersPanel() {
+    return (
+      <section className="dashboard-panel stack">
+        <div className="panel-head">
+          <div>
+            <p className="eyebrow">Order history</p>
+            <h3>Order history will expand here</h3>
+          </div>
+        </div>
+        <p className="section-note">
+          This panel stays aligned with your design navigation and will connect to provider order
+          records as they are onboarded.
+        </p>
+      </section>
+    );
+  }
+
+  function renderRatingsPanel() {
+    return (
+      <section className="dashboard-panel stack">
+        <div className="panel-head">
+          <div>
+            <p className="eyebrow">Ratings and reviews</p>
+            <h3>Provider quality signals</h3>
+          </div>
+        </div>
+        <p className="section-note">
+          Rating moderation and review analytics will appear here after review data starts flowing.
+        </p>
       </section>
     );
   }

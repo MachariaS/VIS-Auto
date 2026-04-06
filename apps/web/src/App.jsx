@@ -1209,6 +1209,42 @@ export default function App() {
     void loadCustomerDashboard(token);
   }, [sessionReady, step, token, user]);
 
+  useEffect(() => {
+    function handlePointerDown(event) {
+      const target = event.target;
+
+      if (!(target instanceof Element)) {
+        return;
+      }
+
+      if (
+        showAccountMenu &&
+        !target.closest('.account-menu-wrap') &&
+        !target.closest('.vis-landing-account-wrap')
+      ) {
+        setShowAccountMenu(false);
+      }
+
+      if (
+        showNotifications &&
+        !target.closest('.notification-button') &&
+        !target.closest('.floating-panel')
+      ) {
+        setShowNotifications(false);
+      }
+
+      if (orderActionMenuId && !target.closest('.order-action-cell-v2')) {
+        setOrderActionMenuId('');
+      }
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [orderActionMenuId, showAccountMenu, showNotifications]);
+
   async function loadCustomerDashboard(accessToken) {
     const [vehicleData, requestData, catalogData] = await Promise.all([
       request('/vehicles', undefined, 'GET', accessToken),

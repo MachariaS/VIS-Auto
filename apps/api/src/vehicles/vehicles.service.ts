@@ -55,4 +55,8 @@ export class VehiclesService {
       createdAt: saved.createdAt.toISOString(),
     };
   }
+
+  async findById(vehicleId: string) {
+    return this.vehiclesRepository.findOneBy({ id: vehicleId });
+  }
 }

@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ProviderServicesService } from '../provider-services/provider-services.service';
+import { UsersService } from '../users/users.service';
 import { VehiclesService } from '../vehicles/vehicles.service';
 import { CreateRoadsideRequestDto } from './dto/create-roadside-request.dto';
 import { RoadsideRequestEntity } from './roadside-request.entity';
@@ -27,15 +28,35 @@ export interface RoadsideRequest {
     fuelCostKsh: number;
     deliveryCostKsh: number;
   };
-  status: 'searching' | 'provider_assigned' | 'in_progress' | 'completed';
+  status: 'searching' | 'provider_assigned' | 'in_progress' | 'completed' | 'cancelled';
   etaMinutes: number;
   estimatedPriceKsh: number;
+  customer?: {
+    id: string;
+    name: string;
+    email: string;
+  };
+  vehicle?: {
+    id: string;
+    nickname: string;
+    make: string;
+    model: string;
+    registrationNumber: string;
+    year: number;
+  };
   createdAt: string;
 }
+
+type ProviderManagedStatus =
+  | 'provider_assigned'
+  | 'in_progress'
+  | 'completed'
+  | 'cancelled';
 
 @Injectable()
 export class RoadsideRequestsService {
   constructor(
+    private readonly usersService: UsersService,
     private readonly vehiclesService: VehiclesService,
     private readonly providerServicesService: ProviderServicesService,
     @InjectRepository(RoadsideRequestEntity)
@@ -48,7 +69,7 @@ export class RoadsideRequestsService {
       order: { createdAt: 'DESC' },
     });
 
-    return requests.map((request) => this.toRoadsideRequest(request));
+    return Promise.all(requests.map((request) => this.toRoadsideRequest(request)));
   }
 
   async listByProvider(providerId: string) {
@@ -57,7 +78,29 @@ export class RoadsideRequestsService {
       order: { createdAt: 'DESC' },
     });
 
-    return requests.map((request) => this.toRoadsideRequest(request));
+    return Promise.all(requests.map((request) => this.toRoadsideRequest(request, true)));
+  }
+
+  async updateStatusByProvider(
+    providerId: string,
+    requestId: string,
+    status: ProviderManagedStatus,
+  ) {
+    const request = await this.roadsideRequestsRepository.findOneBy({ id: requestId });
+
+    if (!request) {
+      throw new NotFoundException('Roadside request not found.');
+    }
+
+    if (request.providerId !== providerId) {
+      throw new NotFoundException('Roadside request not found for this provider.');
+    }
+
+    request.status = status;
+
+    const saved = await this.roadsideRequestsRepository.save(request);
+
+    return this.toRoadsideRequest(saved, true);
   }
 
   async create(userId: string, dto: CreateRoadsideRequestDto) {
@@ -147,13 +190,46 @@ export class RoadsideRequestsService {
     };
   }
 
-  private toRoadsideRequest(request: RoadsideRequestEntity): RoadsideRequest {
-    return {
+  private async toRoadsideRequest(
+    request: RoadsideRequestEntity,
+    includeCustomerAndVehicle = false,
+  ): Promise<RoadsideRequest> {
+    const normalizedRequest: RoadsideRequest = {
       ...request,
       distanceKm: Number(request.distanceKm),
       latitude: Number(request.latitude),
       longitude: Number(request.longitude),
       createdAt: request.createdAt.toISOString(),
+    };
+
+    if (!includeCustomerAndVehicle) {
+      return normalizedRequest;
+    }
+
+    const [customer, vehicle] = await Promise.all([
+      this.usersService.findById(request.userId),
+      this.vehiclesService.findById(request.vehicleId),
+    ]);
+
+    return {
+      ...normalizedRequest,
+      customer: customer
+        ? {
+            id: customer.id,
+            name: customer.name,
+            email: customer.email,
+          }
+        : undefined,
+      vehicle: vehicle
+        ? {
+            id: vehicle.id,
+            nickname: vehicle.nickname,
+            make: vehicle.make,
+            model: vehicle.model,
+            registrationNumber: vehicle.registrationNumber,
+            year: vehicle.year,
+          }
+        : undefined,
     };
   }
 }

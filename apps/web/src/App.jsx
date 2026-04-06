@@ -576,6 +576,7 @@ export default function App() {
   const [selectedOrderId, setSelectedOrderId] = useState('');
   const [ordersFromDate, setOrdersFromDate] = useState('2026-04-01');
   const [ordersToDate, setOrdersToDate] = useState('2026-04-30');
+  const [updatingOrderId, setUpdatingOrderId] = useState('');
   const locationSuggestionTimeoutsRef = useRef({});
 
   const providerBrandName = 'VIS Auto';
@@ -640,19 +641,28 @@ export default function App() {
         const mappedStatus =
           requestItem.status === 'completed'
             ? 'delivered'
+            : requestItem.status === 'cancelled'
+              ? 'cancelled'
             : requestItem.status === 'searching'
               ? 'processing'
-              : 'collected';
+              : requestItem.status === 'provider_assigned' || requestItem.status === 'in_progress'
+                ? 'processing'
+                : 'collected';
 
         const fuelSurcharge = Number(requestItem.fuelDetails?.fuelCostKsh || 0);
 
         return {
           id: `#${String(index + 2632)}`,
           reference: requestItem.id,
+          sourceStatus: requestItem.status,
           customer: {
-            name: `Customer ${String(requestItem.userId || '').slice(0, 6) || index + 1}`,
-            email: `${String(requestItem.userId || 'customer').slice(0, 8)}@visauto.app`,
-            phone: 'Not shared',
+            name:
+              requestItem.customer?.name ||
+              `Customer ${String(requestItem.userId || '').slice(0, 6) || index + 1}`,
+            email:
+              requestItem.customer?.email ||
+              `${String(requestItem.userId || 'customer').slice(0, 8)}@visauto.app`,
+            phone: requestItem.customer?.phone || 'Not shared',
           },
           paymentMethod: requestItem.fuelDetails ? 'Paid' : 'Cash',
           etaMinutes: Number(requestItem.etaMinutes || 0),
@@ -663,6 +673,7 @@ export default function App() {
           vendorName: requestItem.providerName || 'Integrated provider',
           service: requestItem.issueType || 'Roadside Service',
           serviceCode: requestItem.providerServiceId || 'service',
+          vehicle: requestItem.vehicle || null,
           delivery: {
             addressLine: requestItem.address || 'N/A',
             building: requestItem.landmark || 'N/A',
@@ -759,6 +770,12 @@ export default function App() {
 
     return seedCustomers.map((customer, index) => {
       const status = statusPattern[index % statusPattern.length];
+      const sourceStatus =
+        status === 'delivered'
+          ? 'completed'
+          : status === 'cancelled'
+            ? 'cancelled'
+            : 'in_progress';
       const service = servicePool[index % servicePool.length];
       const vendor = vendorPool[index % vendorPool.length];
       const etaMinutes = [13, 49, 7, 49, 13, 0, 15][index % 7];
@@ -768,6 +785,7 @@ export default function App() {
       return {
         id: `#26${String(32 + index).padStart(2, '0')}`,
         reference: `ORD-2026-${1001 + index}`,
+          sourceStatus,
         customer,
         paymentMethod: index % 2 === 0 ? 'Cash' : 'Paid',
         etaMinutes,
@@ -1853,7 +1871,7 @@ export default function App() {
     );
   }
 
-  function handleOrderRowAction(actionType, orderItem) {
+  async function handleOrderRowAction(actionType, orderItem) {
     setOrderActionMenuId('');
 
     if (actionType === 'summary') {
@@ -1861,13 +1879,40 @@ export default function App() {
       return;
     }
 
-    if (actionType === 'refund') {
-      setMessage(`Refund flow started for ${orderItem.reference}.`);
+    if (actionType === 'message') {
+      setMessage(`Message thread opened for ${orderItem.customer.name}.`);
       return;
     }
 
-    if (actionType === 'message') {
-      setMessage(`Message thread opened for ${orderItem.customer.name}.`);
+    const nextStatusByAction = {
+      pick: 'provider_assigned',
+      ship: 'in_progress',
+      deliver: 'completed',
+      cancel: 'cancelled',
+    };
+
+    const nextStatus = nextStatusByAction[actionType];
+    if (!nextStatus || !token) {
+      return;
+    }
+
+    setUpdatingOrderId(orderItem.reference);
+
+    try {
+      await request(
+        `/roadside-requests/${orderItem.reference}/status`,
+        { status: nextStatus },
+        'PATCH',
+        token,
+      );
+
+      const refreshed = await request('/roadside-requests/provider', undefined, 'GET', token);
+      setRequests(Array.isArray(refreshed) ? refreshed : []);
+      setMessage(`Order ${orderItem.reference} moved to ${nextStatus.replaceAll('_', ' ')}.`);
+    } catch (error) {
+      setMessage(error.message || 'Unable to update order status.');
+    } finally {
+      setUpdatingOrderId('');
     }
   }
 
@@ -2916,25 +2961,39 @@ export default function App() {
       </span>
     );
 
-    const renderOrderTimeline = (statusValue) => {
-      const steps = [
-        { key: 'picked', label: 'Picked', active: true },
-        { key: 'shipped', label: 'Shipped', active: statusValue !== 'cancelled' },
-        {
-          key: 'delivered',
-          label: statusValue === 'collected' ? 'Collected' : 'Delivered',
-          active: statusValue === 'delivered' || statusValue === 'collected',
-        },
-      ];
-
-      if (statusValue === 'cancelled') {
+    const renderOrderTimeline = (sourceStatus, statusValue) => {
+      if (sourceStatus === 'cancelled' || statusValue === 'cancelled') {
         return [
-          { key: 'picked', label: 'Picked', active: true },
+          { key: 'queued', label: 'Queued', active: true },
           { key: 'cancelled', label: 'Cancelled', active: true, danger: true },
         ];
       }
 
-      return steps;
+      return [
+        {
+          key: 'queued',
+          label: 'Queued',
+          active: true,
+        },
+        {
+          key: 'picked',
+          label: 'Picked',
+          active:
+            sourceStatus === 'provider_assigned' ||
+            sourceStatus === 'in_progress' ||
+            sourceStatus === 'completed',
+        },
+        {
+          key: 'shipped',
+          label: 'Shipped',
+          active: sourceStatus === 'in_progress' || sourceStatus === 'completed',
+        },
+        {
+          key: 'delivered',
+          label: statusValue === 'collected' ? 'Collected' : 'Delivered',
+          active: sourceStatus === 'completed' || statusValue === 'delivered',
+        },
+      ];
     };
 
     return (
@@ -3047,13 +3106,44 @@ export default function App() {
                       >
                         Message
                       </button>
-                      <button
-                        type="button"
-                        className="danger"
-                        onClick={() => handleOrderRowAction('refund', orderItem)}
-                      >
-                        Refund
-                      </button>
+                      {orderItem.sourceStatus === 'searching' ? (
+                        <button
+                          type="button"
+                          onClick={() => handleOrderRowAction('pick', orderItem)}
+                          disabled={updatingOrderId === orderItem.reference}
+                        >
+                          Mark As Picked
+                        </button>
+                      ) : null}
+                      {orderItem.sourceStatus === 'provider_assigned' ? (
+                        <button
+                          type="button"
+                          onClick={() => handleOrderRowAction('ship', orderItem)}
+                          disabled={updatingOrderId === orderItem.reference}
+                        >
+                          Mark As Shipped
+                        </button>
+                      ) : null}
+                      {orderItem.sourceStatus === 'in_progress' ? (
+                        <button
+                          type="button"
+                          onClick={() => handleOrderRowAction('deliver', orderItem)}
+                          disabled={updatingOrderId === orderItem.reference}
+                        >
+                          Mark As Delivered
+                        </button>
+                      ) : null}
+                      {orderItem.sourceStatus !== 'completed' &&
+                      orderItem.sourceStatus !== 'cancelled' ? (
+                        <button
+                          type="button"
+                          className="danger"
+                          onClick={() => handleOrderRowAction('cancel', orderItem)}
+                          disabled={updatingOrderId === orderItem.reference}
+                        >
+                          Cancel Order
+                        </button>
+                      ) : null}
                     </div>
                   ) : null}
                 </span>
@@ -3101,6 +3191,14 @@ export default function App() {
                   <strong>Phone</strong>
                   <span>{selectedOrder.customer.phone}</span>
                 </p>
+                <p>
+                  <strong>Vehicle</strong>
+                  <span>
+                    {selectedOrder.vehicle
+                      ? `${selectedOrder.vehicle.make} ${selectedOrder.vehicle.model} (${selectedOrder.vehicle.registrationNumber})`
+                      : 'Not available'}
+                  </span>
+                </p>
               </article>
 
               <article className="order-detail-card-v2">
@@ -3126,7 +3224,7 @@ export default function App() {
               <article className="order-detail-card-v2 timeline">
                 <h5>Order History</h5>
                 <div className="order-timeline-v2">
-                  {renderOrderTimeline(selectedOrder.status).map((stepItem) => (
+                  {renderOrderTimeline(selectedOrder.sourceStatus, selectedOrder.status).map((stepItem) => (
                     <div
                       className={
                         stepItem.danger

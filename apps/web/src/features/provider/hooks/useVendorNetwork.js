@@ -11,10 +11,12 @@ const emptyVendorNetwork = {
   rejectedRequests: [],
 };
 
-export default function useVendorNetwork({ token, user, setMessage }) {
+export default function useVendorNetwork({ token, user, addToast }) {
   const [vendorNetwork, setVendorNetwork] = useState(emptyVendorNetwork);
   const [selectedVendorRequestId, setSelectedVendorRequestId] = useState('');
   const [vendorActionRequestId, setVendorActionRequestId] = useState('');
+  const [vendorLoading, setVendorLoading] = useState(false);
+  const [vendorError, setVendorError] = useState('');
 
   const activeVendorPartners = vendorNetwork.activePartners || [];
   const pendingVendorRequests = vendorNetwork.pendingRequests || [];
@@ -48,17 +50,28 @@ export default function useVendorNetwork({ token, user, setMessage }) {
   const loadVendorData = useCallback(async (accessToken = token) => {
     if (!accessToken || user?.accountType !== 'provider') {
       setVendorNetwork(emptyVendorNetwork);
+      setVendorError('');
       return emptyVendorNetwork;
     }
 
-    const data = await fetchVendorNetwork(accessToken);
-    const normalized = {
-      activePartners: Array.isArray(data?.activePartners) ? data.activePartners : [],
-      pendingRequests: Array.isArray(data?.pendingRequests) ? data.pendingRequests : [],
-      rejectedRequests: Array.isArray(data?.rejectedRequests) ? data.rejectedRequests : [],
-    };
-    setVendorNetwork(normalized);
-    return normalized;
+    setVendorLoading(true);
+    setVendorError('');
+    try {
+      const data = await fetchVendorNetwork(accessToken);
+      const normalized = {
+        activePartners: Array.isArray(data?.activePartners) ? data.activePartners : [],
+        pendingRequests: Array.isArray(data?.pendingRequests) ? data.pendingRequests : [],
+        rejectedRequests: Array.isArray(data?.rejectedRequests) ? data.rejectedRequests : [],
+      };
+      setVendorNetwork(normalized);
+      return normalized;
+    } catch (error) {
+      const nextError = error.message || 'Unable to load vendor data.';
+      setVendorError(nextError);
+      throw error;
+    } finally {
+      setVendorLoading(false);
+    }
   }, [token, user?.accountType]);
 
   const acceptVendorRequest = useCallback(async (requestId) => {
@@ -68,13 +81,21 @@ export default function useVendorNetwork({ token, user, setMessage }) {
     try {
       const accepted = await acceptVendorRequestApi(token, requestId);
       await loadVendorData(token);
-      setMessage(accepted?.name ? `${accepted.name} integration approved.` : 'Integration request approved.');
+      addToast({
+        type: 'success',
+        title: 'Vendor updated',
+        message: accepted?.name ? `${accepted.name} integration approved.` : 'Integration request approved.',
+      });
     } catch (error) {
-      setMessage(error.message || 'Unable to approve the integration request.');
+      addToast({
+        type: 'error',
+        title: 'Vendor action failed',
+        message: error.message || 'Unable to approve the integration request.',
+      });
     } finally {
       setVendorActionRequestId('');
     }
-  }, [loadVendorData, setMessage, token]);
+  }, [addToast, loadVendorData, token]);
 
   const rejectVendorRequest = useCallback(async (requestId) => {
     if (!token || !requestId) return;
@@ -83,13 +104,21 @@ export default function useVendorNetwork({ token, user, setMessage }) {
     try {
       const rejected = await rejectVendorRequestApi(token, requestId);
       await loadVendorData(token);
-      setMessage(rejected?.name ? `${rejected.name} integration rejected.` : 'Integration request rejected.');
+      addToast({
+        type: 'success',
+        title: 'Vendor updated',
+        message: rejected?.name ? `${rejected.name} integration rejected.` : 'Integration request rejected.',
+      });
     } catch (error) {
-      setMessage(error.message || 'Unable to reject the integration request.');
+      addToast({
+        type: 'error',
+        title: 'Vendor action failed',
+        message: error.message || 'Unable to reject the integration request.',
+      });
     } finally {
       setVendorActionRequestId('');
     }
-  }, [loadVendorData, setMessage, token]);
+  }, [addToast, loadVendorData, token]);
 
   return {
     activeVendorPartners,
@@ -102,6 +131,8 @@ export default function useVendorNetwork({ token, user, setMessage }) {
     setSelectedVendorRequestId,
     acceptVendorRequest,
     vendorActionRequestId,
+    vendorError,
+    vendorLoading,
     vendorStats,
   };
 }

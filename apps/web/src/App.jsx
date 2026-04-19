@@ -2,39 +2,60 @@ import { AppProvider, useApp } from './context/AppContext';
 import AuthPanel from './features/auth/AuthPanel';
 import CustomerDashboard from './features/customer/CustomerDashboard';
 import ProviderDashboard from './features/provider/ProviderDashboard';
+import ToastViewport from './features/shared/runtime/ToastViewport';
 import VisLandingPage from './VisLandingPage';
 
 function AppShell() {
-  const { step, user, token, theme, toggleTheme, openLogin, openRegister, openDashboard, signOut, health } =
+  const {
+    step,
+    user,
+    token,
+    theme,
+    toggleTheme,
+    openLogin,
+    openRegister,
+    openDashboard,
+    signOut,
+    health,
+    toasts,
+    dismissToast,
+  } =
     useApp();
 
-  if (step === 'dashboard' && user) {
-    return user.accountType === 'provider' ? <ProviderDashboard /> : <CustomerDashboard />;
-  }
+  let content = null;
 
-  if (step === 'auth' || step === 'otp') {
-    return (
+  if (step === 'dashboard' && user) {
+    content = user.accountType === 'provider' ? <ProviderDashboard /> : <CustomerDashboard />;
+  } else if (step === 'auth' || step === 'otp') {
+    content = (
       <section className="auth-page">
         <AuthPanel />
       </section>
     );
+  } else {
+    content = (
+      <div className="entry-layout landing-entry">
+        <VisLandingPage
+          isLoggedIn={Boolean(token && user)}
+          user={user}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+          onOpenLogin={openLogin}
+          onOpenRegister={openRegister}
+          onOpenDashboard={() => openDashboard()}
+          onOpenProfile={() => openDashboard('profile')}
+          onSignOut={signOut}
+          health={health}
+        />
+      </div>
+    );
   }
 
   return (
-    <div className="entry-layout landing-entry">
-      <VisLandingPage
-        isLoggedIn={Boolean(token && user)}
-        user={user}
-        theme={theme}
-        onToggleTheme={toggleTheme}
-        onOpenLogin={openLogin}
-        onOpenRegister={openRegister}
-        onOpenDashboard={() => openDashboard()}
-        onOpenProfile={() => openDashboard('profile')}
-        onSignOut={signOut}
-        health={health}
-      />
-    </div>
+    <>
+      {content}
+      <ToastViewport toasts={toasts} onDismiss={dismissToast} />
+    </>
   );
 }
 

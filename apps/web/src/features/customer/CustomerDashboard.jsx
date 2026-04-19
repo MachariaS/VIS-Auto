@@ -6,6 +6,8 @@ import { BellIcon, LogoutIcon, MoonIcon, SunIcon, UserIcon } from '../../shared/
 import { staticNotifications } from '../../shared/constants';
 import NotificationsTray from '../shared/NotificationsTray';
 import ProfilePanel from '../shared/ProfilePanel';
+import SectionErrorBoundary from '../shared/runtime/SectionErrorBoundary';
+import SectionState from '../shared/runtime/SectionState';
 import CustomerOverview from './CustomerOverview';
 import HistoryPanel from './HistoryPanel';
 import RequestPanel from './RequestPanel';
@@ -18,8 +20,7 @@ export default function CustomerDashboard() {
     theme,
     dashboardTab,
     setDashboardTab,
-    message,
-    setMessage,
+    addToast,
     sessionReady,
     signOut,
     toggleTheme,
@@ -35,6 +36,18 @@ export default function CustomerDashboard() {
   const [loading, setLoading] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const [sectionLoading, setSectionLoading] = useState({
+    overview: true,
+    request: true,
+    vehicles: true,
+    history: true,
+  });
+  const [sectionErrors, setSectionErrors] = useState({
+    overview: '',
+    request: '',
+    vehicles: '',
+    history: '',
+  });
 
   const requestStats = useMemo(
     () => ({
@@ -81,30 +94,79 @@ export default function CustomerDashboard() {
   }, [showAccountMenu, showNotifications]);
 
   async function loadCustomerDashboard(accessToken) {
-    const [vehicleData, requestData, catalogData] = await Promise.all([
+    setSectionLoading({
+      overview: true,
+      request: true,
+      vehicles: true,
+      history: true,
+    });
+    setSectionErrors({
+      overview: '',
+      request: '',
+      vehicles: '',
+      history: '',
+    });
+
+    const [vehicleResult, requestResult, catalogResult] = await Promise.allSettled([
       request('/vehicles', undefined, 'GET', accessToken),
       request('/roadside-requests', undefined, 'GET', accessToken),
       request('/provider-services/catalog', undefined, 'GET', accessToken),
     ]);
 
-    setVehicles(vehicleData);
-    setRequests(requestData);
-    setProviderCatalog(catalogData);
+    if (vehicleResult.status === 'fulfilled') {
+      const vehicleData = Array.isArray(vehicleResult.value) ? vehicleResult.value : [];
+      setVehicles(vehicleData);
 
-    if (vehicleData.length > 0) {
-      setRoadsideForm((current) => ({
+      if (vehicleData.length > 0) {
+        setRoadsideForm((current) => ({
+          ...current,
+          vehicleId: current.vehicleId || vehicleData[0].id,
+        }));
+      }
+    } else {
+      setSectionErrors((current) => ({
         ...current,
-        vehicleId: current.vehicleId || vehicleData[0].id,
+        overview: vehicleResult.reason?.message || 'Unable to load vehicles.',
+        request: vehicleResult.reason?.message || 'Unable to load vehicles.',
+        vehicles: vehicleResult.reason?.message || 'Unable to load vehicles.',
       }));
     }
 
-    if (catalogData.length > 0) {
-      setServiceFilter(catalogData[0].serviceCode);
-      setRoadsideForm((current) => ({
+    if (requestResult.status === 'fulfilled') {
+      setRequests(Array.isArray(requestResult.value) ? requestResult.value : []);
+    } else {
+      setSectionErrors((current) => ({
         ...current,
-        providerServiceId: current.providerServiceId || catalogData[0].id,
+        overview: requestResult.reason?.message || 'Unable to load request history.',
+        history: requestResult.reason?.message || 'Unable to load request history.',
       }));
     }
+
+    if (catalogResult.status === 'fulfilled') {
+      const catalogData = Array.isArray(catalogResult.value) ? catalogResult.value : [];
+      setProviderCatalog(catalogData);
+
+      if (catalogData.length > 0) {
+        setServiceFilter(catalogData[0].serviceCode);
+        setRoadsideForm((current) => ({
+          ...current,
+          providerServiceId: current.providerServiceId || catalogData[0].id,
+        }));
+      }
+    } else {
+      setSectionErrors((current) => ({
+        ...current,
+        overview: catalogResult.reason?.message || 'Unable to load provider catalog.',
+        request: catalogResult.reason?.message || 'Unable to load provider catalog.',
+      }));
+    }
+
+    setSectionLoading({
+      overview: false,
+      request: false,
+      vehicles: false,
+      history: false,
+    });
   }
 
   async function handleAddVehicle(event) {
@@ -116,9 +178,17 @@ export default function CustomerDashboard() {
       setVehicleForm(initialVehicle);
       setRoadsideForm((current) => ({ ...current, vehicleId: newVehicle.id }));
       setDashboardTab('vehicles');
-      setMessage(`Vehicle saved: ${newVehicle.nickname}`);
+      addToast({
+        type: 'success',
+        title: 'Vehicle saved',
+        message: `Vehicle saved: ${newVehicle.nickname}`,
+      });
     } catch (error) {
-      setMessage(error.message);
+      addToast({
+        type: 'error',
+        title: 'Vehicle save failed',
+        message: error.message || 'Unable to save vehicle.',
+      });
     } finally {
       setLoading(false);
     }
@@ -167,9 +237,17 @@ export default function CustomerDashboard() {
         providerServiceId: current.providerServiceId,
       }));
       setDashboardTab('history');
-      setMessage(`Request created. Estimated total ${formatCurrency(newRequest.estimatedPriceKsh)}.`);
+      addToast({
+        type: 'success',
+        title: 'Request created',
+        message: `Estimated total ${formatCurrency(newRequest.estimatedPriceKsh)}.`,
+      });
     } catch (error) {
-      setMessage(error.message);
+      addToast({
+        type: 'error',
+        title: 'Request creation failed',
+        message: error.message || 'Unable to submit roadside request.',
+      });
     } finally {
       setLoading(false);
     }
@@ -177,7 +255,11 @@ export default function CustomerDashboard() {
 
   function handleUseCurrentLocation() {
     if (!navigator.geolocation) {
-      setMessage('Geolocation is not supported in this browser.');
+      addToast({
+        type: 'error',
+        title: 'Location unavailable',
+        message: 'Geolocation is not supported in this browser.',
+      });
       return;
     }
     setLoading(true);
@@ -188,14 +270,36 @@ export default function CustomerDashboard() {
           latitude: position.coords.latitude.toFixed(6),
           longitude: position.coords.longitude.toFixed(6),
         }));
-        setMessage('Location captured.');
+        addToast({
+          type: 'success',
+          title: 'Location captured',
+          message: 'Current coordinates were added to the request.',
+        });
         setLoading(false);
       },
       () => {
-        setMessage('Unable to capture location. Enter coordinates manually.');
+        addToast({
+          type: 'error',
+          title: 'Location failed',
+          message: 'Unable to capture location. Enter coordinates manually.',
+        });
         setLoading(false);
       },
     );
+  }
+
+  function handleSectionBoundaryError(sectionKey) {
+    return () => {
+      setSectionErrors((current) => ({
+        ...current,
+        [sectionKey]: 'This section crashed while rendering.',
+      }));
+      addToast({
+        type: 'error',
+        title: 'Section failed',
+        message: `The ${sectionKey} section encountered an unexpected error.`,
+      });
+    };
   }
 
   const topbarLabel = useMemo(() => ({
@@ -324,30 +428,88 @@ export default function CustomerDashboard() {
         ) : null}
 
         {dashboardTab === 'overview' ? (
-          <CustomerOverview onNewRequest={() => setDashboardTab('request')} />
+          <SectionErrorBoundary
+            resetKey={`customer-overview-${sectionErrors.overview}-${requests.length}-${vehicles.length}`}
+            onError={handleSectionBoundaryError('overview')}
+            onRetry={() => loadCustomerDashboard(token)}
+          >
+            <SectionState
+              loading={sectionLoading.overview}
+              error={sectionErrors.overview}
+              onRetry={() => loadCustomerDashboard(token)}
+              skeleton="grid"
+              title="Unable to load dashboard overview."
+            >
+              <CustomerOverview onNewRequest={() => setDashboardTab('request')} />
+            </SectionState>
+          </SectionErrorBoundary>
         ) : null}
         {dashboardTab === 'request' ? (
-          <RequestPanel
-            vehicles={vehicles}
-            providerCatalog={providerCatalog}
-            serviceFilter={serviceFilter}
-            setServiceFilter={setServiceFilter}
-            roadsideForm={roadsideForm}
-            setRoadsideForm={setRoadsideForm}
-            onSubmit={handleSubmitRoadsideRequest}
-            onUseCurrentLocation={handleUseCurrentLocation}
-            loading={loading}
-          />
+          <SectionErrorBoundary
+            resetKey={`customer-request-${sectionErrors.request}-${providerCatalog.length}-${vehicles.length}`}
+            onError={handleSectionBoundaryError('request')}
+            onRetry={() => loadCustomerDashboard(token)}
+          >
+            <SectionState
+              loading={sectionLoading.request}
+              error={sectionErrors.request}
+              onRetry={() => loadCustomerDashboard(token)}
+              skeleton="form"
+              title="Unable to load roadside request form."
+            >
+              <RequestPanel
+                vehicles={vehicles}
+                providerCatalog={providerCatalog}
+                serviceFilter={serviceFilter}
+                setServiceFilter={setServiceFilter}
+                roadsideForm={roadsideForm}
+                setRoadsideForm={setRoadsideForm}
+                onSubmit={handleSubmitRoadsideRequest}
+                onUseCurrentLocation={handleUseCurrentLocation}
+                loading={loading}
+              />
+            </SectionState>
+          </SectionErrorBoundary>
         ) : null}
         {dashboardTab === 'vehicles' ? (
-          <VehiclePanel
-            vehicleForm={vehicleForm}
-            setVehicleForm={setVehicleForm}
-            onSubmit={handleAddVehicle}
-            loading={loading}
-          />
+          <SectionErrorBoundary
+            resetKey={`customer-vehicles-${sectionErrors.vehicles}-${vehicles.length}`}
+            onError={handleSectionBoundaryError('vehicles')}
+            onRetry={() => loadCustomerDashboard(token)}
+          >
+            <SectionState
+              loading={sectionLoading.vehicles}
+              error={sectionErrors.vehicles}
+              onRetry={() => loadCustomerDashboard(token)}
+              skeleton="form"
+              title="Unable to load vehicles."
+            >
+              <VehiclePanel
+                vehicleForm={vehicleForm}
+                setVehicleForm={setVehicleForm}
+                onSubmit={handleAddVehicle}
+                loading={loading}
+              />
+            </SectionState>
+          </SectionErrorBoundary>
         ) : null}
-        {dashboardTab === 'history' ? <HistoryPanel requests={requests} /> : null}
+        {dashboardTab === 'history' ? (
+          <SectionErrorBoundary
+            resetKey={`customer-history-${sectionErrors.history}-${requests.length}`}
+            onError={handleSectionBoundaryError('history')}
+            onRetry={() => loadCustomerDashboard(token)}
+          >
+            <SectionState
+              loading={sectionLoading.history}
+              error={sectionErrors.history}
+              onRetry={() => loadCustomerDashboard(token)}
+              skeleton="grid"
+              title="Unable to load request history."
+            >
+              <HistoryPanel requests={requests} />
+            </SectionState>
+          </SectionErrorBoundary>
+        ) : null}
         {dashboardTab === 'profile' ? <ProfilePanel /> : null}
       </div>
     </section>

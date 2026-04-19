@@ -7,6 +7,7 @@ import {
 import { getDefaultProfile, mergeUniqueList, request } from '../shared/helpers';
 
 const AppContext = createContext(null);
+let toastCounter = 0;
 
 export function AppProvider({ children }) {
   const [health, setHealth] = useState(null);
@@ -16,6 +17,7 @@ export function AppProvider({ children }) {
   const [step, setStep] = useState('entry');
   const [dashboardTab, setDashboardTab] = useState('overview');
   const [message, setMessage] = useState('');
+  const [toasts, setToasts] = useState([]);
   const [sessionReady, setSessionReady] = useState(false);
   const [profileSettings, setProfileSettings] = useState(() => ({
     ...getDefaultProfile(null),
@@ -309,6 +311,19 @@ export function AppProvider({ children }) {
     setMessage('Profile settings saved locally for this MVP session.');
   }
 
+  function dismissToast(toastId) {
+    setToasts((current) => current.filter((toast) => toast.id !== toastId));
+  }
+
+  function addToast(input) {
+    const toast = typeof input === 'string' ? { message: input } : input;
+    const id = `toast-${Date.now()}-${toastCounter++}`;
+    setToasts((current) => [...current, { type: 'info', title: 'Notice', ...toast, id }]);
+    window.setTimeout(() => {
+      setToasts((current) => current.filter((item) => item.id !== id));
+    }, toast.durationMs || 4200);
+  }
+
   const value = {
     health,
     user,
@@ -323,6 +338,9 @@ export function AppProvider({ children }) {
     setDashboardTab,
     message,
     setMessage,
+    toasts,
+    addToast,
+    dismissToast,
     sessionReady,
     profileSettings,
     setProfileSettings,

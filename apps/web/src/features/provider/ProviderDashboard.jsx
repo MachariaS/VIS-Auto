@@ -9,6 +9,8 @@ import { BellIcon } from '../../shared/icons';
 import NotificationsTray from '../shared/NotificationsTray';
 import ProfilePanel from '../shared/ProfilePanel';
 import SettingsPanel from '../shared/SettingsPanel';
+import SectionErrorBoundary from '../shared/runtime/SectionErrorBoundary';
+import SectionState from '../shared/runtime/SectionState';
 import useProviderOrders from './hooks/useProviderOrders';
 import useVendorNetwork from './hooks/useVendorNetwork';
 import OrdersPanel from './OrdersPanel';
@@ -28,7 +30,7 @@ export default function ProviderDashboard() {
     dashboardTab,
     setDashboardTab,
     message,
-    setMessage,
+    addToast,
     sessionReady,
     profileSettings,
     setProfileSettings,
@@ -50,6 +52,18 @@ export default function ProviderDashboard() {
   const [loading, setLoading] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const [sectionLoading, setSectionLoading] = useState({
+    overview: true,
+    services: true,
+    vendors: true,
+    orders: true,
+  });
+  const [sectionErrors, setSectionErrors] = useState({
+    overview: '',
+    services: '',
+    vendors: '',
+    orders: '',
+  });
 
   const {
     activeVendorPartners,
@@ -61,8 +75,10 @@ export default function ProviderDashboard() {
     selectedVendorRequestId,
     setSelectedVendorRequestId,
     vendorActionRequestId,
+    vendorError,
+    vendorLoading,
     vendorStats,
-  } = useVendorNetwork({ token, user, setMessage });
+  } = useVendorNetwork({ token, user, addToast });
 
   const vendorNotificationCount = pendingVendorRequests.length;
   const notificationCount = staticNotifications.length + vendorNotificationCount;
@@ -77,7 +93,7 @@ export default function ProviderDashboard() {
   useEffect(() => {
     if (!sessionReady || !token) return;
     void loadProviderDashboard(token);
-  }, [loadVendorData, sessionReady, token]);
+  }, [sessionReady, token]);
 
   useEffect(() => {
     if (providerServices.length === 0) return;
@@ -120,13 +136,60 @@ export default function ProviderDashboard() {
   }, [orderActionMenuId, showAccountMenu, showNotifications]);
 
   async function loadProviderDashboard(accessToken) {
-    const [serviceData, providerRequestData] = await Promise.all([
+    setSectionLoading({
+      overview: true,
+      services: true,
+      vendors: true,
+      orders: true,
+    });
+    setSectionErrors({
+      overview: '',
+      services: '',
+      vendors: '',
+      orders: '',
+    });
+
+    const [serviceResult, requestResult, vendorResult] = await Promise.allSettled([
       request('/provider-services', undefined, 'GET', accessToken),
-      request('/roadside-requests/provider', undefined, 'GET', accessToken).catch(() => []),
-      loadVendorData(accessToken).catch(() => null),
+      request('/roadside-requests/provider', undefined, 'GET', accessToken),
+      loadVendorData(accessToken),
     ]);
-    setProviderServices(serviceData);
-    setRequests(Array.isArray(providerRequestData) ? providerRequestData : []);
+
+    if (serviceResult.status === 'fulfilled') {
+      setProviderServices(serviceResult.value);
+      setSectionErrors((current) => ({ ...current, services: '' }));
+    } else {
+      setSectionErrors((current) => ({
+        ...current,
+        overview: serviceResult.reason?.message || 'Unable to load provider services.',
+        services: serviceResult.reason?.message || 'Unable to load provider services.',
+      }));
+    }
+
+    if (requestResult.status === 'fulfilled') {
+      setRequests(Array.isArray(requestResult.value) ? requestResult.value : []);
+      setSectionErrors((current) => ({ ...current, orders: '' }));
+    } else {
+      setSectionErrors((current) => ({
+        ...current,
+        overview: requestResult.reason?.message || 'Unable to load provider requests.',
+        orders: requestResult.reason?.message || 'Unable to load provider requests.',
+      }));
+    }
+
+    if (vendorResult.status === 'rejected') {
+      setSectionErrors((current) => ({
+        ...current,
+        vendors: vendorResult.reason?.message || 'Unable to load vendor data.',
+      }));
+    }
+
+    setSectionLoading({
+      overview: false,
+      services: false,
+      vendors: false,
+      orders: false,
+    });
   }
 
   async function handleAddProviderService(event) {
@@ -176,13 +239,19 @@ export default function ProviderDashboard() {
       setEditingProviderServiceId('');
       setShowProviderServiceComposer(false);
       setDashboardTab('services');
-      setMessage(
-        editingProviderServiceId
+      addToast({
+        type: 'success',
+        title: 'Service saved',
+        message: editingProviderServiceId
           ? `Service updated: ${savedService.serviceName}`
           : `Service published: ${savedService.serviceName}`,
-      );
+      });
     } catch (error) {
-      setMessage(error.message);
+      addToast({
+        type: 'error',
+        title: 'Service save failed',
+        message: error.message || 'Unable to save provider service.',
+      });
     } finally {
       setLoading(false);
     }
@@ -195,9 +264,11 @@ export default function ProviderDashboard() {
       return;
     }
     if (actionType === 'contact') {
-      setMessage(
-        `Contact details: ${orderItem.customer?.phone || orderItem.customer?.email || 'Not shared'}.`,
-      );
+      addToast({
+        type: 'info',
+        title: 'Customer contact',
+        message: orderItem.customer?.phone || orderItem.customer?.email || 'Not shared',
+      });
       return;
     }
     const nextStatusByAction = {
@@ -218,12 +289,34 @@ export default function ProviderDashboard() {
       );
       const refreshed = await request('/roadside-requests/provider', undefined, 'GET', token);
       setRequests(Array.isArray(refreshed) ? refreshed : []);
-      setMessage(`Request ${orderItem.id} moved to ${nextStatus.replaceAll('_', ' ')}.`);
+      addToast({
+        type: 'success',
+        title: 'Request updated',
+        message: `Request ${orderItem.id} moved to ${nextStatus.replaceAll('_', ' ')}.`,
+      });
     } catch (error) {
-      setMessage(error.message || 'Unable to update order status.');
+      addToast({
+        type: 'error',
+        title: 'Request update failed',
+        message: error.message || 'Unable to update order status.',
+      });
     } finally {
       setUpdatingOrderId('');
     }
+  }
+
+  function handleSectionBoundaryError(sectionKey) {
+    return () => {
+      setSectionErrors((current) => ({
+        ...current,
+        [sectionKey]: 'This section crashed while rendering.',
+      }));
+      addToast({
+        type: 'error',
+        title: 'Section failed',
+        message: `The ${sectionKey} section encountered an unexpected error.`,
+      });
+    };
   }
 
   function openVendorRequestReview(requestId) {
@@ -370,71 +463,133 @@ export default function ProviderDashboard() {
           ) : null}
 
           {dashboardTab === 'overview' ? (
-            <ProviderOverview
-              user={user}
-              requests={requests}
-              providerServices={providerServices}
-              onAddService={() => {
-                setDashboardTab('services');
-                setEditingProviderServiceId('');
-                setProviderServiceForm(initialProviderService);
-                setShowProviderServiceComposer(true);
-              }}
-              onManageServices={() => setDashboardTab('services')}
-            />
+            <SectionErrorBoundary
+              resetKey={`provider-overview-${sectionErrors.overview}-${requests.length}-${providerServices.length}`}
+              onError={handleSectionBoundaryError('overview')}
+              onRetry={() => loadProviderDashboard(token)}
+            >
+              <SectionState
+                loading={sectionLoading.overview}
+                error={sectionErrors.overview}
+                onRetry={() => loadProviderDashboard(token)}
+                skeleton="grid"
+                title="Unable to load dashboard overview."
+              >
+                <ProviderOverview
+                  user={user}
+                  requests={requests}
+                  providerServices={providerServices}
+                  onAddService={() => {
+                    setDashboardTab('services');
+                    setEditingProviderServiceId('');
+                    setProviderServiceForm(initialProviderService);
+                    setShowProviderServiceComposer(true);
+                  }}
+                  onManageServices={() => setDashboardTab('services')}
+                />
+              </SectionState>
+            </SectionErrorBoundary>
           ) : null}
 
           {dashboardTab === 'services' ? (
-            <ServicesPanel
-              providerServices={providerServices}
-              providerServiceForm={providerServiceForm}
-              setProviderServiceForm={setProviderServiceForm}
-              editingProviderServiceId={editingProviderServiceId}
-              setEditingProviderServiceId={setEditingProviderServiceId}
-              showProviderServiceComposer={showProviderServiceComposer}
-              setShowProviderServiceComposer={setShowProviderServiceComposer}
-              onSubmit={handleAddProviderService}
-              loading={loading}
-              message={message}
-            />
+            <SectionErrorBoundary
+              resetKey={`provider-services-${sectionErrors.services}-${providerServices.length}`}
+              onError={handleSectionBoundaryError('services')}
+              onRetry={() => loadProviderDashboard(token)}
+            >
+              <SectionState
+                loading={sectionLoading.services}
+                error={sectionErrors.services}
+                onRetry={() => loadProviderDashboard(token)}
+                skeleton="form"
+                title="Unable to load provider services."
+              >
+                <ServicesPanel
+                  providerServices={providerServices}
+                  providerServiceForm={providerServiceForm}
+                  setProviderServiceForm={setProviderServiceForm}
+                  editingProviderServiceId={editingProviderServiceId}
+                  setEditingProviderServiceId={setEditingProviderServiceId}
+                  showProviderServiceComposer={showProviderServiceComposer}
+                  setShowProviderServiceComposer={setShowProviderServiceComposer}
+                  onSubmit={handleAddProviderService}
+                  loading={loading}
+                  message={message}
+                />
+              </SectionState>
+            </SectionErrorBoundary>
           ) : null}
 
           {dashboardTab === 'vendors' ? (
-            <VendorsPanel
-              activeVendorPartners={activeVendorPartners}
-              pendingVendorRequests={pendingVendorRequests}
-              vendorStats={vendorStats}
-              focusedVendorRequest={focusedVendorRequest}
-              selectedVendorRequestId={selectedVendorRequestId}
-              setSelectedVendorRequestId={setSelectedVendorRequestId}
-              vendorActionRequestId={vendorActionRequestId}
-              onAccept={acceptVendorRequest}
-              onReject={rejectVendorRequest}
-              onOpenNotifications={() => {
-                setShowNotifications(true);
-                setShowAccountMenu(false);
-              }}
-            />
+            <SectionErrorBoundary
+              resetKey={`provider-vendors-${sectionErrors.vendors || vendorError}-${pendingVendorRequests.length}-${activeVendorPartners.length}`}
+              onError={handleSectionBoundaryError('vendors')}
+              onRetry={() => loadVendorData(token)}
+            >
+              <SectionState
+                loading={sectionLoading.vendors || vendorLoading}
+                error={sectionErrors.vendors || vendorError}
+                onRetry={() => loadVendorData(token)}
+                skeleton="grid"
+                title="Unable to load vendor management."
+              >
+                <VendorsPanel
+                  activeVendorPartners={activeVendorPartners}
+                  pendingVendorRequests={pendingVendorRequests}
+                  vendorStats={vendorStats}
+                  focusedVendorRequest={focusedVendorRequest}
+                  selectedVendorRequestId={selectedVendorRequestId}
+                  setSelectedVendorRequestId={setSelectedVendorRequestId}
+                  vendorActionRequestId={vendorActionRequestId}
+                  onAccept={acceptVendorRequest}
+                  onReject={rejectVendorRequest}
+                  onOpenNotifications={() => {
+                    setShowNotifications(true);
+                    setShowAccountMenu(false);
+                  }}
+                />
+              </SectionState>
+            </SectionErrorBoundary>
           ) : null}
 
           {dashboardTab === 'orders' ? (
-            <OrdersPanel
-              providerOrders={requests}
-              filteredProviderOrders={filteredProviderOrders}
-              orderCounts={orderCounts}
-              selectedOrder={selectedOrder}
-              orderHistoryTab={orderHistoryTab}
-              setOrderHistoryTab={setOrderHistoryTab}
-              ordersFromDate={ordersFromDate}
-              setOrdersFromDate={setOrdersFromDate}
-              ordersToDate={ordersToDate}
-              setOrdersToDate={setOrdersToDate}
-              orderActionMenuId={orderActionMenuId}
-              setOrderActionMenuId={setOrderActionMenuId}
-              updatingOrderId={updatingOrderId}
-              onRowAction={handleOrderRowAction}
-              setMessage={setMessage}
-            />
+            <SectionErrorBoundary
+              resetKey={`provider-orders-${sectionErrors.orders}-${requests.length}`}
+              onError={handleSectionBoundaryError('orders')}
+              onRetry={() => loadProviderDashboard(token)}
+            >
+              <SectionState
+                loading={sectionLoading.orders}
+                error={sectionErrors.orders}
+                onRetry={() => loadProviderDashboard(token)}
+                skeleton="grid"
+                title="Unable to load provider orders."
+              >
+                <OrdersPanel
+                  providerOrders={requests}
+                  filteredProviderOrders={filteredProviderOrders}
+                  orderCounts={orderCounts}
+                  selectedOrder={selectedOrder}
+                  orderHistoryTab={orderHistoryTab}
+                  setOrderHistoryTab={setOrderHistoryTab}
+                  ordersFromDate={ordersFromDate}
+                  setOrdersFromDate={setOrdersFromDate}
+                  ordersToDate={ordersToDate}
+                  setOrdersToDate={setOrdersToDate}
+                  orderActionMenuId={orderActionMenuId}
+                  setOrderActionMenuId={setOrderActionMenuId}
+                  updatingOrderId={updatingOrderId}
+                  onRowAction={handleOrderRowAction}
+                  onNotify={(nextMessage) =>
+                    addToast({
+                      type: 'info',
+                      title: 'Request action',
+                      message: nextMessage,
+                    })
+                  }
+                />
+              </SectionState>
+            </SectionErrorBoundary>
           ) : null}
 
           {dashboardTab === 'ratings' ? <RatingsPanel /> : null}

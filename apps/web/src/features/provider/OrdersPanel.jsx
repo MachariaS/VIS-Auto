@@ -66,7 +66,7 @@ export default function OrdersPanel({
   setOrderActionMenuId,
   updatingOrderId,
   onRowAction,
-  setMessage,
+  onNotify,
 }) {
   return (
     <section className="provider-home-v2 order-history-v2">
@@ -223,7 +223,7 @@ export default function OrdersPanel({
               <button
                 className="secondary-cta"
                 type="button"
-                onClick={() => setMessage(`Print view prepared for ${selectedOrder.id}.`)}
+                onClick={() => onNotify?.(`Print view prepared for ${selectedOrder.id}.`)}
               >
                 Print
               </button>

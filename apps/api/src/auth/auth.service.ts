@@ -67,7 +67,56 @@ export class AuthService {
 
     await this.otpChallengesRepository.delete({ email });
 
-    const payload = {
+    const accessPayload = {
+      sub: user.id,
+      email: user.email,
+      name: user.name,
+      accountType: user.accountType,
+    };
+
+    const refreshPayload = { sub: user.id, type: 'refresh' };
+
+    const [accessToken, refreshToken] = await Promise.all([
+      this.jwtService.signAsync(accessPayload),
+      this.jwtService.signAsync(refreshPayload, {
+        secret: this.configService.get<string>('REFRESH_TOKEN_SECRET', 'dev-refresh-secret'),
+        expiresIn: '7d',
+      }),
+    ]);
+
+    return {
+      accessToken,
+      refreshToken,
+      user: this.usersService.toSafeUser(user),
+    };
+  }
+
+  async refresh(refreshToken: string | undefined) {
+    if (!refreshToken) {
+      throw new UnauthorizedException('No refresh token.');
+    }
+
+    let payload: { sub: string; type: string };
+
+    try {
+      payload = await this.jwtService.verifyAsync(refreshToken, {
+        secret: this.configService.get<string>('REFRESH_TOKEN_SECRET', 'dev-refresh-secret'),
+      });
+    } catch {
+      throw new UnauthorizedException('Invalid or expired refresh token.');
+    }
+
+    if (payload.type !== 'refresh') {
+      throw new UnauthorizedException('Invalid token type.');
+    }
+
+    const user = await this.usersService.findById(payload.sub);
+
+    if (!user) {
+      throw new UnauthorizedException('User not found.');
+    }
+
+    const accessPayload = {
       sub: user.id,
       email: user.email,
       name: user.name,
@@ -75,7 +124,7 @@ export class AuthService {
     };
 
     return {
-      accessToken: await this.jwtService.signAsync(payload),
+      accessToken: await this.jwtService.signAsync(accessPayload),
       user: this.usersService.toSafeUser(user),
     };
   }

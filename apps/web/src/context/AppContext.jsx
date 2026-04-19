@@ -116,11 +116,28 @@ export function AppProvider({ children }) {
     if (storedSession) {
       try {
         const parsed = JSON.parse(storedSession);
-        if (parsed.token && parsed.user) {
-          setToken(parsed.token);
+        if (parsed.user) {
+          // Restore non-sensitive session state immediately so UI renders correctly
           setUser(parsed.user);
           setStep(parsed.step ?? 'dashboard');
           setDashboardTab(parsed.dashboardTab ?? 'overview');
+
+          // Recover the access token from the httpOnly refresh cookie — no JWT in localStorage
+          fetch(`http://localhost:4000/auth/refresh`, { method: 'POST', credentials: 'include' })
+            .then((res) => (res.ok ? res.json() : Promise.reject()))
+            .then((data) => {
+              setToken(data.accessToken);
+              if (data.user) setUser(data.user);
+            })
+            .catch(() => {
+              // Refresh token expired or missing — require re-login
+              setUser(null);
+              setStep('entry');
+              window.localStorage.removeItem(SESSION_STORAGE_KEY);
+            })
+            .finally(() => setSessionReady(true));
+
+          return;
         }
       } catch {
         window.localStorage.removeItem(SESSION_STORAGE_KEY);
@@ -139,15 +156,16 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     if (!sessionReady) return;
-    if (token && user) {
+    if (user) {
+      // Store only non-sensitive data — the JWT never touches localStorage
       window.localStorage.setItem(
         SESSION_STORAGE_KEY,
-        JSON.stringify({ token, user, step, dashboardTab }),
+        JSON.stringify({ user, step, dashboardTab }),
       );
     } else {
       window.localStorage.removeItem(SESSION_STORAGE_KEY);
     }
-  }, [dashboardTab, sessionReady, step, token, user]);
+  }, [dashboardTab, sessionReady, step, user]);
 
   useEffect(() => {
     if (!sessionReady) return;
@@ -184,6 +202,10 @@ export function AppProvider({ children }) {
     setMessage('');
     setStep('entry');
     window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    // Clear the httpOnly refresh token cookie on the server
+    fetch('http://localhost:4000/auth/logout', { method: 'POST', credentials: 'include' }).catch(
+      () => {},
+    );
   }
 
   function openDashboard(tab = 'overview') {

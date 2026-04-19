@@ -67,6 +67,7 @@ export default function OrdersPanel({
   updatingOrderId,
   onRowAction,
   onNotify,
+  onShareLocation,
 }) {
   return (
     <section className="provider-home-v2 order-history-v2">
@@ -191,6 +192,15 @@ export default function OrdersPanel({
                     {orderItem.status !== 'completed' && orderItem.status !== 'cancelled' ? (
                       <button
                         type="button"
+                        onClick={() => onShareLocation?.(orderItem)}
+                        disabled={updatingOrderId === orderItem.id}
+                      >
+                        Share Live Location
+                      </button>
+                    ) : null}
+                    {orderItem.status !== 'completed' && orderItem.status !== 'cancelled' ? (
+                      <button
+                        type="button"
                         className="danger"
                         onClick={() => onRowAction('cancel', orderItem)}
                         disabled={updatingOrderId === orderItem.id}
@@ -227,6 +237,15 @@ export default function OrdersPanel({
               >
                 Print
               </button>
+              {selectedOrder.status !== 'completed' && selectedOrder.status !== 'cancelled' ? (
+                <button
+                  className="ghost-button"
+                  type="button"
+                  onClick={() => onShareLocation?.(selectedOrder)}
+                >
+                  Share live location
+                </button>
+              ) : null}
             </div>
           </header>
 

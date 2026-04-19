@@ -6,6 +6,7 @@ import { UsersService } from '../users/users.service';
 import { VehiclesService } from '../vehicles/vehicles.service';
 import { CreateRoadsideRequestDto } from './dto/create-roadside-request.dto';
 import { RoadsideRequestEntity } from './roadside-request.entity';
+import { UpdateProviderLocationDto } from './dto/update-provider-location.dto';
 
 export interface RoadsideRequest {
   id: string;
@@ -31,6 +32,9 @@ export interface RoadsideRequest {
   status: 'searching' | 'provider_assigned' | 'in_progress' | 'completed' | 'cancelled';
   etaMinutes: number;
   estimatedPriceKsh: number;
+  providerLatitude?: number;
+  providerLongitude?: number;
+  providerLocationUpdatedAt?: string;
   customer?: {
     id: string;
     name: string;
@@ -46,6 +50,23 @@ export interface RoadsideRequest {
     year: number;
   };
   createdAt: string;
+}
+
+export interface RoadsideRequestTrackingStatus {
+  id: string;
+  status: RoadsideRequest['status'];
+  etaMinutes: number;
+  address: string;
+  latitude: number;
+  longitude: number;
+  providerName: string;
+  issueType: string;
+  providerLocation: {
+    latitude: number;
+    longitude: number;
+    updatedAt: string;
+  } | null;
+  updatedAt: string | null;
 }
 
 type ProviderManagedStatus =
@@ -117,6 +138,12 @@ export class RoadsideRequestsService {
 
     request.status = status;
 
+    if ((status === 'provider_assigned' || status === 'in_progress') && request.providerLatitude === undefined) {
+      request.providerLatitude = Number((Number(request.latitude) + 0.0125).toFixed(6));
+      request.providerLongitude = Number((Number(request.longitude) - 0.0085).toFixed(6));
+      request.providerLocationUpdatedAt = new Date();
+    }
+
     const saved = await this.roadsideRequestsRepository.save(request);
 
     return this.toRoadsideRequest(saved, true);
@@ -164,6 +191,52 @@ export class RoadsideRequestsService {
     const saved = await this.roadsideRequestsRepository.save(request);
 
     return this.toRoadsideRequest(saved);
+  }
+
+  async getTrackingStatus(actorUserId: string, requestId: string): Promise<RoadsideRequestTrackingStatus> {
+    const request = await this.roadsideRequestsRepository.findOneBy({ id: requestId });
+
+    if (!request) {
+      throw new NotFoundException('Roadside request not found.');
+    }
+
+    if (request.userId !== actorUserId && request.providerId !== actorUserId) {
+      throw new NotFoundException('Roadside request not found.');
+    }
+
+    return this.toTrackingStatus(request);
+  }
+
+  async updateProviderLocation(
+    providerId: string,
+    requestId: string,
+    dto: UpdateProviderLocationDto,
+  ) {
+    const request = await this.roadsideRequestsRepository.findOneBy({ id: requestId });
+
+    if (!request) {
+      throw new NotFoundException('Roadside request not found.');
+    }
+
+    if (request.providerId !== providerId) {
+      throw new NotFoundException('Roadside request not found for this provider.');
+    }
+
+    if (request.status === 'completed' || request.status === 'cancelled') {
+      throw new BadRequestException('Location updates are only available for active requests.');
+    }
+
+    request.providerLatitude = dto.latitude;
+    request.providerLongitude = dto.longitude;
+    request.providerLocationUpdatedAt = new Date();
+
+    if (dto.etaMinutes !== undefined) {
+      request.etaMinutes = Math.round(dto.etaMinutes);
+    }
+
+    const saved = await this.roadsideRequestsRepository.save(request);
+
+    return this.toTrackingStatus(saved);
   }
 
   private estimateEta(serviceCode: string, distanceKm: number) {
@@ -218,6 +291,15 @@ export class RoadsideRequestsService {
       distanceKm: Number(request.distanceKm),
       latitude: Number(request.latitude),
       longitude: Number(request.longitude),
+      providerLatitude:
+        request.providerLatitude === null || request.providerLatitude === undefined
+          ? undefined
+          : Number(request.providerLatitude),
+      providerLongitude:
+        request.providerLongitude === null || request.providerLongitude === undefined
+          ? undefined
+          : Number(request.providerLongitude),
+      providerLocationUpdatedAt: request.providerLocationUpdatedAt?.toISOString(),
       createdAt: request.createdAt.toISOString(),
     };
 
@@ -250,6 +332,32 @@ export class RoadsideRequestsService {
             year: vehicle.year,
           }
         : undefined,
+    };
+  }
+
+  private toTrackingStatus(request: RoadsideRequestEntity): RoadsideRequestTrackingStatus {
+    return {
+      id: request.id,
+      status: request.status,
+      etaMinutes: Number(request.etaMinutes),
+      address: request.address,
+      latitude: Number(request.latitude),
+      longitude: Number(request.longitude),
+      providerName: request.providerName,
+      issueType: request.issueType,
+      providerLocation:
+        request.providerLatitude === null ||
+        request.providerLatitude === undefined ||
+        request.providerLongitude === null ||
+        request.providerLongitude === undefined ||
+        !request.providerLocationUpdatedAt
+          ? null
+          : {
+              latitude: Number(request.providerLatitude),
+              longitude: Number(request.providerLongitude),
+              updatedAt: request.providerLocationUpdatedAt.toISOString(),
+            },
+      updatedAt: request.providerLocationUpdatedAt?.toISOString() || null,
     };
   }
 }

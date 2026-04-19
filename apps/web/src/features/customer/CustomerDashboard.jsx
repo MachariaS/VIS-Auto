@@ -506,7 +506,7 @@ export default function CustomerDashboard() {
               skeleton="grid"
               title="Unable to load request history."
             >
-              <HistoryPanel requests={requests} />
+              <HistoryPanel requests={requests} token={token} />
             </SectionState>
           </SectionErrorBoundary>
         ) : null}

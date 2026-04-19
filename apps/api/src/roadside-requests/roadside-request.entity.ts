@@ -59,6 +59,15 @@ export class RoadsideRequestEntity {
   @Column({ type: 'int' })
   estimatedPriceKsh!: number;
 
+  @Column({ type: 'numeric', precision: 10, scale: 6, nullable: true })
+  providerLatitude?: number;
+
+  @Column({ type: 'numeric', precision: 10, scale: 6, nullable: true })
+  providerLongitude?: number;
+
+  @Column({ type: 'timestamp', nullable: true })
+  providerLocationUpdatedAt?: Date;
+
   @CreateDateColumn()
   createdAt!: Date;
 }

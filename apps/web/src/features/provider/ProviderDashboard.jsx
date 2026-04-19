@@ -305,6 +305,71 @@ export default function ProviderDashboard() {
     }
   }
 
+  function estimateLiveEta(orderItem, position) {
+    const requestLat = Number(orderItem.latitude || 0);
+    const requestLng = Number(orderItem.longitude || 0);
+    const latDelta = requestLat - Number(position.coords.latitude || 0);
+    const lngDelta = requestLng - Number(position.coords.longitude || 0);
+    const approxKm = Math.sqrt(latDelta ** 2 + lngDelta ** 2) * 111;
+    return Math.max(2, Math.round(approxKm * 2.2));
+  }
+
+  function handleShareProviderLocation(orderItem) {
+    if (!token) return;
+
+    if (!navigator.geolocation) {
+      addToast({
+        type: 'error',
+        title: 'Location unavailable',
+        message: 'Geolocation is not supported in this browser.',
+      });
+      return;
+    }
+
+    setUpdatingOrderId(orderItem.id);
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          await request(
+            `/roadside-requests/${orderItem.id}/provider-location`,
+            {
+              latitude: Number(position.coords.latitude.toFixed(6)),
+              longitude: Number(position.coords.longitude.toFixed(6)),
+              etaMinutes: estimateLiveEta(orderItem, position),
+            },
+            'PATCH',
+            token,
+          );
+          const refreshed = await request('/roadside-requests/provider', undefined, 'GET', token);
+          setRequests(Array.isArray(refreshed) ? refreshed : []);
+          addToast({
+            type: 'success',
+            title: 'Location shared',
+            message: `Live provider location updated for request ${orderItem.id}.`,
+          });
+        } catch (error) {
+          addToast({
+            type: 'error',
+            title: 'Location update failed',
+            message: error.message || 'Unable to publish provider location.',
+          });
+        } finally {
+          setUpdatingOrderId('');
+        }
+      },
+      () => {
+        addToast({
+          type: 'error',
+          title: 'Location update failed',
+          message: 'Unable to capture your current location.',
+        });
+        setUpdatingOrderId('');
+      },
+      { enableHighAccuracy: true, timeout: 8000 },
+    );
+  }
+
   function handleSectionBoundaryError(sectionKey) {
     return () => {
       setSectionErrors((current) => ({
@@ -587,6 +652,7 @@ export default function ProviderDashboard() {
                       message: nextMessage,
                     })
                   }
+                  onShareLocation={handleShareProviderLocation}
                 />
               </SectionState>
             </SectionErrorBoundary>

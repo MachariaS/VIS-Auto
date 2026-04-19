@@ -14,7 +14,7 @@ export default function useRequestTracking({ token, selectedRequest }) {
       return undefined;
     }
 
-    let isDisposed = false;
+    const controller = new AbortController();
 
     async function loadTracking() {
       setTrackingLoading(true);
@@ -24,17 +24,15 @@ export default function useRequestTracking({ token, selectedRequest }) {
           undefined,
           'GET',
           token,
+          controller.signal,
         );
-        if (!isDisposed) {
-          setTracking(nextTracking);
-          setTrackingError('');
-        }
+        setTracking(nextTracking);
+        setTrackingError('');
       } catch (error) {
-        if (!isDisposed) {
-          setTrackingError(error.message || 'Unable to load live tracking.');
-        }
+        if (error.name === 'AbortError') return;
+        setTrackingError(error.message || 'Unable to load live tracking.');
       } finally {
-        if (!isDisposed) {
+        if (!controller.signal.aborted) {
           setTrackingLoading(false);
         }
       }
@@ -48,9 +46,7 @@ export default function useRequestTracking({ token, selectedRequest }) {
       selectedRequest.status === 'in_progress';
 
     if (!isActiveRequest) {
-      return () => {
-        isDisposed = true;
-      };
+      return () => controller.abort();
     }
 
     const intervalId = window.setInterval(() => {
@@ -58,7 +54,7 @@ export default function useRequestTracking({ token, selectedRequest }) {
     }, 10000);
 
     return () => {
-      isDisposed = true;
+      controller.abort();
       window.clearInterval(intervalId);
     };
   }, [selectedRequest, token]);

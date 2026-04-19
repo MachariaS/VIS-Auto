@@ -1,9 +1,10 @@
 import { API_BASE, serviceImageByCode } from './constants';
 
-export async function request(path, body, method = 'POST', token) {
+export async function request(path, body, method = 'POST', token, signal) {
   const response = await fetch(`${API_BASE}${path}`, {
     method,
     credentials: 'include',
+    signal,
     headers: {
       'Content-Type': 'application/json',
       ...(token ? { Authorization: `Bearer ${token}` } : {}),

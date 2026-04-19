@@ -277,6 +277,16 @@ export default function ProviderDashboard() {
     }
   }
 
+  async function handleDeleteProviderService(serviceId) {
+    try {
+      await request(`/provider-services/${serviceId}`, undefined, 'DELETE', token);
+      setProviderServices((current) => current.filter((s) => s.id !== serviceId));
+      addToast({ type: 'success', title: 'Service removed', message: 'Service has been unpublished.' });
+    } catch (error) {
+      addToast({ type: 'error', title: 'Remove failed', message: error.message || 'Unable to remove service.' });
+    }
+  }
+
   async function handleOrderRowAction(actionType, orderItem) {
     setOrderActionMenuId('');
     if (actionType === 'summary') {
@@ -656,6 +666,7 @@ export default function ProviderDashboard() {
                   showProviderServiceComposer={showProviderServiceComposer}
                   setShowProviderServiceComposer={setShowProviderServiceComposer}
                   onSubmit={handleAddProviderService}
+                  onDelete={handleDeleteProviderService}
                   loading={loading}
                   message={message}
                 />

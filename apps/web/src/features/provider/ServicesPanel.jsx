@@ -168,6 +168,7 @@ export default function ServicesPanel({
   showProviderServiceComposer,
   setShowProviderServiceComposer,
   onSubmit,
+  onDelete,
   loading,
   message,
 }) {
@@ -236,6 +237,7 @@ export default function ServicesPanel({
 
                 <p>{service.description || 'No description yet.'}</p>
 
+                <div className="provider-manage-card-actions">
                 <button
                   className="ghost-button"
                   type="button"
@@ -262,6 +264,18 @@ export default function ServicesPanel({
                 >
                   Edit service
                 </button>
+                <button
+                  className="ghost-button danger"
+                  type="button"
+                  onClick={() => {
+                    if (window.confirm(`Remove "${service.serviceName}"? This cannot be undone.`)) {
+                      onDelete(service.id);
+                    }
+                  }}
+                >
+                  Remove
+                </button>
+                </div>
               </div>
             </article>
           ))}

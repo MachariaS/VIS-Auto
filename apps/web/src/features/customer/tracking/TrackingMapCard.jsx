@@ -17,7 +17,10 @@ export default function TrackingMapCard({ requestItem, tracking }) {
   return (
     <article className="tracking-map-card">
       <div className="tracking-map-head">
-        <h5>Live Dispatch Map</h5>
+        <div>
+          <h5>Dispatch Map</h5>
+          <p className="tracking-map-disclaimer">Simulated view — real map coming in Sprint 2</p>
+        </div>
         <span>{tracking?.status?.replaceAll('_', ' ') || requestItem.status.replaceAll('_', ' ')}</span>
       </div>
 

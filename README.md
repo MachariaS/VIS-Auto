@@ -61,9 +61,12 @@ For Google-level location suggestions, set:
 
 ```text
 GOOGLE_MAPS_API_KEY=your_google_maps_key
+LOCATION_LOOKUP_MODE=hybrid
 ```
 
 Enable these APIs for that key in Google Cloud:
 - Places API
 - Place Details API
 - Geocoding API
+
+Use `LOCATION_LOOKUP_MODE=free` during testing if you want zero paid Google calls and are comfortable relying on the Nominatim fallback only.

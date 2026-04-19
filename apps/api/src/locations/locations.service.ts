@@ -67,38 +67,52 @@ type NominatimResultItem = {
   address?: NominatimAddress;
 };
 
+type SuggestionCacheEntry = {
+  expiresAt: number;
+  value: NormalizedLocation[];
+};
+
+const LOCATION_SUGGESTION_CACHE_TTL_MS = 5 * 60 * 1000;
+
 @Injectable()
 export class LocationsService {
+  private readonly suggestionCache = new Map<string, SuggestionCacheEntry>();
+
+  private readonly inflightSuggestionCache = new Map<
+    string,
+    Promise<NormalizedLocation[]>
+  >();
+
   constructor(private readonly configService: ConfigService) {}
 
   async suggest(dto: LocationSuggestDto) {
-    const query = dto.query?.trim();
+    const query = this.normalizeQuery(dto.query);
     if (!query || query.length < 3) {
       return [];
     }
 
-    const googleApiKey = this.configService.get<string>('GOOGLE_MAPS_API_KEY');
-
-    if (googleApiKey) {
-      const googleResults = await this.suggestWithGoogle(
-        query,
-        googleApiKey,
-        dto.countryCode,
-        dto.nearLat,
-        dto.nearLng,
-      );
-
-      if (googleResults.length > 0) {
-        return googleResults;
-      }
+    const mode = this.getLocationLookupMode();
+    const cacheKey = this.buildSuggestionCacheKey(dto, query, mode);
+    const cachedResult = this.getCachedSuggestions(cacheKey);
+    if (cachedResult) {
+      return cachedResult;
     }
 
-    return this.suggestWithNominatim(
-      query,
-      dto.countryCode,
-      dto.nearLat,
-      dto.nearLng,
-    );
+    const inflightRequest = this.inflightSuggestionCache.get(cacheKey);
+    if (inflightRequest) {
+      return inflightRequest;
+    }
+
+    const suggestionPromise = this.computeSuggestions(dto, query, mode);
+    this.inflightSuggestionCache.set(cacheKey, suggestionPromise);
+
+    try {
+      const suggestions = await suggestionPromise;
+      this.setCachedSuggestions(cacheKey, suggestions);
+      return suggestions;
+    } finally {
+      this.inflightSuggestionCache.delete(cacheKey);
+    }
   }
 
   async resolve(dto: LocationResolveDto) {
@@ -131,8 +145,9 @@ export class LocationsService {
     }
 
     let suggestions: NormalizedLocation[] = [];
+    const mode = this.getLocationLookupMode();
 
-    if (googleApiKey) {
+    if (googleApiKey && mode !== 'free') {
       suggestions = await this.suggestWithGoogle(
         query,
         googleApiKey,
@@ -154,6 +169,96 @@ export class LocationsService {
     }
 
     return suggestions[0] || null;
+  }
+
+  private async computeSuggestions(
+    dto: LocationSuggestDto,
+    query: string,
+    mode: 'free' | 'hybrid',
+  ) {
+    const googleApiKey = this.configService.get<string>('GOOGLE_MAPS_API_KEY');
+
+    if (googleApiKey && mode !== 'free') {
+      const googleResults = await this.suggestWithGoogle(
+        query,
+        googleApiKey,
+        dto.countryCode,
+        dto.nearLat,
+        dto.nearLng,
+      );
+
+      if (googleResults.length > 0) {
+        return googleResults;
+      }
+    }
+
+    return this.suggestWithNominatim(
+      query,
+      dto.countryCode,
+      dto.nearLat,
+      dto.nearLng,
+    );
+  }
+
+  private getLocationLookupMode(): 'free' | 'hybrid' {
+    const configuredMode =
+      this.configService.get<string>('LOCATION_LOOKUP_MODE')?.trim().toLowerCase() ||
+      'hybrid';
+
+    return configuredMode === 'free' ? 'free' : 'hybrid';
+  }
+
+  private normalizeQuery(query?: string) {
+    return (query || '').trim().replace(/[\s,]+/g, ' ');
+  }
+
+  private buildSuggestionCacheKey(
+    dto: LocationSuggestDto,
+    query: string,
+    mode: 'free' | 'hybrid',
+  ) {
+    return JSON.stringify({
+      query: query.toLowerCase(),
+      countryCode: (dto.countryCode || '').toUpperCase(),
+      nearLat: this.roundCoordinate(dto.nearLat),
+      nearLng: this.roundCoordinate(dto.nearLng),
+      mode,
+    });
+  }
+
+  private roundCoordinate(value?: number) {
+    return typeof value === 'number' ? Number(value.toFixed(2)) : null;
+  }
+
+  private getCachedSuggestions(cacheKey: string) {
+    const cachedEntry = this.suggestionCache.get(cacheKey);
+    if (!cachedEntry) {
+      return null;
+    }
+
+    if (cachedEntry.expiresAt <= Date.now()) {
+      this.suggestionCache.delete(cacheKey);
+      return null;
+    }
+
+    return cachedEntry.value;
+  }
+
+  private setCachedSuggestions(cacheKey: string, value: NormalizedLocation[]) {
+    this.pruneExpiredSuggestionCache();
+    this.suggestionCache.set(cacheKey, {
+      value,
+      expiresAt: Date.now() + LOCATION_SUGGESTION_CACHE_TTL_MS,
+    });
+  }
+
+  private pruneExpiredSuggestionCache() {
+    const now = Date.now();
+    for (const [cacheKey, entry] of this.suggestionCache.entries()) {
+      if (entry.expiresAt <= now) {
+        this.suggestionCache.delete(cacheKey);
+      }
+    }
   }
 
   private async suggestWithGoogle(

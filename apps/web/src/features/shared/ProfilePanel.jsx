@@ -14,6 +14,8 @@ import {
   shouldLookupAfterWord,
 } from '../../shared/helpers';
 
+const LOCATION_SUGGESTION_CACHE_TTL_MS = 5 * 60 * 1000;
+
 export default function ProfilePanel({ vendorStats }) {
   const {
     user,
@@ -38,6 +40,7 @@ export default function ProfilePanel({ vendorStats }) {
   const [locationSuggestionsByIndex, setLocationSuggestionsByIndex] = useState({});
   const [lastSuggestionQueryByIndex, setLastSuggestionQueryByIndex] = useState({});
   const locationSuggestionTimeoutsRef = useRef({});
+  const locationSuggestionCacheRef = useRef(new Map());
   const pendingVendorCount =
     vendorStats?.pending ?? profileSettings.vendors?.pendingRequests?.length ?? 0;
   const activeVendorCount =
@@ -78,6 +81,35 @@ export default function ProfilePanel({ vendorStats }) {
     try {
       const branch = profileSettings.business.locations?.[index];
       const countryCode = branch?.countryCode || 'KE';
+      const cacheKey = JSON.stringify({
+        query: trimmed.toLowerCase(),
+        countryCode: countryCode.toUpperCase(),
+        nearLat:
+          typeof locationBias.latitude === 'number'
+            ? Number(locationBias.latitude.toFixed(2))
+            : null,
+        nearLng:
+          typeof locationBias.longitude === 'number'
+            ? Number(locationBias.longitude.toFixed(2))
+            : null,
+      });
+      const cachedSuggestion = locationSuggestionCacheRef.current.get(cacheKey);
+      if (cachedSuggestion && cachedSuggestion.expiresAt > Date.now()) {
+        setLocationSuggestionsByIndex((current) => ({
+          ...current,
+          [index]: cachedSuggestion.value,
+        }));
+        setLastSuggestionQueryByIndex((current) => ({ ...current, [index]: trimmed }));
+        if (cachedSuggestion.value.length === 0) {
+          setMessage('No location suggestions found. Try a shorter name or correct spelling.');
+        }
+        return;
+      }
+
+      if (cachedSuggestion) {
+        locationSuggestionCacheRef.current.delete(cacheKey);
+      }
+
       let results = [];
       try {
         results = await request('/locations/suggest', {
@@ -114,6 +146,10 @@ export default function ProfilePanel({ vendorStats }) {
                 : '',
       }));
 
+      locationSuggestionCacheRef.current.set(cacheKey, {
+        value: mapped,
+        expiresAt: Date.now() + LOCATION_SUGGESTION_CACHE_TTL_MS,
+      });
       setLocationSuggestionsByIndex((current) => ({ ...current, [index]: mapped }));
       if (mapped.length === 0) {
         setMessage('No location suggestions found. Try a shorter name or correct spelling.');

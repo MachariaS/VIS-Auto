@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   initialProviderService,
@@ -9,6 +9,7 @@ import { BellIcon } from '../../shared/icons';
 import NotificationsTray from '../shared/NotificationsTray';
 import ProfilePanel from '../shared/ProfilePanel';
 import SettingsPanel from '../shared/SettingsPanel';
+import useProviderOrders from './hooks/useProviderOrders';
 import useVendorNetwork from './hooks/useVendorNetwork';
 import OrdersPanel from './OrdersPanel';
 import ProviderOverview from './ProviderOverview';
@@ -65,97 +66,13 @@ export default function ProviderDashboard() {
 
   const vendorNotificationCount = pendingVendorRequests.length;
   const notificationCount = staticNotifications.length + vendorNotificationCount;
-
-  const providerOrders = useMemo(() => {
-    return requests.map((requestItem, index) => {
-      const mappedStatus =
-        requestItem.status === 'completed'
-          ? 'delivered'
-          : requestItem.status === 'cancelled'
-            ? 'cancelled'
-            : requestItem.status === 'searching'
-              ? 'processing'
-              : requestItem.status === 'provider_assigned' || requestItem.status === 'in_progress'
-                ? 'processing'
-                : 'collected';
-
-      const fuelSurcharge = Number(requestItem.fuelDetails?.fuelCostKsh || 0);
-
-      return {
-        id: `#${String(index + 2632)}`,
-        reference: requestItem.id,
-        sourceStatus: requestItem.status,
-        customer: {
-          name:
-            requestItem.customer?.name ||
-            `Customer ${String(requestItem.userId || '').slice(0, 6) || index + 1}`,
-          email:
-            requestItem.customer?.email ||
-            `${String(requestItem.userId || 'customer').slice(0, 8)}@visauto.app`,
-          phone: requestItem.customer?.phone || 'Not shared',
-        },
-        paymentMethod: requestItem.fuelDetails ? 'Paid' : 'Cash',
-        etaMinutes: Number(requestItem.etaMinutes || 0),
-        orderType: requestItem.fuelDetails ? 'Delivery' : 'Collection',
-        status: mappedStatus,
-        totalAmountKsh: Number(requestItem.estimatedPriceKsh || 0),
-        createdAt: requestItem.createdAt,
-        vendorName: requestItem.providerName || 'Integrated provider',
-        service: requestItem.issueType || 'Roadside Service',
-        serviceCode: requestItem.providerServiceId || 'service',
-        vehicle: requestItem.vehicle || null,
-        delivery: {
-          addressLine: requestItem.address || 'N/A',
-          building: requestItem.landmark || 'N/A',
-          street: requestItem.address || 'N/A',
-          town: 'Nairobi',
-          postcode: '00100',
-        },
-        items: [
-          {
-            id: `${requestItem.id}-service`,
-            title: requestItem.issueType || 'Roadside service',
-            subtitle: requestItem.providerName || 'Integrated provider',
-            quantity: 1,
-            price: Math.max(Number(requestItem.estimatedPriceKsh || 0) - fuelSurcharge, 0),
-          },
-          ...(fuelSurcharge > 0
-            ? [
-                {
-                  id: `${requestItem.id}-fuel`,
-                  title: 'Fuel surcharge',
-                  subtitle: `${requestItem.fuelDetails?.litres || 0}L ${requestItem.fuelDetails?.fuelType || ''}`,
-                  quantity: 1,
-                  price: fuelSurcharge,
-                },
-              ]
-            : []),
-        ],
-      };
-    });
-  }, [requests]);
-
-  const filteredProviderOrders = useMemo(() => {
-    const fromDate = ordersFromDate ? new Date(`${ordersFromDate}T00:00:00`) : null;
-    const toDate = ordersToDate ? new Date(`${ordersToDate}T23:59:59`) : null;
-
-    return providerOrders.filter((orderItem) => {
-      const createdAt = new Date(orderItem.createdAt);
-      if (fromDate && createdAt < fromDate) return false;
-      if (toDate && createdAt > toDate) return false;
-      if (orderHistoryTab === 'completed') {
-        return orderItem.status === 'delivered' || orderItem.status === 'collected';
-      }
-      if (orderHistoryTab === 'cancelled') return orderItem.status === 'cancelled';
-      if (orderHistoryTab === 'summary') return orderItem.status !== 'cancelled';
-      return true;
-    });
-  }, [orderHistoryTab, ordersFromDate, ordersToDate, providerOrders]);
-
-  const selectedOrder =
-    filteredProviderOrders.find((o) => o.reference === selectedOrderId) ||
-    filteredProviderOrders[0] ||
-    null;
+  const { filteredProviderOrders, orderCounts, selectedOrder } = useProviderOrders({
+    requests,
+    orderHistoryTab,
+    ordersFromDate,
+    ordersToDate,
+    selectedOrderId,
+  });
 
   useEffect(() => {
     if (!sessionReady || !token) return;
@@ -177,8 +94,8 @@ export default function ProviderDashboard() {
       if (selectedOrderId) setSelectedOrderId('');
       return;
     }
-    if (!filteredProviderOrders.some((o) => o.reference === selectedOrderId)) {
-      setSelectedOrderId(filteredProviderOrders[0].reference);
+    if (!filteredProviderOrders.some((requestItem) => requestItem.id === selectedOrderId)) {
+      setSelectedOrderId(filteredProviderOrders[0].id);
     }
   }, [filteredProviderOrders, selectedOrderId]);
 
@@ -274,32 +191,34 @@ export default function ProviderDashboard() {
   async function handleOrderRowAction(actionType, orderItem) {
     setOrderActionMenuId('');
     if (actionType === 'summary') {
-      setSelectedOrderId(orderItem.reference);
+      setSelectedOrderId(orderItem.id);
       return;
     }
-    if (actionType === 'message') {
-      setMessage(`Message thread opened for ${orderItem.customer.name}.`);
+    if (actionType === 'contact') {
+      setMessage(
+        `Contact details: ${orderItem.customer?.phone || orderItem.customer?.email || 'Not shared'}.`,
+      );
       return;
     }
     const nextStatusByAction = {
-      pick: 'provider_assigned',
-      ship: 'in_progress',
-      deliver: 'completed',
+      assign: 'provider_assigned',
+      start: 'in_progress',
+      complete: 'completed',
       cancel: 'cancelled',
     };
     const nextStatus = nextStatusByAction[actionType];
     if (!nextStatus || !token) return;
-    setUpdatingOrderId(orderItem.reference);
+    setUpdatingOrderId(orderItem.id);
     try {
       await request(
-        `/roadside-requests/${orderItem.reference}/status`,
+        `/roadside-requests/${orderItem.id}/status`,
         { status: nextStatus },
         'PATCH',
         token,
       );
       const refreshed = await request('/roadside-requests/provider', undefined, 'GET', token);
       setRequests(Array.isArray(refreshed) ? refreshed : []);
-      setMessage(`Order ${orderItem.reference} moved to ${nextStatus.replaceAll('_', ' ')}.`);
+      setMessage(`Request ${orderItem.id} moved to ${nextStatus.replaceAll('_', ' ')}.`);
     } catch (error) {
       setMessage(error.message || 'Unable to update order status.');
     } finally {
@@ -500,8 +419,9 @@ export default function ProviderDashboard() {
 
           {dashboardTab === 'orders' ? (
             <OrdersPanel
-              providerOrders={providerOrders}
+              providerOrders={requests}
               filteredProviderOrders={filteredProviderOrders}
+              orderCounts={orderCounts}
               selectedOrder={selectedOrder}
               orderHistoryTab={orderHistoryTab}
               setOrderHistoryTab={setOrderHistoryTab}

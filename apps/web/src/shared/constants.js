@@ -94,17 +94,18 @@ export const vendorStatusCopy = {
 };
 
 export const orderHistoryTabs = [
-  { id: 'all', label: 'All Order' },
-  { id: 'summary', label: 'Summary' },
+  { id: 'all', label: 'All Requests' },
+  { id: 'active', label: 'Active' },
   { id: 'completed', label: 'Completed' },
   { id: 'cancelled', label: 'Cancelled' },
 ];
 
 export const orderStatusCopy = {
-  delivered: 'Delivered',
-  collected: 'Collected',
+  searching: 'Queued',
+  provider_assigned: 'Assigned',
+  in_progress: 'In Progress',
+  completed: 'Completed',
   cancelled: 'Cancelled',
-  processing: 'In Progress',
 };
 
 export const initialRegister = {

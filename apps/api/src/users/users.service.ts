@@ -1,7 +1,14 @@
-import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { compare, hash } from 'bcrypt';
 import { Repository } from 'typeorm';
+import { UpdateMyPasswordDto } from './dto/update-my-password.dto';
+import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 import { UserEntity } from './user.entity';
 import { User } from './user.types';
 
@@ -33,6 +40,7 @@ export class UsersService {
       name: input.name.trim(),
       phone: input.phone?.trim() || undefined,
       accountType: input.accountType,
+      profile: undefined,
       passwordHash: await hash(input.password, 10),
     });
 
@@ -65,6 +73,61 @@ export class UsersService {
     return this.usersRepository.findOneBy({ id: userId });
   }
 
+  async getProfile(userId: string) {
+    const user = await this.findRequiredUser(userId);
+
+    return {
+      user: this.toSafeUser(user),
+      profile: user.profile || {},
+    };
+  }
+
+  async updateProfile(userId: string, dto: UpdateMyProfileDto) {
+    const email = dto.email.trim().toLowerCase();
+    const user = await this.findRequiredUser(userId);
+
+    const existing = await this.usersRepository.findOneBy({ email });
+    if (existing && existing.id !== userId) {
+      throw new ConflictException('A user with that email already exists.');
+    }
+
+    user.name = dto.name.trim();
+    user.email = email;
+    user.phone = dto.phone?.trim() || undefined;
+    user.profile = dto.profile || {};
+
+    const saved = await this.usersRepository.save(user);
+
+    return {
+      user: this.toSafeUser(saved),
+      profile: saved.profile || {},
+    };
+  }
+
+  async updatePassword(userId: string, dto: UpdateMyPasswordDto) {
+    const user = await this.findRequiredUser(userId);
+    const isValid = await compare(dto.currentPassword, user.passwordHash);
+
+    if (!isValid) {
+      throw new UnauthorizedException('Current password is incorrect.');
+    }
+
+    user.passwordHash = await hash(dto.newPassword, 10);
+    await this.usersRepository.save(user);
+
+    return { updated: true };
+  }
+
+  private async findRequiredUser(userId: string) {
+    const user = await this.findById(userId);
+
+    if (!user) {
+      throw new NotFoundException('User not found.');
+    }
+
+    return user;
+  }
+
   toSafeUser(user: User | UserEntity) {
     return {
       id: user.id,
@@ -72,6 +135,7 @@ export class UsersService {
       name: user.name,
       phone: user.phone,
       accountType: user.accountType,
+      profile: user.profile,
       createdAt:
         user.createdAt instanceof Date ? user.createdAt.toISOString() : String(user.createdAt),
     };

@@ -21,6 +21,8 @@ export default function ProfilePanel({ vendorStats }) {
     message,
     setMessage,
     profileSettings,
+    profileSaving,
+    profileLoading,
     handleProfileFieldChange,
     handleBusinessNestedFieldChange,
     toggleBusinessListField,
@@ -283,7 +285,7 @@ export default function ProfilePanel({ vendorStats }) {
             </label>
           </div>
           <button className="primary-cta" type="submit">
-            Save profile
+            {profileSaving ? 'Saving...' : profileLoading ? 'Syncing...' : 'Save profile'}
           </button>
         </form>
       </section>
@@ -756,7 +758,7 @@ export default function ProfilePanel({ vendorStats }) {
         </section>
 
         <button className="primary-cta" type="submit">
-          Save my profile
+          {profileSaving ? 'Saving...' : profileLoading ? 'Syncing...' : 'Save my profile'}
         </button>
       </form>
     </section>

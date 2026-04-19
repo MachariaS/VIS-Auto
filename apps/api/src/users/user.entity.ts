@@ -17,6 +17,9 @@ export class UserEntity {
   @Column({ type: 'varchar' })
   accountType!: 'customer' | 'provider';
 
+  @Column({ type: 'jsonb', nullable: true })
+  profile?: Record<string, unknown>;
+
   @Column()
   passwordHash!: string;
 

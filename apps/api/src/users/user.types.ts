@@ -4,6 +4,7 @@ export interface User {
   name: string;
   phone?: string;
   accountType: 'customer' | 'provider';
+  profile?: Record<string, unknown>;
   passwordHash: string;
   createdAt: string;
 }

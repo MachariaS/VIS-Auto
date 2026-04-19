@@ -254,3 +254,68 @@ export function getDefaultProfile(user) {
     },
   };
 }
+
+export function mergeProfileSettings(user, ...sources) {
+  const baseProfile = getDefaultProfile(user);
+  const normalizedSources = sources.filter(Boolean);
+
+  return normalizedSources.reduce(
+    (current, nextSource) => ({
+      ...current,
+      ...nextSource,
+      account: {
+        ...baseProfile.account,
+        ...current.account,
+        ...nextSource.account,
+      },
+      notifications: {
+        ...baseProfile.notifications,
+        ...current.notifications,
+        ...nextSource.notifications,
+      },
+      preferences: {
+        ...baseProfile.preferences,
+        ...current.preferences,
+        ...nextSource.preferences,
+      },
+      subscription: {
+        ...baseProfile.subscription,
+        ...current.subscription,
+        ...nextSource.subscription,
+      },
+      business: {
+        ...baseProfile.business,
+        ...current.business,
+        ...nextSource.business,
+        kyc: {
+          ...baseProfile.business.kyc,
+          ...current.business?.kyc,
+          ...nextSource.business?.kyc,
+        },
+        contacts: {
+          ...baseProfile.business.contacts,
+          ...current.business?.contacts,
+          ...nextSource.business?.contacts,
+        },
+        locations:
+          nextSource.business?.locations?.length > 0
+            ? nextSource.business.locations
+            : current.business?.locations || baseProfile.business.locations,
+        offeredServices: mergeUniqueList(
+          baseProfile.business.offeredServices,
+          nextSource.business?.offeredServices || current.business?.offeredServices,
+        ),
+        supportedVehicleTypes: mergeUniqueList(
+          baseProfile.business.supportedVehicleTypes,
+          nextSource.business?.supportedVehicleTypes || current.business?.supportedVehicleTypes,
+        ),
+      },
+      vendors: {
+        ...baseProfile.vendors,
+        ...current.vendors,
+        ...nextSource.vendors,
+      },
+    }),
+    baseProfile,
+  );
+}

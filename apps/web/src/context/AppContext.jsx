@@ -4,7 +4,7 @@ import {
   THEME_STORAGE_KEY,
   PROFILE_STORAGE_KEY,
 } from '../shared/constants';
-import { getDefaultProfile, mergeUniqueList, request } from '../shared/helpers';
+import { getDefaultProfile, mergeProfileSettings, request } from '../shared/helpers';
 
 const AppContext = createContext(null);
 let toastCounter = 0;
@@ -22,6 +22,9 @@ export function AppProvider({ children }) {
   const [profileSettings, setProfileSettings] = useState(() => ({
     ...getDefaultProfile(null),
   }));
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileLoading, setProfileLoading] = useState(false);
+  const [passwordSaving, setPasswordSaving] = useState(false);
   const [authIntent, setAuthIntent] = useState({ mode: 'login', accountType: 'customer' });
 
   useEffect(() => {
@@ -43,63 +46,7 @@ export function AppProvider({ children }) {
     if (storedProfile) {
       try {
         const parsedProfile = JSON.parse(storedProfile);
-        setProfileSettings((current) => ({
-          ...getDefaultProfile(null),
-          ...current,
-          ...parsedProfile,
-          account: {
-            ...getDefaultProfile(null).account,
-            ...current.account,
-            ...parsedProfile.account,
-          },
-          notifications: {
-            ...getDefaultProfile(null).notifications,
-            ...current.notifications,
-            ...parsedProfile.notifications,
-          },
-          preferences: {
-            ...getDefaultProfile(null).preferences,
-            ...current.preferences,
-            ...parsedProfile.preferences,
-          },
-          subscription: {
-            ...getDefaultProfile(null).subscription,
-            ...current.subscription,
-            ...parsedProfile.subscription,
-          },
-          business: {
-            ...getDefaultProfile(null).business,
-            ...current.business,
-            ...parsedProfile.business,
-            kyc: {
-              ...getDefaultProfile(null).business.kyc,
-              ...current.business?.kyc,
-              ...parsedProfile.business?.kyc,
-            },
-            contacts: {
-              ...getDefaultProfile(null).business.contacts,
-              ...current.business?.contacts,
-              ...parsedProfile.business?.contacts,
-            },
-            locations:
-              parsedProfile.business?.locations?.length > 0
-                ? parsedProfile.business.locations
-                : current.business?.locations || getDefaultProfile(null).business.locations,
-            offeredServices: mergeUniqueList(
-              getDefaultProfile(null).business.offeredServices,
-              parsedProfile.business?.offeredServices || current.business?.offeredServices,
-            ),
-            supportedVehicleTypes: mergeUniqueList(
-              getDefaultProfile(null).business.supportedVehicleTypes,
-              parsedProfile.business?.supportedVehicleTypes || current.business?.supportedVehicleTypes,
-            ),
-          },
-          vendors: {
-            ...getDefaultProfile(null).vendors,
-            ...current.vendors,
-            ...parsedProfile.vendors,
-          },
-        }));
+        setProfileSettings((current) => mergeProfileSettings(null, current, parsedProfile));
       } catch {
         window.localStorage.removeItem(PROFILE_STORAGE_KEY);
       }
@@ -166,26 +113,13 @@ export function AppProvider({ children }) {
 
   useEffect(() => {
     if (!user) return;
-    setProfileSettings((current) => ({
-      ...current,
-      account: {
-        ...current.account,
-        displayName: current.account.displayName || user.name || '',
-        email: current.account.email || user.email || '',
-        phone: current.account.phone || user.phone || '',
-        company: current.account.company || (user.accountType === 'provider' ? user.name || '' : ''),
-      },
-      subscription: {
-        ...current.subscription,
-        plan: current.subscription.plan || (user.accountType === 'provider' ? 'Provider Starter' : 'Driver Starter'),
-        billingEmail: current.subscription.billingEmail || user.email || '',
-      },
-      preferences: {
-        ...current.preferences,
-        theme,
-      },
-    }));
+    setProfileSettings((current) => mergeProfileSettings(user, current, { preferences: { theme } }));
   }, [theme, user]);
+
+  useEffect(() => {
+    if (!sessionReady || !token || !user) return;
+    void loadRemoteProfile(token, user);
+  }, [sessionReady, token, user?.id]);
 
   function signOut() {
     setToken('');
@@ -194,6 +128,7 @@ export function AppProvider({ children }) {
     setMessage('');
     setStep('entry');
     window.localStorage.removeItem(SESSION_STORAGE_KEY);
+    window.localStorage.removeItem(PROFILE_STORAGE_KEY);
     // Clear the httpOnly refresh token cookie on the server
     fetch('http://localhost:4000/auth/logout', { method: 'POST', credentials: 'include' }).catch(
       () => {},
@@ -306,9 +241,93 @@ export function AppProvider({ children }) {
     handleProfileFieldChange('preferences', 'theme', nextTheme);
   }
 
-  function handleSaveProfile(event) {
-    event.preventDefault();
-    setMessage('Profile settings saved locally for this MVP session.');
+  async function loadRemoteProfile(accessToken, currentUser = user) {
+    setProfileLoading(true);
+    try {
+      const data = await request('/users/me/profile', undefined, 'GET', accessToken);
+      const apiUser = data?.user || currentUser;
+      if (apiUser) setUser(apiUser);
+      setProfileSettings((current) =>
+        mergeProfileSettings(apiUser || currentUser, current, data?.profile || {}),
+      );
+    } catch (error) {
+      addToast({
+        type: 'error',
+        title: 'Profile sync failed',
+        message: error.message || 'Unable to load profile from the API.',
+      });
+    } finally {
+      setProfileLoading(false);
+    }
+  }
+
+  async function handleSaveProfile(event) {
+    event?.preventDefault?.();
+    if (!token || !user) {
+      setMessage('You must be signed in to save your profile.');
+      return;
+    }
+
+    setProfileSaving(true);
+    try {
+      const payload = {
+        name: profileSettings.account.displayName || user.name || '',
+        email: profileSettings.account.email || user.email || '',
+        phone:
+          profileSettings.business?.contacts?.primaryPhone ||
+          profileSettings.account.phone ||
+          user.phone ||
+          '',
+        profile: profileSettings,
+      };
+      const data = await request('/users/me/profile', payload, 'PATCH', token);
+      setUser(data.user);
+      setProfileSettings((current) => mergeProfileSettings(data.user, current, data.profile));
+      setMessage('Profile synced to the API.');
+      addToast({
+        type: 'success',
+        title: 'Profile saved',
+        message: 'Profile changes were synced successfully.',
+      });
+    } catch (error) {
+      setMessage(error.message || 'Unable to save profile.');
+      addToast({
+        type: 'error',
+        title: 'Profile save failed',
+        message: error.message || 'Unable to save profile.',
+      });
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
+  async function handlePasswordReset(passwordForm) {
+    if (!token) {
+      setMessage('You must be signed in to change your password.');
+      return false;
+    }
+
+    setPasswordSaving(true);
+    try {
+      await request('/users/me/password', passwordForm, 'POST', token);
+      setMessage('Password updated successfully.');
+      addToast({
+        type: 'success',
+        title: 'Password updated',
+        message: 'Your password has been changed.',
+      });
+      return true;
+    } catch (error) {
+      setMessage(error.message || 'Unable to update password.');
+      addToast({
+        type: 'error',
+        title: 'Password update failed',
+        message: error.message || 'Unable to update password.',
+      });
+      return false;
+    } finally {
+      setPasswordSaving(false);
+    }
   }
 
   function dismissToast(toastId) {
@@ -344,6 +363,9 @@ export function AppProvider({ children }) {
     sessionReady,
     profileSettings,
     setProfileSettings,
+    profileSaving,
+    profileLoading,
+    passwordSaving,
     authIntent,
     signOut,
     openDashboard,
@@ -358,6 +380,8 @@ export function AppProvider({ children }) {
     removeBusinessLocation,
     handlePreferenceThemeChange,
     handleSaveProfile,
+    handlePasswordReset,
+    loadRemoteProfile,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

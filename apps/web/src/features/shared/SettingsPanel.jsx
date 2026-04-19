@@ -5,22 +5,34 @@ import { initialPasswordForm } from '../../shared/constants';
 export default function SettingsPanel() {
   const {
     profileSettings,
+    profileSaving,
+    passwordSaving,
     handleProfileFieldChange,
     handlePreferenceThemeChange,
     handleSaveProfile,
+    handlePasswordReset,
     setMessage,
   } = useApp();
 
   const [passwordForm, setPasswordForm] = useState(initialPasswordForm);
 
-  function handlePasswordReset(event) {
+  async function onPasswordReset(event) {
     event.preventDefault();
-    setMessage('Secure password reset will connect to backend email delivery next.');
-    setPasswordForm(initialPasswordForm);
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setMessage('New password and confirmation must match.');
+      return;
+    }
+    const success = await handlePasswordReset({
+      currentPassword: passwordForm.currentPassword,
+      newPassword: passwordForm.newPassword,
+    });
+    if (success) {
+      setPasswordForm(initialPasswordForm);
+    }
   }
 
   return (
-    <section className="settings-grid-v2">
+    <form className="settings-grid-v2" onSubmit={handleSaveProfile}>
       <section className="dashboard-panel stack">
         <div className="panel-head">
           <div>
@@ -92,7 +104,7 @@ export default function SettingsPanel() {
         </label>
       </section>
 
-      <form className="dashboard-panel stack" onSubmit={handlePasswordReset}>
+      <div className="dashboard-panel stack">
         <div className="panel-head">
           <div>
             <p className="eyebrow">Security</p>
@@ -129,8 +141,10 @@ export default function SettingsPanel() {
             }
           />
         </label>
-        <button type="submit">Update password</button>
-      </form>
+        <button type="button" onClick={onPasswordReset} disabled={passwordSaving}>
+          {passwordSaving ? 'Updating...' : 'Update password'}
+        </button>
+      </div>
 
       <section className="dashboard-panel stack">
         <div className="panel-head">
@@ -167,6 +181,11 @@ export default function SettingsPanel() {
           <p>Recurring billing, receipts, and active subscriptions will connect here next.</p>
         </div>
       </section>
-    </section>
+      <div className="form-actions">
+        <button className="primary-cta" type="submit" disabled={profileSaving}>
+          {profileSaving ? 'Saving...' : 'Save settings'}
+        </button>
+      </div>
+    </form>
   );
 }

@@ -665,7 +665,7 @@ h1 {
   flex-wrap: wrap;
 }
 
-.vis-menu-button {
+.vis-header .vis-menu-button {
   display: none;
 }
 
@@ -3348,7 +3348,7 @@ button:disabled {
     display: none;
   }
 
-  .vis-menu-button {
+  .vis-header .vis-menu-button {
     display: inline-grid;
   }
 

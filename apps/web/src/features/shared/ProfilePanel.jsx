@@ -14,7 +14,7 @@ import {
   shouldLookupAfterWord,
 } from '../../shared/helpers';
 
-export default function ProfilePanel() {
+export default function ProfilePanel({ vendorStats }) {
   const {
     user,
     token,
@@ -36,6 +36,10 @@ export default function ProfilePanel() {
   const [locationSuggestionsByIndex, setLocationSuggestionsByIndex] = useState({});
   const [lastSuggestionQueryByIndex, setLastSuggestionQueryByIndex] = useState({});
   const locationSuggestionTimeoutsRef = useRef({});
+  const pendingVendorCount =
+    vendorStats?.pending ?? profileSettings.vendors?.pendingRequests?.length ?? 0;
+  const activeVendorCount =
+    vendorStats?.active ?? profileSettings.vendors?.activePartners?.length ?? 0;
 
   useEffect(() => {
     if (!navigator.geolocation) return;
@@ -730,11 +734,11 @@ export default function ProfilePanel() {
           <div className="billing-strip">
             <article className="billing-card">
               <span>Pending vendor requests</span>
-              <strong>{profileSettings.vendors.pendingRequests.length}</strong>
+              <strong>{pendingVendorCount}</strong>
             </article>
             <article className="billing-card">
               <span>Active vendor partners</span>
-              <strong>{profileSettings.vendors.activePartners.length}</strong>
+              <strong>{activeVendorCount}</strong>
             </article>
             <article className="billing-card">
               <span>Subcontractor mode</span>

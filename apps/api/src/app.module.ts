@@ -15,6 +15,8 @@ import { LocationsModule } from './locations/locations.module';
 import { UsersModule } from './users/users.module';
 import { UserEntity } from './users/user.entity';
 import { VehicleEntity } from './vehicles/vehicle.entity';
+import { VendorIntegrationEntity } from './vendors/vendor-integration.entity';
+import { VendorsModule } from './vendors/vendors.module';
 
 @Module({
   imports: [
@@ -35,6 +37,7 @@ import { VehicleEntity } from './vehicles/vehicle.entity';
         ProviderServiceEntity,
         RoadsideRequestEntity,
         OtpChallengeEntity,
+        VendorIntegrationEntity,
       ],
       synchronize: (process.env.DB_SYNCHRONIZE || 'true') === 'true',
     }),
@@ -44,6 +47,7 @@ import { VehicleEntity } from './vehicles/vehicle.entity';
     LocationsModule,
     VehiclesModule,
     RoadsideRequestsModule,
+    VendorsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -4,11 +4,12 @@ import {
   initialProviderService,
   staticNotifications,
 } from '../../shared/constants';
-import { mergeUniqueList, request, toVendorId } from '../../shared/helpers';
+import { mergeUniqueList, request } from '../../shared/helpers';
 import { BellIcon } from '../../shared/icons';
 import NotificationsTray from '../shared/NotificationsTray';
 import ProfilePanel from '../shared/ProfilePanel';
 import SettingsPanel from '../shared/SettingsPanel';
+import useVendorNetwork from './hooks/useVendorNetwork';
 import OrdersPanel from './OrdersPanel';
 import ProviderOverview from './ProviderOverview';
 import RatingsPanel from './RatingsPanel';
@@ -34,7 +35,6 @@ export default function ProviderDashboard() {
   } = useApp();
 
   const [providerServices, setProviderServices] = useState([]);
-  const [providerCatalog, setProviderCatalog] = useState([]);
   const [requests, setRequests] = useState([]);
   const [providerServiceForm, setProviderServiceForm] = useState(initialProviderService);
   const [editingProviderServiceId, setEditingProviderServiceId] = useState('');
@@ -45,32 +45,26 @@ export default function ProviderDashboard() {
   const [ordersFromDate, setOrdersFromDate] = useState('2026-04-01');
   const [ordersToDate, setOrdersToDate] = useState('2026-04-30');
   const [updatingOrderId, setUpdatingOrderId] = useState('');
-  const [selectedVendorRequestId, setSelectedVendorRequestId] = useState('');
   const [brandLogoError, setBrandLogoError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
 
-  const activeVendorPartners = profileSettings.vendors?.activePartners || [];
-  const pendingVendorRequests = profileSettings.vendors?.pendingRequests || [];
-  const rejectedVendorRequests = profileSettings.vendors?.rejectedRequests || [];
+  const {
+    activeVendorPartners,
+    focusedVendorRequest,
+    loadVendorData,
+    pendingVendorRequests,
+    acceptVendorRequest,
+    rejectVendorRequest,
+    selectedVendorRequestId,
+    setSelectedVendorRequestId,
+    vendorActionRequestId,
+    vendorStats,
+  } = useVendorNetwork({ token, user, setMessage });
 
   const vendorNotificationCount = pendingVendorRequests.length;
   const notificationCount = staticNotifications.length + vendorNotificationCount;
-
-  const focusedVendorRequest =
-    pendingVendorRequests.find((r) => r.id === selectedVendorRequestId) ||
-    pendingVendorRequests[0] ||
-    null;
-
-  const vendorStats = useMemo(
-    () => ({
-      active: activeVendorPartners.length,
-      pending: pendingVendorRequests.length,
-      rejected: rejectedVendorRequests.length,
-    }),
-    [activeVendorPartners.length, pendingVendorRequests.length, rejectedVendorRequests.length],
-  );
 
   const providerOrders = useMemo(() => {
     return requests.map((requestItem, index) => {
@@ -166,7 +160,7 @@ export default function ProviderDashboard() {
   useEffect(() => {
     if (!sessionReady || !token) return;
     void loadProviderDashboard(token);
-  }, [sessionReady, token]);
+  }, [loadVendorData, sessionReady, token]);
 
   useEffect(() => {
     if (providerServices.length === 0) return;
@@ -177,51 +171,6 @@ export default function ProviderDashboard() {
       return { ...current, business: { ...current.business, offeredServices: merged } };
     });
   }, [providerServices, setProfileSettings]);
-
-  useEffect(() => {
-    if (user?.accountType !== 'provider' || providerCatalog.length === 0) return;
-    setProfileSettings((current) => {
-      const vendors = current.vendors || {};
-      const knownNames = new Set([
-        ...(vendors.activePartners || []).map((p) => p.name),
-        ...(vendors.pendingRequests || []).map((r) => r.name),
-        ...(vendors.rejectedRequests || []).map((r) => r.name),
-      ]);
-      const discoveredNames = Array.from(
-        new Set(
-          providerCatalog
-            .map((item) => item.providerName)
-            .filter(Boolean)
-            .filter((name) => name !== user?.name),
-        ),
-      );
-      const additions = discoveredNames
-        .filter((name) => !knownNames.has(name))
-        .map((name) => ({
-          id: `req-${toVendorId(name)}`,
-          name,
-          category: 'General Service',
-          requestedAt: new Date().toISOString().slice(0, 10),
-          submittedBy: 'auto-generated from provider catalog',
-          notes: '',
-        }));
-      if (additions.length === 0) return current;
-      return {
-        ...current,
-        vendors: { ...vendors, pendingRequests: [...(vendors.pendingRequests || []), ...additions] },
-      };
-    });
-  }, [providerCatalog, setProfileSettings, user?.accountType, user?.name]);
-
-  useEffect(() => {
-    if (pendingVendorRequests.length === 0) {
-      if (selectedVendorRequestId) setSelectedVendorRequestId('');
-      return;
-    }
-    if (!pendingVendorRequests.some((r) => r.id === selectedVendorRequestId)) {
-      setSelectedVendorRequestId(pendingVendorRequests[0].id);
-    }
-  }, [pendingVendorRequests, selectedVendorRequestId]);
 
   useEffect(() => {
     if (filteredProviderOrders.length === 0) {
@@ -254,13 +203,12 @@ export default function ProviderDashboard() {
   }, [orderActionMenuId, showAccountMenu, showNotifications]);
 
   async function loadProviderDashboard(accessToken) {
-    const [serviceData, catalogData, providerRequestData] = await Promise.all([
+    const [serviceData, providerRequestData] = await Promise.all([
       request('/provider-services', undefined, 'GET', accessToken),
-      request('/provider-services/catalog', undefined, 'GET', accessToken).catch(() => []),
       request('/roadside-requests/provider', undefined, 'GET', accessToken).catch(() => []),
+      loadVendorData(accessToken).catch(() => null),
     ]);
     setProviderServices(serviceData);
-    setProviderCatalog(Array.isArray(catalogData) ? catalogData : []);
     setRequests(Array.isArray(providerRequestData) ? providerRequestData : []);
   }
 
@@ -357,67 +305,6 @@ export default function ProviderDashboard() {
     } finally {
       setUpdatingOrderId('');
     }
-  }
-
-  function acceptVendorRequest(requestId) {
-    let acceptedName = '';
-    setProfileSettings((current) => {
-      const vendors = current.vendors || {};
-      const pendingRequests = vendors.pendingRequests || [];
-      const activePartners = vendors.activePartners || [];
-      const requestItem = pendingRequests.find((entry) => entry.id === requestId);
-      if (!requestItem) return current;
-      acceptedName = requestItem.name;
-      const alreadyIntegrated = activePartners.some((p) => p.name === requestItem.name);
-      const nextActivePartners = alreadyIntegrated
-        ? activePartners
-        : [
-            ...activePartners,
-            {
-              id: `vendor-${toVendorId(requestItem.name)}`,
-              name: requestItem.name,
-              category: requestItem.category || 'General Service',
-              joinDate: new Date().toISOString().slice(0, 10),
-              completedOrders: 0,
-              rating: 0,
-              demand: 'New integration',
-              bio: requestItem.notes || 'Recently approved vendor integration.',
-            },
-          ];
-      return {
-        ...current,
-        vendors: {
-          ...vendors,
-          activePartners: nextActivePartners,
-          pendingRequests: pendingRequests.filter((entry) => entry.id !== requestId),
-        },
-      };
-    });
-    setMessage(acceptedName ? `${acceptedName} integration approved.` : 'Integration request approved.');
-  }
-
-  function rejectVendorRequest(requestId) {
-    let rejectedName = '';
-    setProfileSettings((current) => {
-      const vendors = current.vendors || {};
-      const pendingRequests = vendors.pendingRequests || [];
-      const rejectedRequests = vendors.rejectedRequests || [];
-      const requestItem = pendingRequests.find((entry) => entry.id === requestId);
-      if (!requestItem) return current;
-      rejectedName = requestItem.name;
-      return {
-        ...current,
-        vendors: {
-          ...vendors,
-          pendingRequests: pendingRequests.filter((entry) => entry.id !== requestId),
-          rejectedRequests: [
-            { ...requestItem, reviewedAt: new Date().toISOString().slice(0, 10) },
-            ...rejectedRequests,
-          ],
-        },
-      };
-    });
-    setMessage(rejectedName ? `${rejectedName} integration rejected.` : 'Integration request rejected.');
   }
 
   function openVendorRequestReview(requestId) {
@@ -601,6 +488,7 @@ export default function ProviderDashboard() {
               focusedVendorRequest={focusedVendorRequest}
               selectedVendorRequestId={selectedVendorRequestId}
               setSelectedVendorRequestId={setSelectedVendorRequestId}
+              vendorActionRequestId={vendorActionRequestId}
               onAccept={acceptVendorRequest}
               onReject={rejectVendorRequest}
               onOpenNotifications={() => {
@@ -630,7 +518,7 @@ export default function ProviderDashboard() {
           ) : null}
 
           {dashboardTab === 'ratings' ? <RatingsPanel /> : null}
-          {dashboardTab === 'profile' ? <ProfilePanel /> : null}
+          {dashboardTab === 'profile' ? <ProfilePanel vendorStats={vendorStats} /> : null}
           {dashboardTab === 'settings' ? <SettingsPanel /> : null}
         </div>
       </div>

@@ -3,8 +3,6 @@ import {
   SESSION_STORAGE_KEY,
   THEME_STORAGE_KEY,
   PROFILE_STORAGE_KEY,
-  demoIntegratedVendors,
-  demoPendingIntegrationRequests,
 } from '../shared/constants';
 import { getDefaultProfile, mergeUniqueList, request } from '../shared/helpers';
 
@@ -21,12 +19,6 @@ export function AppProvider({ children }) {
   const [sessionReady, setSessionReady] = useState(false);
   const [profileSettings, setProfileSettings] = useState(() => ({
     ...getDefaultProfile(null),
-    vendors: {
-      requestPolicy: 'approval_required',
-      pendingRequests: demoPendingIntegrationRequests,
-      activePartners: demoIntegratedVendors,
-      rejectedRequests: [],
-    },
   }));
   const [authIntent, setAuthIntent] = useState({ mode: 'login', accountType: 'customer' });
 
@@ -102,8 +94,6 @@ export function AppProvider({ children }) {
           },
           vendors: {
             ...getDefaultProfile(null).vendors,
-            pendingRequests: demoPendingIntegrationRequests,
-            activePartners: demoIntegratedVendors,
             ...current.vendors,
             ...parsedProfile.vendors,
           },

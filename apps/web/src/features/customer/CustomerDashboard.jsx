@@ -1,7 +1,15 @@
 import { useEffect, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
 import { formatCurrency, request } from '../../shared/helpers';
-import { BellIcon, LogoutIcon, MoonIcon, SunIcon, UserIcon } from '../../shared/icons';
+import {
+  BellIcon,
+  CloseIcon,
+  LogoutIcon,
+  MenuIcon,
+  MoonIcon,
+  SunIcon,
+  UserIcon,
+} from '../../shared/icons';
 import { staticNotifications } from '../../shared/constants';
 import NotificationsTray from '../shared/NotificationsTray';
 import ProfilePanel from '../shared/ProfilePanel';
@@ -48,6 +56,8 @@ export default function CustomerDashboard() {
     setShowNotifications,
     showAccountMenu,
     setShowAccountMenu,
+    showMobileSidebar,
+    setShowMobileSidebar,
     sectionLoading,
     setSectionLoading,
     sectionErrors,
@@ -98,6 +108,15 @@ export default function CustomerDashboard() {
     document.addEventListener('pointerdown', handlePointerDown);
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [showAccountMenu, showNotifications]);
+
+  useEffect(() => {
+    if (!showMobileSidebar) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [showMobileSidebar]);
 
   async function loadCustomerDashboard(accessToken) {
     setSectionLoading({
@@ -311,7 +330,27 @@ export default function CustomerDashboard() {
 
   return (
     <section className="dashboard-shell">
-      <aside className="dashboard-sidebar">
+      {showMobileSidebar ? (
+        <button
+          className="dashboard-drawer-scrim"
+          type="button"
+          aria-label="Close navigation"
+          onClick={() => setShowMobileSidebar(false)}
+        />
+      ) : null}
+
+      <aside className={`dashboard-sidebar${showMobileSidebar ? ' is-mobile-open' : ''}`}>
+        <div className="sidebar-mobile-head">
+          <span>Customer menu</span>
+          <button
+            className="sidebar-close-button"
+            type="button"
+            aria-label="Close navigation"
+            onClick={() => setShowMobileSidebar(false)}
+          >
+            <CloseIcon />
+          </button>
+        </div>
         <div className="sidebar-head">
           <p className="eyebrow">Customer</p>
           <h2>VIS Garage</h2>
@@ -329,7 +368,10 @@ export default function CustomerDashboard() {
               key={id}
               className={dashboardTab === id ? 'nav-active' : 'nav-idle'}
               type="button"
-              onClick={() => setDashboardTab(id)}
+              onClick={() => {
+                setDashboardTab(id);
+                setShowMobileSidebar(false);
+              }}
             >
               {label}
             </button>
@@ -350,6 +392,18 @@ export default function CustomerDashboard() {
       <div className="dashboard-main">
         <header className="dashboard-topbar">
           <div className="topbar-brand">
+            <button
+              className="dashboard-menu-button"
+              type="button"
+              aria-label="Open navigation"
+              onClick={() => {
+                setShowAccountMenu(false);
+                setShowNotifications(false);
+                setShowMobileSidebar(true);
+              }}
+            >
+              <MenuIcon />
+            </button>
             <button className="brand-inline" type="button" onClick={() => openDashboard()}>
               VIS
             </button>

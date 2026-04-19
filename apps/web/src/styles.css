@@ -1335,6 +1335,24 @@ h1 {
   background: var(--bg-soft);
 }
 
+.dashboard-menu-button,
+.sidebar-close-button {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  border: 1px solid var(--border-soft);
+  background: var(--bg-soft);
+  color: var(--text-main);
+  display: none;
+  place-items: center;
+  padding: 0;
+}
+
+.dashboard-drawer-scrim,
+.sidebar-mobile-head {
+  display: none;
+}
+
 .icon-button {
   width: 46px;
   height: 46px;
@@ -2026,6 +2044,36 @@ h1 {
   justify-content: space-between;
   gap: 12px;
   background: #f8fbf8;
+}
+
+.provider-topbar-shell-v2,
+.provider-mobile-brand-v2 {
+  display: none;
+}
+
+.provider-mobile-brand-v2 {
+  border: 0;
+  background: transparent;
+  align-items: center;
+  gap: 10px;
+  padding: 0;
+  color: #26342b;
+}
+
+.provider-mobile-brand-v2 span {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #f4ce5d, #d6a332);
+  color: #4b3a10;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+}
+
+.provider-mobile-brand-v2 strong {
+  font-size: 0.96rem;
 }
 
 .provider-topbar-search-v2 {
@@ -3582,5 +3630,159 @@ button:disabled {
     right: 0;
     left: auto;
     min-width: 220px;
+  }
+}
+
+@media (max-width: 768px) {
+  .dashboard-shell,
+  .provider-shell-v2 {
+    grid-template-columns: 1fr;
+    gap: 14px;
+  }
+
+  .dashboard-menu-button,
+  .sidebar-close-button,
+  .sidebar-mobile-head,
+  .provider-topbar-shell-v2,
+  .provider-mobile-brand-v2 {
+    display: grid;
+  }
+
+  .provider-topbar-shell-v2 {
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+  }
+
+  .dashboard-drawer-scrim {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 18;
+    border: 0;
+    padding: 0;
+    background: rgba(15, 23, 42, 0.44);
+  }
+
+  .sidebar-mobile-head {
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-soft);
+    font-size: 0.78rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .dashboard-sidebar,
+  .provider-sidebar-v2 {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 20;
+    width: min(86vw, 320px);
+    height: 100vh;
+    overflow-y: auto;
+    transform: translateX(calc(-100% - 20px));
+    transition: transform 180ms ease;
+    box-shadow: 0 24px 60px rgba(15, 23, 42, 0.18);
+  }
+
+  .dashboard-sidebar.is-mobile-open,
+  .provider-sidebar-v2.is-mobile-open {
+    transform: translateX(0);
+  }
+
+  .dashboard-sidebar,
+  .provider-sidebar-v2 {
+    border-radius: 0 24px 24px 0;
+  }
+
+  .dashboard-topbar,
+  .provider-topbar-v2 {
+    position: static;
+  }
+
+  .dashboard-topbar,
+  .provider-topbar-v2,
+  .provider-topbar-actions-v2,
+  .provider-home-head-v2,
+  .order-summary-head-v2 {
+    align-items: stretch;
+  }
+
+  .provider-topbar-v2,
+  .provider-topbar-actions-v2,
+  .provider-home-head-v2,
+  .order-summary-head-v2 {
+    flex-direction: column;
+  }
+
+  .topbar-brand,
+  .topbar-actions,
+  .provider-topbar-actions-v2 {
+    width: 100%;
+  }
+
+  .topbar-brand {
+    justify-content: flex-start;
+  }
+
+  .topbar-actions,
+  .provider-topbar-actions-v2 {
+    justify-content: space-between;
+  }
+
+  .provider-topbar-search-v2,
+  .provider-topbar-search-v2 input {
+    width: 100%;
+  }
+
+  .sidebar-nav,
+  .provider-nav-v2,
+  .provider-order-tabs-v2,
+  .provider-stat-strip-v2,
+  .provider-ring-grid-v2,
+  .provider-service-grid-v2,
+  .provider-option-grid,
+  .vendor-stat-strip-v2,
+  .vendor-metrics-v2,
+  .order-summary-grid-v2,
+  .order-summary-content-v2,
+  .provider-grid-v2,
+  .vendor-workspace-v2 {
+    grid-template-columns: 1fr;
+  }
+
+  .provider-order-tabs-v2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .vendor-card-v2,
+  .provider-order-card-v2,
+  .order-item-row-v2,
+  .order-items-head-v2 div {
+    grid-template-columns: 1fr;
+  }
+
+  .order-table-head-v2 {
+    display: none;
+  }
+
+  .order-row-v2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px 12px;
+    align-items: flex-start;
+  }
+
+  .order-row-v2 .order-action-cell-v2 {
+    grid-column: 1 / -1;
+    text-align: left;
+  }
+
+  .order-row-v2 span {
+    display: grid;
+    gap: 4px;
   }
 }

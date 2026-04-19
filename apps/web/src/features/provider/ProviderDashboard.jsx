@@ -5,7 +5,7 @@ import {
   staticNotifications,
 } from '../../shared/constants';
 import { mergeUniqueList, request } from '../../shared/helpers';
-import { BellIcon } from '../../shared/icons';
+import { BellIcon, CloseIcon, MenuIcon } from '../../shared/icons';
 import NotificationsTray from '../shared/NotificationsTray';
 import ProfilePanel from '../shared/ProfilePanel';
 import SettingsPanel from '../shared/SettingsPanel';
@@ -70,6 +70,8 @@ export default function ProviderDashboard() {
     setShowNotifications,
     showAccountMenu,
     setShowAccountMenu,
+    showMobileSidebar,
+    setShowMobileSidebar,
     sectionLoading,
     setSectionLoading,
     sectionErrors,
@@ -146,6 +148,15 @@ export default function ProviderDashboard() {
     document.addEventListener('pointerdown', handlePointerDown);
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [orderActionMenuId, showAccountMenu, showNotifications]);
+
+  useEffect(() => {
+    if (!showMobileSidebar) return undefined;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [showMobileSidebar]);
 
   async function loadProviderDashboard(accessToken) {
     setSectionLoading({
@@ -413,7 +424,27 @@ export default function ProviderDashboard() {
 
   return (
     <section className="provider-shell-v2">
-      <aside className="provider-sidebar-v2">
+      {showMobileSidebar ? (
+        <button
+          className="dashboard-drawer-scrim"
+          type="button"
+          aria-label="Close navigation"
+          onClick={() => setShowMobileSidebar(false)}
+        />
+      ) : null}
+
+      <aside className={`provider-sidebar-v2${showMobileSidebar ? ' is-mobile-open' : ''}`}>
+        <div className="sidebar-mobile-head">
+          <span>Provider menu</span>
+          <button
+            className="sidebar-close-button"
+            type="button"
+            aria-label="Close navigation"
+            onClick={() => setShowMobileSidebar(false)}
+          >
+            <CloseIcon />
+          </button>
+        </div>
         <button
           className="provider-brand-v2 provider-brand-home-v2"
           type="button"
@@ -451,13 +482,23 @@ export default function ProviderDashboard() {
               }
               type="button"
               onClick={() => {
-                if (!item.disabled) setDashboardTab(item.id);
+                if (!item.disabled) {
+                  setDashboardTab(item.id);
+                  setShowMobileSidebar(false);
+                }
               }}
             >
               {item.label}
             </button>
           ))}
-          <button className="provider-nav-idle-v2" type="button" onClick={signOut}>
+          <button
+            className="provider-nav-idle-v2"
+            type="button"
+            onClick={() => {
+              setShowMobileSidebar(false);
+              signOut();
+            }}
+          >
             Logout
           </button>
         </nav>
@@ -473,6 +514,34 @@ export default function ProviderDashboard() {
 
       <div className="provider-main-v2">
         <header className="provider-topbar-v2">
+          <div className="provider-topbar-shell-v2">
+            <button
+              className="dashboard-menu-button"
+              type="button"
+              aria-label="Open navigation"
+              onClick={() => {
+                setShowAccountMenu(false);
+                setShowNotifications(false);
+                setShowMobileSidebar(true);
+              }}
+            >
+              <MenuIcon />
+            </button>
+
+            <button
+              className="provider-mobile-brand-v2"
+              type="button"
+              onClick={() => {
+                setDashboardTab('overview');
+                setShowAccountMenu(false);
+                setShowNotifications(false);
+              }}
+            >
+              <span>{providerBrandInitials}</span>
+              <strong>{providerBrandName}</strong>
+            </button>
+          </div>
+
           <div className="provider-topbar-search-v2">
             <input
               type="search"

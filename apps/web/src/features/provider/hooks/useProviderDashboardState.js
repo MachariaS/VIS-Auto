@@ -17,6 +17,7 @@ const initialState = {
   loading: false,
   showNotifications: false,
   showAccountMenu: false,
+  showMobileSidebar: false,
   sectionLoading: {
     overview: true,
     services: true,
@@ -75,6 +76,7 @@ export default function useProviderDashboardState() {
     setLoading: setValue('loading'),
     setShowNotifications: setValue('showNotifications'),
     setShowAccountMenu: setValue('showAccountMenu'),
+    setShowMobileSidebar: setValue('showMobileSidebar'),
     setSectionLoading: setValue('sectionLoading'),
     patchSectionLoading: (value) => dispatch({ type: 'patch', key: 'sectionLoading', value }),
     setSectionErrors: setValue('sectionErrors'),

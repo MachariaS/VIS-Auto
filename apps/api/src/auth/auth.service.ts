@@ -3,6 +3,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { OtpChallengeEntity } from './otp-challenge.entity';
@@ -15,6 +16,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
+    private readonly mailService: MailService,
     @InjectRepository(OtpChallengeEntity)
     private readonly otpChallengesRepository: Repository<OtpChallengeEntity>,
   ) {}
@@ -42,6 +44,8 @@ export class AuthService {
     await this.otpChallengesRepository.save(
       this.otpChallengesRepository.create({ email, code, expiresAt }),
     );
+
+    await this.mailService.sendOtp(email, code);
 
     return {
       message: 'OTP generated for verification.',

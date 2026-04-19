@@ -17,6 +17,7 @@ import { UserEntity } from './users/user.entity';
 import { VehicleEntity } from './vehicles/vehicle.entity';
 import { VendorIntegrationEntity } from './vendors/vendor-integration.entity';
 import { VendorsModule } from './vendors/vendors.module';
+import { MailModule } from './mail/mail.module';
 
 @Module({
   imports: [
@@ -48,6 +49,7 @@ import { VendorsModule } from './vendors/vendors.module';
     VehiclesModule,
     RoadsideRequestsModule,
     VendorsModule,
+    MailModule,
   ],
   controllers: [AppController],
   providers: [AppService],

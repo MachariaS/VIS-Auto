@@ -32,9 +32,7 @@ export function AppProvider({ children }) {
     return (
       error?.status === 404 ||
       message.includes('Cannot GET /users/me/profile') ||
-      message.includes('Cannot PATCH /users/me/profile') ||
-      message.includes('property email should not exist') ||
-      message.includes('property profile should not exist')
+      message.includes('Cannot PATCH /users/me/profile')
     );
   }
 

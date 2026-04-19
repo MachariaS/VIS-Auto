@@ -9,6 +9,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { compare, hash } from 'bcrypt';
 import { Repository } from 'typeorm';
 import { UpdateMyPasswordDto } from './dto/update-my-password.dto';
+import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 import { UserEntity } from './user.entity';
 import { User } from './user.types';
 
@@ -82,11 +83,11 @@ export class UsersService {
     };
   }
 
-  async updateProfile(userId: string, input: Record<string, unknown>) {
-    const name = this.requireString(input.name, 'name', 1);
-    const email = this.requireEmail(input.email);
-    const phone = this.optionalString(input.phone);
-    const profile = this.requireObject(input.profile, 'profile');
+  async updateProfile(userId: string, input: UpdateMyProfileDto) {
+    const name = input.name.trim();
+    const email = input.email.trim().toLowerCase();
+    const phone = input.phone?.trim() || undefined;
+    const profile = input.profile;
     const user = await this.findRequiredUser(userId);
 
     const existing = await this.usersRepository.findOneBy({ email });

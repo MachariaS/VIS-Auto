@@ -13,7 +13,12 @@ export async function request(path, body, method = 'POST', token) {
   const data = await response.json();
 
   if (!response.ok) {
-    throw new Error(Array.isArray(data.message) ? data.message.join(', ') : data.message);
+    const error = new Error(
+      Array.isArray(data.message) ? data.message.join(', ') : data.message,
+    );
+    error.status = response.status;
+    error.path = path;
+    throw error;
   }
 
   return data;

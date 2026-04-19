@@ -18,6 +18,15 @@ export default function useVendorNetwork({ token, user, addToast }) {
   const [vendorLoading, setVendorLoading] = useState(false);
   const [vendorError, setVendorError] = useState('');
 
+  function isVendorEndpointUnavailable(error) {
+    return (
+      error?.status === 404 ||
+      String(error?.message || '').includes('Cannot GET /vendors') ||
+      String(error?.message || '').includes('Cannot POST /vendors/') ||
+      String(error?.message || '').includes('Cannot DELETE /vendors/')
+    );
+  }
+
   const activeVendorPartners = vendorNetwork.activePartners || [];
   const pendingVendorRequests = vendorNetwork.pendingRequests || [];
   const rejectedVendorRequests = vendorNetwork.rejectedRequests || [];
@@ -66,6 +75,11 @@ export default function useVendorNetwork({ token, user, addToast }) {
       setVendorNetwork(normalized);
       return normalized;
     } catch (error) {
+      if (isVendorEndpointUnavailable(error)) {
+        setVendorNetwork(emptyVendorNetwork);
+        setVendorError('');
+        return emptyVendorNetwork;
+      }
       const nextError = error.message || 'Unable to load vendor data.';
       setVendorError(nextError);
       throw error;
@@ -87,6 +101,14 @@ export default function useVendorNetwork({ token, user, addToast }) {
         message: accepted?.name ? `${accepted.name} integration approved.` : 'Integration request approved.',
       });
     } catch (error) {
+      if (isVendorEndpointUnavailable(error)) {
+        addToast({
+          type: 'info',
+          title: 'Vendor API unavailable',
+          message: 'Vendor actions are not available on the current backend build.',
+        });
+        return;
+      }
       addToast({
         type: 'error',
         title: 'Vendor action failed',
@@ -110,6 +132,14 @@ export default function useVendorNetwork({ token, user, addToast }) {
         message: rejected?.name ? `${rejected.name} integration rejected.` : 'Integration request rejected.',
       });
     } catch (error) {
+      if (isVendorEndpointUnavailable(error)) {
+        addToast({
+          type: 'info',
+          title: 'Vendor API unavailable',
+          message: 'Vendor actions are not available on the current backend build.',
+        });
+        return;
+      }
       addToast({
         type: 'error',
         title: 'Vendor action failed',

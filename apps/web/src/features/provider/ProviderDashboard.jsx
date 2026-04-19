@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   initialProviderService,
@@ -11,6 +11,7 @@ import ProfilePanel from '../shared/ProfilePanel';
 import SettingsPanel from '../shared/SettingsPanel';
 import SectionErrorBoundary from '../shared/runtime/SectionErrorBoundary';
 import SectionState from '../shared/runtime/SectionState';
+import useProviderDashboardState from './hooks/useProviderDashboardState';
 import useProviderOrders from './hooks/useProviderOrders';
 import useVendorNetwork from './hooks/useVendorNetwork';
 import OrdersPanel from './OrdersPanel';
@@ -37,33 +38,44 @@ export default function ProviderDashboard() {
     signOut,
   } = useApp();
 
-  const [providerServices, setProviderServices] = useState([]);
-  const [requests, setRequests] = useState([]);
-  const [providerServiceForm, setProviderServiceForm] = useState(initialProviderService);
-  const [editingProviderServiceId, setEditingProviderServiceId] = useState('');
-  const [showProviderServiceComposer, setShowProviderServiceComposer] = useState(false);
-  const [orderHistoryTab, setOrderHistoryTab] = useState('all');
-  const [orderActionMenuId, setOrderActionMenuId] = useState('');
-  const [selectedOrderId, setSelectedOrderId] = useState('');
-  const [ordersFromDate, setOrdersFromDate] = useState('2026-04-01');
-  const [ordersToDate, setOrdersToDate] = useState('2026-04-30');
-  const [updatingOrderId, setUpdatingOrderId] = useState('');
-  const [brandLogoError, setBrandLogoError] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showAccountMenu, setShowAccountMenu] = useState(false);
-  const [sectionLoading, setSectionLoading] = useState({
-    overview: true,
-    services: true,
-    vendors: true,
-    orders: true,
-  });
-  const [sectionErrors, setSectionErrors] = useState({
-    overview: '',
-    services: '',
-    vendors: '',
-    orders: '',
-  });
+  const {
+    providerServices,
+    setProviderServices,
+    requests,
+    setRequests,
+    providerServiceForm,
+    setProviderServiceForm,
+    resetProviderServiceForm,
+    editingProviderServiceId,
+    setEditingProviderServiceId,
+    showProviderServiceComposer,
+    setShowProviderServiceComposer,
+    orderHistoryTab,
+    setOrderHistoryTab,
+    orderActionMenuId,
+    setOrderActionMenuId,
+    selectedOrderId,
+    setSelectedOrderId,
+    ordersFromDate,
+    setOrdersFromDate,
+    ordersToDate,
+    setOrdersToDate,
+    updatingOrderId,
+    setUpdatingOrderId,
+    brandLogoError,
+    setBrandLogoError,
+    loading,
+    setLoading,
+    showNotifications,
+    setShowNotifications,
+    showAccountMenu,
+    setShowAccountMenu,
+    sectionLoading,
+    setSectionLoading,
+    sectionErrors,
+    setSectionErrors,
+    patchSectionErrors,
+  } = useProviderDashboardState();
 
   const {
     activeVendorPartners,
@@ -157,31 +169,28 @@ export default function ProviderDashboard() {
 
     if (serviceResult.status === 'fulfilled') {
       setProviderServices(serviceResult.value);
-      setSectionErrors((current) => ({ ...current, services: '' }));
+      patchSectionErrors({ services: '' });
     } else {
-      setSectionErrors((current) => ({
-        ...current,
+      patchSectionErrors({
         overview: serviceResult.reason?.message || 'Unable to load provider services.',
         services: serviceResult.reason?.message || 'Unable to load provider services.',
-      }));
+      });
     }
 
     if (requestResult.status === 'fulfilled') {
       setRequests(Array.isArray(requestResult.value) ? requestResult.value : []);
-      setSectionErrors((current) => ({ ...current, orders: '' }));
+      patchSectionErrors({ orders: '' });
     } else {
-      setSectionErrors((current) => ({
-        ...current,
+      patchSectionErrors({
         overview: requestResult.reason?.message || 'Unable to load provider requests.',
         orders: requestResult.reason?.message || 'Unable to load provider requests.',
-      }));
+      });
     }
 
     if (vendorResult.status === 'rejected') {
-      setSectionErrors((current) => ({
-        ...current,
+      patchSectionErrors({
         vendors: vendorResult.reason?.message || 'Unable to load vendor data.',
-      }));
+      });
     }
 
     setSectionLoading({
@@ -232,10 +241,10 @@ export default function ProviderDashboard() {
           : [savedService, ...current],
       );
 
-      setProviderServiceForm({
+      setProviderServiceForm((current) => ({
         ...initialProviderService,
-        serviceCode: providerServiceForm.serviceCode,
-      });
+        serviceCode: current.serviceCode,
+      }));
       setEditingProviderServiceId('');
       setShowProviderServiceComposer(false);
       setDashboardTab('services');
@@ -547,7 +556,7 @@ export default function ProviderDashboard() {
                   onAddService={() => {
                     setDashboardTab('services');
                     setEditingProviderServiceId('');
-                    setProviderServiceForm(initialProviderService);
+                    resetProviderServiceForm();
                     setShowProviderServiceComposer(true);
                   }}
                   onManageServices={() => setDashboardTab('services')}

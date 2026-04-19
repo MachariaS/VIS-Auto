@@ -27,6 +27,17 @@ export function AppProvider({ children }) {
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [authIntent, setAuthIntent] = useState({ mode: 'login', accountType: 'customer' });
 
+  function isProfileSyncUnavailable(error) {
+    const message = String(error?.message || '');
+    return (
+      error?.status === 404 ||
+      message.includes('Cannot GET /users/me/profile') ||
+      message.includes('Cannot PATCH /users/me/profile') ||
+      message.includes('property email should not exist') ||
+      message.includes('property profile should not exist')
+    );
+  }
+
   useEffect(() => {
     fetch(`http://localhost:4000/health`)
       .then((res) => res.json())
@@ -251,6 +262,9 @@ export function AppProvider({ children }) {
         mergeProfileSettings(apiUser || currentUser, current, data?.profile || {}),
       );
     } catch (error) {
+      if (isProfileSyncUnavailable(error)) {
+        return;
+      }
       addToast({
         type: 'error',
         title: 'Profile sync failed',
@@ -290,6 +304,15 @@ export function AppProvider({ children }) {
         message: 'Profile changes were synced successfully.',
       });
     } catch (error) {
+      if (isProfileSyncUnavailable(error)) {
+        setMessage('Profile saved locally. Restart or update the API to enable profile sync.');
+        addToast({
+          type: 'info',
+          title: 'Saved locally',
+          message: 'Profile sync endpoint is unavailable, so changes were stored locally for now.',
+        });
+        return;
+      }
       setMessage(error.message || 'Unable to save profile.');
       addToast({
         type: 'error',
@@ -318,6 +341,15 @@ export function AppProvider({ children }) {
       });
       return true;
     } catch (error) {
+      if (error?.status === 404 || String(error?.message || '').includes('Cannot POST /users/me/password')) {
+        setMessage('Password change is not available on the current API build yet.');
+        addToast({
+          type: 'info',
+          title: 'Password API unavailable',
+          message: 'The current backend does not expose password change yet.',
+        });
+        return false;
+      }
       setMessage(error.message || 'Unable to update password.');
       addToast({
         type: 'error',

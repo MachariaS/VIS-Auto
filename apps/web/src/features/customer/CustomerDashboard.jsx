@@ -1,6 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useApp } from '../../context/AppContext';
-import { initialRoadsideRequest, initialVehicle } from '../../shared/constants';
 import { formatCurrency, request } from '../../shared/helpers';
 import { BellIcon, LogoutIcon, MoonIcon, SunIcon, UserIcon } from '../../shared/icons';
 import { staticNotifications } from '../../shared/constants';
@@ -8,6 +7,7 @@ import NotificationsTray from '../shared/NotificationsTray';
 import ProfilePanel from '../shared/ProfilePanel';
 import SectionErrorBoundary from '../shared/runtime/SectionErrorBoundary';
 import SectionState from '../shared/runtime/SectionState';
+import useCustomerDashboardState from './hooks/useCustomerDashboardState';
 import CustomerOverview from './CustomerOverview';
 import HistoryPanel from './HistoryPanel';
 import RequestPanel from './RequestPanel';
@@ -27,27 +27,33 @@ export default function CustomerDashboard() {
     openDashboard,
   } = useApp();
 
-  const [vehicles, setVehicles] = useState([]);
-  const [requests, setRequests] = useState([]);
-  const [providerCatalog, setProviderCatalog] = useState([]);
-  const [vehicleForm, setVehicleForm] = useState(initialVehicle);
-  const [roadsideForm, setRoadsideForm] = useState(initialRoadsideRequest);
-  const [serviceFilter, setServiceFilter] = useState('battery_jump');
-  const [loading, setLoading] = useState(false);
-  const [showNotifications, setShowNotifications] = useState(false);
-  const [showAccountMenu, setShowAccountMenu] = useState(false);
-  const [sectionLoading, setSectionLoading] = useState({
-    overview: true,
-    request: true,
-    vehicles: true,
-    history: true,
-  });
-  const [sectionErrors, setSectionErrors] = useState({
-    overview: '',
-    request: '',
-    vehicles: '',
-    history: '',
-  });
+  const {
+    vehicles,
+    setVehicles,
+    requests,
+    setRequests,
+    providerCatalog,
+    setProviderCatalog,
+    vehicleForm,
+    setVehicleForm,
+    resetVehicleForm,
+    roadsideForm,
+    setRoadsideForm,
+    resetRoadsideForm,
+    serviceFilter,
+    setServiceFilter,
+    loading,
+    setLoading,
+    showNotifications,
+    setShowNotifications,
+    showAccountMenu,
+    setShowAccountMenu,
+    sectionLoading,
+    setSectionLoading,
+    sectionErrors,
+    setSectionErrors,
+    patchSectionErrors,
+  } = useCustomerDashboardState();
 
   const requestStats = useMemo(
     () => ({
@@ -124,22 +130,20 @@ export default function CustomerDashboard() {
         }));
       }
     } else {
-      setSectionErrors((current) => ({
-        ...current,
+      patchSectionErrors({
         overview: vehicleResult.reason?.message || 'Unable to load vehicles.',
         request: vehicleResult.reason?.message || 'Unable to load vehicles.',
         vehicles: vehicleResult.reason?.message || 'Unable to load vehicles.',
-      }));
+      });
     }
 
     if (requestResult.status === 'fulfilled') {
       setRequests(Array.isArray(requestResult.value) ? requestResult.value : []);
     } else {
-      setSectionErrors((current) => ({
-        ...current,
+      patchSectionErrors({
         overview: requestResult.reason?.message || 'Unable to load request history.',
         history: requestResult.reason?.message || 'Unable to load request history.',
-      }));
+      });
     }
 
     if (catalogResult.status === 'fulfilled') {
@@ -154,11 +158,10 @@ export default function CustomerDashboard() {
         }));
       }
     } else {
-      setSectionErrors((current) => ({
-        ...current,
+      patchSectionErrors({
         overview: catalogResult.reason?.message || 'Unable to load provider catalog.',
         request: catalogResult.reason?.message || 'Unable to load provider catalog.',
-      }));
+      });
     }
 
     setSectionLoading({
@@ -175,7 +178,7 @@ export default function CustomerDashboard() {
     try {
       const newVehicle = await request('/vehicles', vehicleForm, 'POST', token);
       setVehicles((current) => [...current, newVehicle]);
-      setVehicleForm(initialVehicle);
+      resetVehicleForm();
       setRoadsideForm((current) => ({ ...current, vehicleId: newVehicle.id }));
       setDashboardTab('vehicles');
       addToast({
@@ -231,11 +234,7 @@ export default function CustomerDashboard() {
 
       const newRequest = await request('/roadside-requests', payload, 'POST', token);
       setRequests((current) => [newRequest, ...current]);
-      setRoadsideForm((current) => ({
-        ...initialRoadsideRequest,
-        vehicleId: current.vehicleId,
-        providerServiceId: current.providerServiceId,
-      }));
+      resetRoadsideForm();
       setDashboardTab('history');
       addToast({
         type: 'success',

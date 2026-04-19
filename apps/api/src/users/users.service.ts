@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
@@ -8,7 +9,6 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { compare, hash } from 'bcrypt';
 import { Repository } from 'typeorm';
 import { UpdateMyPasswordDto } from './dto/update-my-password.dto';
-import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 import { UserEntity } from './user.entity';
 import { User } from './user.types';
 
@@ -82,8 +82,11 @@ export class UsersService {
     };
   }
 
-  async updateProfile(userId: string, dto: UpdateMyProfileDto) {
-    const email = dto.email.trim().toLowerCase();
+  async updateProfile(userId: string, input: Record<string, unknown>) {
+    const name = this.requireString(input.name, 'name', 1);
+    const email = this.requireEmail(input.email);
+    const phone = this.optionalString(input.phone);
+    const profile = this.requireObject(input.profile, 'profile');
     const user = await this.findRequiredUser(userId);
 
     const existing = await this.usersRepository.findOneBy({ email });
@@ -91,10 +94,10 @@ export class UsersService {
       throw new ConflictException('A user with that email already exists.');
     }
 
-    user.name = dto.name.trim();
+    user.name = name;
     user.email = email;
-    user.phone = dto.phone?.trim() || undefined;
-    user.profile = dto.profile || {};
+    user.phone = phone;
+    user.profile = profile;
 
     const saved = await this.usersRepository.save(user);
 
@@ -126,6 +129,44 @@ export class UsersService {
     }
 
     return user;
+  }
+
+  private requireString(value: unknown, field: string, minLength = 1) {
+    if (typeof value !== 'string' || value.trim().length < minLength) {
+      throw new BadRequestException(`${field} must be at least ${minLength} character(s).`);
+    }
+
+    return value.trim();
+  }
+
+  private optionalString(value: unknown) {
+    if (value === undefined || value === null || value === '') {
+      return undefined;
+    }
+
+    if (typeof value !== 'string') {
+      throw new BadRequestException('phone must be a string.');
+    }
+
+    return value.trim() || undefined;
+  }
+
+  private requireEmail(value: unknown) {
+    const email = this.requireString(value, 'email', 3).toLowerCase();
+
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      throw new BadRequestException('email must be a valid email address.');
+    }
+
+    return email;
+  }
+
+  private requireObject(value: unknown, field: string) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+      throw new BadRequestException(`${field} must be an object.`);
+    }
+
+    return value as Record<string, unknown>;
   }
 
   toSafeUser(user: User | UserEntity) {

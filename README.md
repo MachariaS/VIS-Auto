@@ -54,6 +54,21 @@ npm run dev
 
 The web app runs on `http://localhost:3000` and talks to the API on `http://localhost:4000`.
 
+## Deploying Web To Vercel
+This repo now includes a root [vercel.json](/Users/macharia/Desktop/vis-assist/vercel.json:1) so a Vercel project can build the frontend directly from the monorepo root.
+
+In your Vercel project settings, set:
+
+```text
+VITE_API_BASE_URL=https://your-api-domain.example.com
+```
+
+Use your deployed API origin, not `localhost:4000`.
+
+If you rely on refresh cookies or other authenticated cross-origin requests, make sure the API CORS config allows your Vercel domain and `credentials: true`.
+
+The frontend env template lives at [apps/web/.env.example](/Users/macharia/Desktop/vis-assist/apps/web/.env.example:1).
+
 ## Environment
 Copy `apps/api/.env.example` to `apps/api/.env` if you want to override the JWT or database settings.
 

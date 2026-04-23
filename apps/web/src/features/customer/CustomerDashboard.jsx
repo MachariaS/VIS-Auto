@@ -81,6 +81,19 @@ export default function CustomerDashboard() {
   }, [sessionReady, token]);
 
   useEffect(() => {
+    if (vehicles.length === 0) {
+      if (roadsideForm.vehicleId) {
+        setRoadsideForm((current) => ({ ...current, vehicleId: '' }));
+      }
+      return;
+    }
+    const validVehicle = vehicles.find((v) => v.id === roadsideForm.vehicleId);
+    if (!validVehicle) {
+      setRoadsideForm((current) => ({ ...current, vehicleId: vehicles[0].id }));
+    }
+  }, [vehicles]);
+
+  useEffect(() => {
     const filtered = providerCatalog.filter((item) => item.serviceCode === serviceFilter);
     if (filtered.length === 0) {
       if (roadsideForm.providerServiceId) {

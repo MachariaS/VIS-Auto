@@ -153,7 +153,7 @@ export default function ProviderOverview({
       <div className="provider-home-head-v2">
         <div>
           <p>Welcome to</p>
-          <h3>StarShine</h3>
+          <h3>{user?.name || 'your dashboard'}</h3>
         </div>
         <button className="primary-cta" type="button" onClick={onAddService}>
           Add Service

@@ -59,8 +59,21 @@ export class AuthService {
     const email = dto.email.trim().toLowerCase();
     const challenge = await this.otpChallengesRepository.findOneBy({ email });
 
-    if (!challenge || challenge.expiresAt < Date.now() || challenge.code !== dto.otp) {
+    if (!challenge || challenge.expiresAt < Date.now()) {
       throw new UnauthorizedException('Invalid or expired OTP.');
+    }
+
+    if (challenge.attempts >= 5) {
+      await this.otpChallengesRepository.delete({ email });
+      throw new UnauthorizedException('Too many incorrect attempts. Please log in again.');
+    }
+
+    if (challenge.code !== dto.otp) {
+      await this.otpChallengesRepository.save({ ...challenge, attempts: challenge.attempts + 1 });
+      const remaining = 5 - (challenge.attempts + 1);
+      throw new UnauthorizedException(
+        remaining > 0 ? `Incorrect code. ${remaining} attempt${remaining === 1 ? '' : 's'} remaining.` : 'Too many incorrect attempts. Please log in again.',
+      );
     }
 
     const user = await this.usersService.findByEmail(email);

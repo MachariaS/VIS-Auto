@@ -10,4 +10,7 @@ export class OtpChallengeEntity {
 
   @Column({ type: 'bigint' })
   expiresAt!: number;
+
+  @Column({ default: 0 })
+  attempts!: number;
 }

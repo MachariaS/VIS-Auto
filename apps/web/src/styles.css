@@ -1028,10 +1028,36 @@ h1 {
   border-radius: 32px;
   background: linear-gradient(180deg, #f7fee7 0%, #ecfccb 100%);
   padding: 26px;
+  color: #16301d;
 }
 
 .vis-cta-copy {
   max-width: 60ch;
+}
+
+.vis-cta-section .eyebrow {
+  color: #65a30d;
+}
+
+.vis-cta-section .vis-section-title {
+  color: #16301d;
+}
+
+.vis-cta-section .vis-section-copy {
+  color: rgba(22, 48, 29, 0.82);
+}
+
+.vis-cta-section .secondary-cta {
+  border-color: rgba(22, 48, 29, 0.18);
+  color: #16301d;
+  background: rgba(255, 255, 255, 0.58);
+}
+
+:root[data-theme='dark'] .vis-cta-section {
+  background:
+    radial-gradient(circle at top left, rgba(132, 204, 22, 0.18), transparent 34%),
+    linear-gradient(180deg, #eef8cf 0%, #dff0aa 100%);
+  box-shadow: inset 0 0 0 1px rgba(22, 48, 29, 0.08);
 }
 
 .vis-cta-actions {

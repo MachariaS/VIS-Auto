@@ -24,11 +24,39 @@ export default function AuthPanel() {
   const [verifyForm, setVerifyForm] = useState(initialVerify);
   const [devOtp, setDevOtp] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const [resendLoading, setResendLoading] = useState(false);
 
   useEffect(() => {
     setMode(authIntent.mode);
     setRegisterForm((current) => ({ ...current, accountType: authIntent.accountType }));
   }, [authIntent]);
+
+  useEffect(() => {
+    if (step !== 'otp') return;
+    setResendCooldown(30);
+  }, [step]);
+
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
+
+  async function handleResend() {
+    setResendLoading(true);
+    try {
+      const data = await request('/auth/resend-otp', { email: verifyForm.email });
+      setDevOtp(data.devOtp ?? '');
+      setVerifyForm((current) => ({ ...current, otp: '' }));
+      setMessage('A new code has been sent.');
+      setResendCooldown(30);
+    } catch (error) {
+      setMessage(error.message || 'Could not resend code. Please try again.');
+    } finally {
+      setResendLoading(false);
+    }
+  }
 
   async function handleRegister(event) {
     event.preventDefault();
@@ -118,6 +146,14 @@ export default function AuthPanel() {
         {devOtp ? <div className="otp-box">Dev OTP: {devOtp}</div> : null}
         <button type="submit" disabled={loading}>
           {loading ? 'Verifying...' : 'Continue'}
+        </button>
+        <button
+          className="ghost-button"
+          type="button"
+          onClick={handleResend}
+          disabled={resendCooldown > 0 || resendLoading}
+        >
+          {resendLoading ? 'Sending...' : resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
         </button>
         <button className="ghost-button" type="button" onClick={() => resetFlow('login')}>
           Back

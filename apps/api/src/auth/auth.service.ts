@@ -42,7 +42,7 @@ export class AuthService {
     const email = user.email.toLowerCase();
 
     await this.otpChallengesRepository.save(
-      this.otpChallengesRepository.create({ email, code, expiresAt }),
+      this.otpChallengesRepository.create({ email, code, expiresAt, attempts: 0 }),
     );
 
     await this.mailService.sendOtp(email, code);
@@ -144,6 +144,36 @@ export class AuthService {
       accessToken: await this.jwtService.signAsync(accessPayload),
       user: this.usersService.toSafeUser(user),
     };
+  }
+
+  async resendOtp(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.usersService.findByEmail(normalizedEmail);
+
+    if (user) {
+      const code = this.generateOtp();
+      const expiresAt = Date.now() + 5 * 60 * 1000;
+
+      await this.otpChallengesRepository.save(
+        this.otpChallengesRepository.create({
+          email: normalizedEmail,
+          code,
+          expiresAt,
+          attempts: 0,
+        }),
+      );
+
+      await this.mailService.sendOtp(normalizedEmail, code);
+
+      return {
+        message: 'A new code has been sent.',
+        otpRequired: true,
+        expiresAt: new Date(expiresAt).toISOString(),
+        devOtp: this.configService.get('NODE_ENV') === 'production' ? undefined : code,
+      };
+    }
+
+    return { message: 'If that email has an account, a new code has been sent.', otpRequired: true };
   }
 
   private generateOtp() {

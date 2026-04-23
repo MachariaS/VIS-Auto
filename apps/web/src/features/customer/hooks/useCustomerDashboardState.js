@@ -29,7 +29,11 @@ const initialState = {
 function reducer(state, action) {
   switch (action.type) {
     case 'set':
-      return { ...state, [action.key]: action.value };
+      return {
+        ...state,
+        [action.key]:
+          typeof action.value === 'function' ? action.value(state[action.key]) : action.value,
+      };
     case 'patch':
       return { ...state, [action.key]: { ...state[action.key], ...action.value } };
     case 'resetVehicleForm':
@@ -56,7 +60,7 @@ export default function useCustomerDashboardState() {
       dispatch({
         type: 'set',
         key,
-        value: typeof value === 'function' ? value(state[key]) : value,
+        value,
       });
     };
   }

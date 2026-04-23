@@ -78,6 +78,9 @@ export default function RequestPanel({
               setRoadsideForm({ ...roadsideForm, vehicleId: event.target.value })
             }
           >
+            {vehicles.length > 1 ? (
+              <option value="">Select a vehicle</option>
+            ) : null}
             {vehicles.map((vehicle) => (
               <option key={vehicle.id} value={vehicle.id}>
                 {vehicle.nickname} • {vehicle.registrationNumber}

@@ -1,4 +1,4 @@
-export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '/api';
 export const SESSION_STORAGE_KEY = 'vis-assist-session';
 export const THEME_STORAGE_KEY = 'vis-assist-theme';
 export const PROFILE_STORAGE_KEY = 'vis-assist-profile';

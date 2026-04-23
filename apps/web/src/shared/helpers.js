@@ -1,11 +1,7 @@
 import { API_BASE, serviceImageByCode } from './constants';
 
-export function getApiUrl(path) {
-  return `${API_BASE}${path}`;
-}
-
 export async function request(path, body, method = 'POST', token, signal) {
-  const response = await fetch(getApiUrl(path), {
+  const response = await fetch(`${API_BASE}${path}`, {
     method,
     credentials: 'include',
     signal,

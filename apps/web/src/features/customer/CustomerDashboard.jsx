@@ -81,25 +81,6 @@ export default function CustomerDashboard() {
   }, [sessionReady, token]);
 
   useEffect(() => {
-    if (vehicles.length === 0) {
-      if (roadsideForm.vehicleId) {
-        setRoadsideForm((current) => ({ ...current, vehicleId: '' }));
-      }
-      return;
-    }
-
-    const currentVehicle = vehicles.find((vehicle) => vehicle.id === roadsideForm.vehicleId);
-    if (currentVehicle) {
-      return;
-    }
-
-    setRoadsideForm((current) => ({
-      ...current,
-      vehicleId: vehicles.length === 1 ? vehicles[0].id : '',
-    }));
-  }, [vehicles, roadsideForm.vehicleId, setRoadsideForm]);
-
-  useEffect(() => {
     const filtered = providerCatalog.filter((item) => item.serviceCode === serviceFilter);
     if (filtered.length === 0) {
       if (roadsideForm.providerServiceId) {
@@ -160,6 +141,13 @@ export default function CustomerDashboard() {
     if (vehicleResult.status === 'fulfilled') {
       const vehicleData = Array.isArray(vehicleResult.value) ? vehicleResult.value : [];
       setVehicles(vehicleData);
+
+      if (vehicleData.length > 0) {
+        setRoadsideForm((current) => ({
+          ...current,
+          vehicleId: current.vehicleId || vehicleData[0].id,
+        }));
+      }
     } else {
       patchSectionErrors({
         overview: vehicleResult.reason?.message || 'Unable to load vehicles.',
@@ -230,6 +218,7 @@ export default function CustomerDashboard() {
 
   async function handleSubmitRoadsideRequest(event) {
     event.preventDefault();
+    setLoading(true);
 
     const selectedProviderService = providerCatalog.find(
       (item) => item.id === roadsideForm.providerServiceId,
@@ -238,86 +227,17 @@ export default function CustomerDashboard() {
       roadsideForm.fuelLitres === 'custom'
         ? Number(roadsideForm.customFuelLitres || 0)
         : Number(roadsideForm.fuelLitres || 0);
-    const distanceKm = Number(roadsideForm.distanceKm);
-    const latitude = Number(roadsideForm.latitude);
-    const longitude = Number(roadsideForm.longitude);
-    const address = roadsideForm.address.trim();
-
-    if (!token) {
-      addToast({
-        type: 'error',
-        title: 'Session expired',
-        message: 'Sign in again before submitting a roadside request.',
-      });
-      return;
-    }
-
-    if (!roadsideForm.vehicleId) {
-      addToast({
-        type: 'error',
-        title: 'Vehicle required',
-        message: 'Select a saved vehicle before submitting the request.',
-      });
-      return;
-    }
-
-    if (!roadsideForm.providerServiceId) {
-      addToast({
-        type: 'error',
-        title: 'Provider required',
-        message: 'Choose a provider before submitting the request.',
-      });
-      return;
-    }
-
-    if (!Number.isFinite(distanceKm) || distanceKm < 0.1) {
-      addToast({
-        type: 'error',
-        title: 'Invalid distance',
-        message: 'Distance must be at least 0.1 km.',
-      });
-      return;
-    }
-
-    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
-      addToast({
-        type: 'error',
-        title: 'Location required',
-        message: 'Enter valid latitude and longitude before submitting.',
-      });
-      return;
-    }
-
-    if (address.length < 4) {
-      addToast({
-        type: 'error',
-        title: 'Address required',
-        message: 'Enter a pickup address with at least 4 characters.',
-      });
-      return;
-    }
-
-    if (selectedProviderService?.serviceCode === 'fuel_delivery' && selectedFuelLitres < 1) {
-      addToast({
-        type: 'error',
-        title: 'Fuel amount required',
-        message: 'Fuel delivery requests need at least 1 litre.',
-      });
-      return;
-    }
-
-    setLoading(true);
 
     try {
       const payload = {
         vehicleId: roadsideForm.vehicleId,
         providerServiceId: roadsideForm.providerServiceId,
-        distanceKm,
-        latitude,
-        longitude,
-        address,
-        landmark: roadsideForm.landmark.trim(),
-        notes: roadsideForm.notes.trim(),
+        distanceKm: Number(roadsideForm.distanceKm),
+        latitude: Number(roadsideForm.latitude),
+        longitude: Number(roadsideForm.longitude),
+        address: roadsideForm.address,
+        landmark: roadsideForm.landmark,
+        notes: roadsideForm.notes,
         fuelLitres:
           selectedProviderService?.serviceCode === 'fuel_delivery' ? selectedFuelLitres : undefined,
         fuelType:
@@ -333,10 +253,7 @@ export default function CustomerDashboard() {
 
       const newRequest = await request('/roadside-requests', payload, 'POST', token);
       setRequests((current) => [newRequest, ...current]);
-      resetRoadsideForm({
-        vehicleId: roadsideForm.vehicleId,
-        providerServiceId: roadsideForm.providerServiceId,
-      });
+      resetRoadsideForm();
       setDashboardTab('history');
       addToast({
         type: 'success',

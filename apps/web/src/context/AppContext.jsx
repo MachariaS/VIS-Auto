@@ -4,7 +4,7 @@ import {
   THEME_STORAGE_KEY,
   PROFILE_STORAGE_KEY,
 } from '../shared/constants';
-import { getApiUrl, getDefaultProfile, mergeProfileSettings, request } from '../shared/helpers';
+import { getDefaultProfile, mergeProfileSettings, request } from '../shared/helpers';
 
 const AppContext = createContext(null);
 let toastCounter = 0;
@@ -37,7 +37,7 @@ export function AppProvider({ children }) {
   }
 
   useEffect(() => {
-    fetch(getApiUrl('/health'))
+    fetch(`/health`)
       .then((res) => res.json())
       .then((data) => setHealth(data))
       .catch(() => setHealth({ status: 'offline', service: 'vis-assist-api' }));
@@ -71,7 +71,7 @@ export function AppProvider({ children }) {
           setDashboardTab(parsed.dashboardTab ?? 'overview');
 
           // Recover the access token from the httpOnly refresh cookie — no JWT in localStorage
-          fetch(getApiUrl('/auth/refresh'), { method: 'POST', credentials: 'include' })
+          fetch(`/auth/refresh`, { method: 'POST', credentials: 'include' })
             .then((res) => (res.ok ? res.json() : Promise.reject()))
             .then((data) => {
               setToken(data.accessToken);
@@ -139,7 +139,7 @@ export function AppProvider({ children }) {
     window.localStorage.removeItem(SESSION_STORAGE_KEY);
     window.localStorage.removeItem(PROFILE_STORAGE_KEY);
     // Clear the httpOnly refresh token cookie on the server
-    fetch(getApiUrl('/auth/logout'), { method: 'POST', credentials: 'include' }).catch(
+    fetch('/auth/logout', { method: 'POST', credentials: 'include' }).catch(
       () => {},
     );
   }

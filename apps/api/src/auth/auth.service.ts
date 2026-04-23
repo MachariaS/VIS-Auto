@@ -96,7 +96,7 @@ export class AuthService {
     const [accessToken, refreshToken] = await Promise.all([
       this.jwtService.signAsync(accessPayload),
       this.jwtService.signAsync(refreshPayload, {
-        secret: this.configService.get<string>('REFRESH_TOKEN_SECRET', 'dev-refresh-secret'),
+        secret: this.configService.getOrThrow<string>('REFRESH_TOKEN_SECRET'),
         expiresIn: '7d',
       }),
     ]);
@@ -117,7 +117,7 @@ export class AuthService {
 
     try {
       payload = await this.jwtService.verifyAsync(refreshToken, {
-        secret: this.configService.get<string>('REFRESH_TOKEN_SECRET', 'dev-refresh-secret'),
+        secret: this.configService.getOrThrow<string>('REFRESH_TOKEN_SECRET'),
       });
     } catch {
       throw new UnauthorizedException('Invalid or expired refresh token.');
@@ -177,6 +177,6 @@ export class AuthService {
   }
 
   private generateOtp() {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    return Math.floor(10000000 + Math.random() * 90000000).toString();
   }
 }

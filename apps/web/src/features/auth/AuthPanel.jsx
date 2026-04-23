@@ -138,7 +138,7 @@ export default function AuthPanel() {
         <label>
           <span>Code</span>
           <input
-            placeholder="123456"
+            placeholder="12345678"
             value={verifyForm.otp}
             onChange={(event) => setVerifyForm({ ...verifyForm, otp: event.target.value })}
           />

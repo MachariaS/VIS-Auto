@@ -32,11 +32,11 @@ import { MailModule } from './mail/mail.module';
     }),
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: process.env.DB_HOST || '127.0.0.1',
-      port: Number(process.env.DB_PORT || 5432),
-      username: process.env.DB_USER || 'vis_user',
-      password: process.env.DB_PASSWORD || 'vis_password',
-      database: process.env.DB_NAME || 'vis_assist',
+      host: process.env.DB_HOST,
+      port: Number(process.env.DB_PORT),
+      username: process.env.DB_USER,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
       entities: [
         UserEntity,
         VehicleEntity,

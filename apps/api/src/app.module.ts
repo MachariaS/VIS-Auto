@@ -31,24 +31,34 @@ import { MailModule } from './mail/mail.module';
       isGlobal: true,
       envFilePath: [join(__dirname, '..', '.env'), join(process.cwd(), '.env')],
     }),
-    TypeOrmModule.forRoot({
-      type: 'postgres',
-      host: process.env.DB_HOST,
-      port: Number(process.env.DB_PORT),
-      username: process.env.DB_USER,
-      password: process.env.DB_PASSWORD,
-      database: process.env.DB_NAME,
-      entities: [
-        UserEntity,
-        VehicleEntity,
-        ProviderServiceEntity,
-        RoadsideRequestEntity,
-        OtpChallengeEntity,
-        PasswordResetEntity,
-        VendorIntegrationEntity,
-      ],
-      synchronize: (process.env.DB_SYNCHRONIZE || 'true') === 'true',
-    }),
+    TypeOrmModule.forRoot(
+      process.env.DATABASE_URL
+        ? {
+            type: 'postgres',
+            url: process.env.DATABASE_URL,
+            ssl: { rejectUnauthorized: false },
+            entities: [
+              UserEntity, VehicleEntity, ProviderServiceEntity,
+              RoadsideRequestEntity, OtpChallengeEntity, PasswordResetEntity,
+              VendorIntegrationEntity,
+            ],
+            synchronize: (process.env.DB_SYNCHRONIZE || 'false') === 'true',
+          }
+        : {
+            type: 'postgres',
+            host: process.env.DB_HOST || '127.0.0.1',
+            port: Number(process.env.DB_PORT || 5432),
+            username: process.env.DB_USER || 'vis_user',
+            password: process.env.DB_PASSWORD || 'vis_password',
+            database: process.env.DB_NAME || 'vis_assist',
+            entities: [
+              UserEntity, VehicleEntity, ProviderServiceEntity,
+              RoadsideRequestEntity, OtpChallengeEntity, PasswordResetEntity,
+              VendorIntegrationEntity,
+            ],
+            synchronize: (process.env.DB_SYNCHRONIZE || 'true') === 'true',
+          },
+    ),
     UsersModule,
     AuthModule,
     ProviderServicesModule,

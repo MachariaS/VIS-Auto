@@ -5,6 +5,10 @@
   "author": "",
   "private": true,
   "license": "UNLICENSED",
+  "engines": {
+    "node": "20.x",
+    "npm": "10.x"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "dev": "ts-node -r tsconfig-paths/register src/main.ts",

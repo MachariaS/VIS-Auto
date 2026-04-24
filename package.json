@@ -1,0 +1,13 @@
+{
+  "name": "vis-auto",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": "20.x",
+    "npm": "10.x"
+  },
+  "scripts": {
+    "build": "cd apps/api && npm ci && npm run build",
+    "start": "cd apps/api && node dist/main.js"
+  }
+}

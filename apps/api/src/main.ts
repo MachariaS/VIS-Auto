@@ -8,8 +8,14 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
+  const allowedOrigins = [
+    'http://localhost:3000',
+    'http://127.0.0.1:3000',
+    process.env.FRONTEND_URL,
+  ].filter(Boolean) as string[];
+
   app.enableCors({
-    origin: ['http://localhost:3000', 'http://127.0.0.1:3000'],
+    origin: allowedOrigins,
     credentials: true,
   });
 
@@ -21,7 +27,8 @@ async function bootstrap() {
     }),
   );
 
-  await app.listen(4000);
-  console.log('API running on http://localhost:4000');
+  const port = process.env.PORT ?? 4000;
+  await app.listen(port);
+  console.log(`API running on port ${port}`);
 }
 bootstrap();

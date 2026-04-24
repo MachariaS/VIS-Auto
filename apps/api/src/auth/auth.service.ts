@@ -57,6 +57,7 @@ export class AuthService {
 
   async verifyOtp(dto: VerifyOtpDto) {
     const email = dto.email.trim().toLowerCase();
+    const otp = dto.otp.trim().toUpperCase();
     const challenge = await this.otpChallengesRepository.findOneBy({ email });
 
     if (!challenge || challenge.expiresAt < Date.now()) {
@@ -68,7 +69,7 @@ export class AuthService {
       throw new UnauthorizedException('Too many incorrect attempts. Please log in again.');
     }
 
-    if (challenge.code !== dto.otp) {
+    if (challenge.code !== otp) {
       await this.otpChallengesRepository.save({ ...challenge, attempts: challenge.attempts + 1 });
       const remaining = 5 - (challenge.attempts + 1);
       throw new UnauthorizedException(
@@ -176,7 +177,12 @@ export class AuthService {
     return { message: 'If that email has an account, a new code has been sent.', otpRequired: true };
   }
 
-  private generateOtp() {
-    return Math.floor(10000000 + Math.random() * 90000000).toString();
+  private generateOtp(): string {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let code = '';
+    for (let i = 0; i < 6; i++) {
+      code += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return code;
   }
 }

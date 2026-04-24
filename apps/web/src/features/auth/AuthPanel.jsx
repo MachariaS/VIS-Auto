@@ -138,9 +138,9 @@ export default function AuthPanel() {
         <label>
           <span>Code</span>
           <input
-            placeholder="12345678"
+            placeholder="A3K9M2"
             value={verifyForm.otp}
-            onChange={(event) => setVerifyForm({ ...verifyForm, otp: event.target.value })}
+            onChange={(event) => setVerifyForm({ ...verifyForm, otp: event.target.value.toUpperCase() })}
           />
         </label>
         {devOtp ? <div className="otp-box">Dev OTP: {devOtp}</div> : null}

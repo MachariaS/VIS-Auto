@@ -151,12 +151,6 @@ export class RoadsideRequestsService {
 
     request.status = status;
 
-    if ((status === 'provider_assigned' || status === 'in_progress') && request.providerLatitude === undefined) {
-      request.providerLatitude = Number((Number(request.latitude) + 0.0125).toFixed(6));
-      request.providerLongitude = Number((Number(request.longitude) - 0.0085).toFixed(6));
-      request.providerLocationUpdatedAt = new Date();
-    }
-
     const saved = await this.roadsideRequestsRepository.save(request);
 
     return this.toRoadsideRequest(saved, true);

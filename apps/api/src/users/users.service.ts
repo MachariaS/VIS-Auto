@@ -89,6 +89,10 @@ export class UsersService {
   }
 
   async updateProfile(userId: string, input: UpdateMyProfileDto) {
+    if (JSON.stringify(input.profile).length > 50_000) {
+      throw new BadRequestException('Profile data too large.');
+    }
+
     const name = input.name.trim();
     const email = input.email.trim().toLowerCase();
     const phone = input.phone?.trim() || undefined;

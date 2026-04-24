@@ -73,7 +73,7 @@ export default function CustomerDashboard() {
     [requests, vehicles.length],
   );
 
-  const notificationCount = staticNotifications.length;
+  const notificationCount = 0;
 
   useEffect(() => {
     if (!sessionReady || !token) return;

@@ -8,6 +8,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { AuthModule } from './auth/auth.module';
 import { OtpChallengeEntity } from './auth/otp-challenge.entity';
+import { PasswordResetEntity } from './auth/password-reset.entity';
 import { ProviderServicesModule } from './provider-services/provider-services.module';
 import { ProviderServiceEntity } from './provider-services/provider-service.entity';
 import { RoadsideRequestEntity } from './roadside-requests/roadside-request.entity';
@@ -43,6 +44,7 @@ import { MailModule } from './mail/mail.module';
         ProviderServiceEntity,
         RoadsideRequestEntity,
         OtpChallengeEntity,
+        PasswordResetEntity,
         VendorIntegrationEntity,
       ],
       synchronize: (process.env.DB_SYNCHRONIZE || 'true') === 'true',

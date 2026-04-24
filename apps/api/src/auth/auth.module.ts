@@ -7,12 +7,13 @@ import { UsersModule } from '../users/users.module';
 import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { OtpChallengeEntity } from './otp-challenge.entity';
+import { PasswordResetEntity } from './password-reset.entity';
 
 @Module({
   imports: [
     ConfigModule,
     UsersModule,
-    TypeOrmModule.forFeature([OtpChallengeEntity]),
+    TypeOrmModule.forFeature([OtpChallengeEntity, PasswordResetEntity]),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({

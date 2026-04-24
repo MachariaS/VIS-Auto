@@ -2,11 +2,13 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { InjectRepository } from '@nestjs/typeorm';
+import { randomBytes } from 'crypto';
 import { Repository } from 'typeorm';
 import { MailService } from '../mail/mail.service';
 import { UsersService } from '../users/users.service';
 import { LoginDto } from './dto/login.dto';
 import { OtpChallengeEntity } from './otp-challenge.entity';
+import { PasswordResetEntity } from './password-reset.entity';
 import { RegisterDto } from './dto/register.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 
@@ -19,6 +21,8 @@ export class AuthService {
     private readonly mailService: MailService,
     @InjectRepository(OtpChallengeEntity)
     private readonly otpChallengesRepository: Repository<OtpChallengeEntity>,
+    @InjectRepository(PasswordResetEntity)
+    private readonly passwordResetsRepository: Repository<PasswordResetEntity>,
   ) {}
 
   async register(dto: RegisterDto) {
@@ -175,6 +179,48 @@ export class AuthService {
     }
 
     return { message: 'If that email has an account, a new code has been sent.', otpRequired: true };
+  }
+
+  async forgotPassword(email: string) {
+    const normalizedEmail = email.trim().toLowerCase();
+    const user = await this.usersService.findByEmail(normalizedEmail);
+
+    if (user) {
+      const token = randomBytes(32).toString('hex');
+      const expiresAt = Date.now() + 60 * 60 * 1000;
+
+      await this.passwordResetsRepository.delete({ email: normalizedEmail });
+      await this.passwordResetsRepository.save(
+        this.passwordResetsRepository.create({ email: normalizedEmail, token, expiresAt }),
+      );
+
+      const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
+      const resetLink = `${frontendUrl}?reset=${token}`;
+      await this.mailService.sendPasswordReset(normalizedEmail, resetLink);
+    }
+
+    return { message: 'If that email has an account, a reset link has been sent.' };
+  }
+
+  async resetPassword(token: string, newPassword: string) {
+    const record = await this.passwordResetsRepository.findOneBy({ token });
+
+    if (!record || record.used || record.expiresAt < Date.now()) {
+      throw new UnauthorizedException('Invalid or expired reset link.');
+    }
+
+    const user = await this.usersService.findByEmail(record.email);
+
+    if (!user) {
+      throw new UnauthorizedException('User not found.');
+    }
+
+    await this.usersService.setPassword(user.id, newPassword);
+
+    record.used = true;
+    await this.passwordResetsRepository.save(record);
+
+    return { message: 'Password updated successfully.' };
   }
 
   private generateOtp(): string {

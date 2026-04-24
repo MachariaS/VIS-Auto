@@ -117,6 +117,12 @@ export class UsersService {
     };
   }
 
+  async setPassword(userId: string, newPassword: string) {
+    const user = await this.findRequiredUser(userId);
+    user.passwordHash = await hash(newPassword, 10);
+    await this.usersRepository.save(user);
+  }
+
   async updatePassword(userId: string, dto: UpdateMyPasswordDto) {
     const user = await this.findRequiredUser(userId);
     const isValid = await compare(dto.currentPassword, user.passwordHash);

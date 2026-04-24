@@ -26,6 +26,7 @@ export function AppProvider({ children }) {
   const [profileLoading, setProfileLoading] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
   const [authIntent, setAuthIntent] = useState({ mode: 'login', accountType: 'customer' });
+  const [resetToken, setResetToken] = useState('');
 
   function isProfileSyncUnavailable(error) {
     const message = String(error?.message || '');
@@ -44,6 +45,15 @@ export function AppProvider({ children }) {
   }, []);
 
   useEffect(() => {
+    const urlResetToken = new URLSearchParams(window.location.search).get('reset');
+    if (urlResetToken) {
+      window.history.replaceState({}, '', window.location.pathname);
+      setResetToken(urlResetToken);
+      setStep('reset');
+      setSessionReady(true);
+      return;
+    }
+
     const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
     const storedProfile = window.localStorage.getItem(PROFILE_STORAGE_KEY);
     const storedSession = window.localStorage.getItem(SESSION_STORAGE_KEY);
@@ -397,6 +407,8 @@ export function AppProvider({ children }) {
     profileLoading,
     passwordSaving,
     authIntent,
+    resetToken,
+    setResetToken,
     signOut,
     openDashboard,
     openLogin,

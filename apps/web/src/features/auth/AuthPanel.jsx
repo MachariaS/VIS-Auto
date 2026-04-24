@@ -13,6 +13,8 @@ export default function AuthPanel() {
     setDashboardTab,
     message,
     setMessage,
+    resetToken,
+    setResetToken,
   } = useApp();
 
   const [mode, setMode] = useState(authIntent.mode);
@@ -22,6 +24,8 @@ export default function AuthPanel() {
   });
   const [loginForm, setLoginForm] = useState(initialLogin);
   const [verifyForm, setVerifyForm] = useState(initialVerify);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [resetForm, setResetForm] = useState({ newPassword: '', confirmPassword: '' });
   const [devOtp, setDevOtp] = useState('');
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
@@ -112,7 +116,41 @@ export default function AuthPanel() {
   }
 
   function handleForgotPassword() {
-    setMessage('Forgot password email delivery will be connected next.');
+    setForgotEmail(loginForm.email);
+    setMessage('');
+    setStep('forgot');
+  }
+
+  async function handleForgotSubmit(event) {
+    event.preventDefault();
+    setLoading(true);
+    try {
+      const data = await request('/auth/forgot-password', { email: forgotEmail });
+      setMessage(data.message);
+    } catch (error) {
+      setMessage(error.message || 'Unable to send reset email.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleResetSubmit(event) {
+    event.preventDefault();
+    if (resetForm.newPassword !== resetForm.confirmPassword) {
+      setMessage('Passwords do not match.');
+      return;
+    }
+    setLoading(true);
+    try {
+      await request('/auth/reset-password', { token: resetToken, newPassword: resetForm.newPassword });
+      setResetToken('');
+      setStep('auth');
+      setMessage('Password updated. You can now sign in.');
+    } catch (error) {
+      setMessage(error.message || 'Unable to reset password.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   function handleSocialLogin(provider) {
@@ -125,6 +163,71 @@ export default function AuthPanel() {
     setDevOtp('');
     setVerifyForm(initialVerify);
     setMessage('');
+  }
+
+  if (step === 'forgot') {
+    return (
+      <form className="auth-shell" id="auth" onSubmit={handleForgotSubmit}>
+        <div className="auth-head">
+          <span className="mini-pill">Reset</span>
+          <h2>Forgot password</h2>
+          <p className="auth-copy">Enter your email and we'll send a reset link.</p>
+        </div>
+        <label>
+          <span>Email</span>
+          <input
+            type="email"
+            placeholder="you@example.com"
+            value={forgotEmail}
+            onChange={(e) => setForgotEmail(e.target.value)}
+            required
+          />
+        </label>
+        <button type="submit" disabled={loading}>
+          {loading ? 'Sending...' : 'Send reset link'}
+        </button>
+        <button className="ghost-button" type="button" onClick={() => resetFlow('login')}>
+          Back to sign in
+        </button>
+        {message ? <div className="status-banner">{message}</div> : null}
+      </form>
+    );
+  }
+
+  if (step === 'reset') {
+    return (
+      <form className="auth-shell" id="auth" onSubmit={handleResetSubmit}>
+        <div className="auth-head">
+          <span className="mini-pill">New password</span>
+          <h2>Set your password</h2>
+          <p className="auth-copy">Choose a strong password for your account.</p>
+        </div>
+        <label>
+          <span>New password</span>
+          <input
+            type="password"
+            placeholder="Minimum 8 characters"
+            value={resetForm.newPassword}
+            onChange={(e) => setResetForm({ ...resetForm, newPassword: e.target.value })}
+            required
+          />
+        </label>
+        <label>
+          <span>Confirm password</span>
+          <input
+            type="password"
+            placeholder="Repeat your new password"
+            value={resetForm.confirmPassword}
+            onChange={(e) => setResetForm({ ...resetForm, confirmPassword: e.target.value })}
+            required
+          />
+        </label>
+        <button type="submit" disabled={loading}>
+          {loading ? 'Updating...' : 'Update password'}
+        </button>
+        {message ? <div className="status-banner">{message}</div> : null}
+      </form>
+    );
   }
 
   if (step === 'otp') {

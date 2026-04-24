@@ -100,7 +100,20 @@ export class RoadsideRequestsService {
       order: { createdAt: 'DESC' },
     });
 
-    return Promise.all(requests.map((request) => this.toRoadsideRequest(request, true)));
+    if (requests.length === 0) return [];
+
+    const userIds = [...new Set(requests.map((r) => r.userId))];
+    const vehicleIds = [...new Set(requests.map((r) => r.vehicleId))];
+
+    const [users, vehicles] = await Promise.all([
+      this.usersService.findByIds(userIds),
+      this.vehiclesService.findByIds(vehicleIds),
+    ]);
+
+    const userMap = new Map(users.map((u) => [u.id, u]));
+    const vehicleMap = new Map(vehicles.map((v) => [v.id, v]));
+
+    return requests.map((request) => this.toRoadsideRequestBatched(request, userMap, vehicleMap));
   }
 
   async updateStatusByProvider(
@@ -332,6 +345,30 @@ export class RoadsideRequestsService {
             year: vehicle.year,
           }
         : undefined,
+    };
+  }
+
+  private toRoadsideRequestBatched(
+    request: RoadsideRequestEntity,
+    userMap: Map<string, { id: string; name: string; email: string; phone?: string }>,
+    vehicleMap: Map<string, { id: string; nickname: string; make: string; model: string; registrationNumber: string; year: number }>,
+  ): RoadsideRequest {
+    const base = {
+      ...request,
+      distanceKm: Number(request.distanceKm),
+      latitude: Number(request.latitude),
+      longitude: Number(request.longitude),
+      providerLatitude: request.providerLatitude == null ? undefined : Number(request.providerLatitude),
+      providerLongitude: request.providerLongitude == null ? undefined : Number(request.providerLongitude),
+      providerLocationUpdatedAt: request.providerLocationUpdatedAt?.toISOString(),
+      createdAt: request.createdAt.toISOString(),
+    };
+    const customer = userMap.get(request.userId);
+    const vehicle = vehicleMap.get(request.vehicleId);
+    return {
+      ...base,
+      customer: customer ? { id: customer.id, name: customer.name, email: customer.email, phone: customer.phone } : undefined,
+      vehicle: vehicle ? { id: vehicle.id, nickname: vehicle.nickname, make: vehicle.make, model: vehicle.model, registrationNumber: vehicle.registrationNumber, year: vehicle.year } : undefined,
     };
   }
 

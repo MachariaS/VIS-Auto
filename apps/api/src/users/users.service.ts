@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { compare, hash } from 'bcrypt';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { UpdateMyPasswordDto } from './dto/update-my-password.dto';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 import { UserEntity } from './user.entity';
@@ -72,6 +72,11 @@ export class UsersService {
 
   async findById(userId: string) {
     return this.usersRepository.findOneBy({ id: userId });
+  }
+
+  async findByIds(userIds: string[]) {
+    if (userIds.length === 0) return [];
+    return this.usersRepository.findBy({ id: In(userIds) });
   }
 
   async getProfile(userId: string) {

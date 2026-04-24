@@ -1,5 +1,8 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 
+@Index(['userId'])
+@Index(['providerId'])
+@Index(['status'])
 @Entity({ name: 'roadside_requests' })
 export class RoadsideRequestEntity {
   @PrimaryGeneratedColumn('uuid')

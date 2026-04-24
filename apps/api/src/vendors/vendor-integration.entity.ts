@@ -1,7 +1,9 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn, UpdateDateColumn } from 'typeorm';
 
 export type VendorIntegrationStatus = 'pending' | 'accepted' | 'rejected';
 
+@Index(['providerId'])
+@Index(['vendorProviderId'])
 @Entity({ name: 'vendor_integrations' })
 export class VendorIntegrationEntity {
   @PrimaryGeneratedColumn('uuid')

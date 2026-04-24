@@ -40,6 +40,8 @@ export interface VendorNetworkSummary {
 
 @Injectable()
 export class VendorsService {
+  private readonly lastDiscoveryRun = new Map<string, number>();
+
   constructor(
     private readonly usersService: UsersService,
     private readonly providerServicesService: ProviderServicesService,
@@ -127,6 +129,10 @@ export class VendorsService {
   }
 
   private async ensureGeneratedRequests(providerId: string) {
+    const last = this.lastDiscoveryRun.get(providerId) ?? 0;
+    if (Date.now() - last < 5 * 60 * 1000) return;
+    this.lastDiscoveryRun.set(providerId, Date.now());
+
     const [catalog, existingRecords] = await Promise.all([
       this.providerServicesService.listAll(),
       this.vendorIntegrationsRepository.find({

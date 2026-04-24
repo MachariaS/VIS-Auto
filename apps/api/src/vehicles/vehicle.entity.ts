@@ -1,5 +1,6 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, CreateDateColumn, Entity, Index, PrimaryGeneratedColumn } from 'typeorm';
 
+@Index(['userId'])
 @Entity({ name: 'vehicles' })
 export class VehicleEntity {
   @PrimaryGeneratedColumn('uuid')

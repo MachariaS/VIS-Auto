@@ -7,7 +7,6 @@ import {
   providerVehicleTypeOptions,
 } from '../../shared/constants';
 import {
-  fallbackLocationSuggestions,
   normalizeLocationQuery,
   parseAddressParts,
   request,
@@ -118,11 +117,8 @@ export default function ProfilePanel({ vendorStats }) {
           nearLat: locationBias.latitude ?? undefined,
           nearLng: locationBias.longitude ?? undefined,
         });
-        if (!Array.isArray(results) || results.length === 0) {
-          results = await fallbackLocationSuggestions(trimmed, countryCode);
-        }
       } catch {
-        results = await fallbackLocationSuggestions(trimmed, countryCode);
+        results = [];
       }
 
       const mapped = (results || []).map((item) => ({

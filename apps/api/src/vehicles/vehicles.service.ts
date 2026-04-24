@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { VehicleEntity } from './vehicle.entity';
 
@@ -58,5 +58,10 @@ export class VehiclesService {
 
   async findById(vehicleId: string) {
     return this.vehiclesRepository.findOneBy({ id: vehicleId });
+  }
+
+  async findByIds(vehicleIds: string[]) {
+    if (vehicleIds.length === 0) return [];
+    return this.vehiclesRepository.findBy({ id: In(vehicleIds) });
   }
 }

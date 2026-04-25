@@ -8,10 +8,13 @@ async function bootstrap() {
 
   app.use(cookieParser());
 
+  const frontendUrl = process.env.FRONTEND_URL;
   const allowedOrigins = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
-    process.env.FRONTEND_URL,
+    frontendUrl,
+    frontendUrl ? frontendUrl.replace('https://', 'https://www.') : undefined,
+    frontendUrl ? frontendUrl.replace('https://www.', 'https://') : undefined,
   ].filter(Boolean) as string[];
 
   app.enableCors({

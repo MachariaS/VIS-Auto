@@ -1,4 +1,4 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { formatCurrency, request } from '../../shared/helpers';
 import {
@@ -20,6 +20,7 @@ import CustomerOverview from './CustomerOverview';
 import HistoryPanel from './HistoryPanel';
 import RequestPanel from './RequestPanel';
 import VehiclePanel from './VehiclePanel';
+import ActiveJobPanel from './tracking/ActiveJobPanel';
 
 export default function CustomerDashboard() {
   const {
@@ -65,6 +66,8 @@ export default function CustomerDashboard() {
     setSectionErrors,
     patchSectionErrors,
   } = useCustomerDashboardState();
+
+  const [activeRequest, setActiveRequest] = useState(null);
 
   const requestStats = useMemo(
     () => ({
@@ -268,7 +271,8 @@ export default function CustomerDashboard() {
       const newRequest = await request('/roadside-requests', payload, 'POST', token);
       setRequests((current) => [newRequest, ...current]);
       resetRoadsideForm();
-      setDashboardTab('history');
+      setActiveRequest(newRequest);
+      setDashboardTab('active-job');
       addToast({
         type: 'success',
         title: 'Request created',
@@ -576,6 +580,16 @@ export default function CustomerDashboard() {
               <HistoryPanel requests={requests} token={token} />
             </SectionState>
           </SectionErrorBoundary>
+        ) : null}
+        {dashboardTab === 'active-job' && activeRequest ? (
+          <ActiveJobPanel
+            requestItem={activeRequest}
+            token={token}
+            onDone={() => {
+              setActiveRequest(null);
+              setDashboardTab('history');
+            }}
+          />
         ) : null}
         {dashboardTab === 'profile' ? <ProfilePanel /> : null}
       </div>

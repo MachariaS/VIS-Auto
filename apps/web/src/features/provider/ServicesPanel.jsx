@@ -137,6 +137,46 @@ function ServiceComposer({
         </div>
       ) : null}
 
+      <div className="form-grid">
+        <label>
+          <span>Visibility</span>
+          <select
+            value={providerServiceForm.visibility ?? 'public'}
+            onChange={(e) => setProviderServiceForm({ ...providerServiceForm, visibility: e.target.value })}
+          >
+            <option value="public">Public — visible to customers</option>
+            <option value="estimation_only">Estimation only — used for price estimates</option>
+            <option value="private">Private — hidden from search</option>
+          </select>
+        </label>
+        <label>
+          <span>Max radius (km)</span>
+          <input
+            type="number"
+            min="0"
+            placeholder="e.g. 20"
+            value={providerServiceForm.maxRadiusKm ?? ''}
+            onChange={(e) => setProviderServiceForm({ ...providerServiceForm, maxRadiusKm: e.target.value })}
+          />
+        </label>
+        <label className="checkbox-label">
+          <input
+            type="checkbox"
+            checked={providerServiceForm.useForEstimation ?? true}
+            onChange={(e) => setProviderServiceForm({ ...providerServiceForm, useForEstimation: e.target.checked })}
+          />
+          <span>Use this rate card for customer price estimates</span>
+        </label>
+        <label className="checkbox-label">
+          <input
+            type="checkbox"
+            checked={providerServiceForm.isAcceptingJobs ?? true}
+            onChange={(e) => setProviderServiceForm({ ...providerServiceForm, isAcceptingJobs: e.target.checked })}
+          />
+          <span>Accepting jobs for this service</span>
+        </label>
+      </div>
+
       <div className="form-actions">
         <button className="primary-cta service-submit-button" type="submit" disabled={loading}>
           {loading ? 'Saving...' : editingProviderServiceId ? 'Update service' : 'Publish service'}
@@ -169,6 +209,7 @@ export default function ServicesPanel({
   setShowProviderServiceComposer,
   onSubmit,
   onDelete,
+  onOpenCatalog,
   loading,
   message,
 }) {
@@ -179,17 +220,24 @@ export default function ServicesPanel({
           <p className="eyebrow">Published</p>
           <h3>Service catalog</h3>
         </div>
-        <button
-          className="primary-cta"
-          type="button"
-          onClick={() => {
-            setEditingProviderServiceId('');
-            setProviderServiceForm(initialProviderService);
-            setShowProviderServiceComposer((current) => !current);
-          }}
-        >
-          {showProviderServiceComposer ? 'Hide form' : 'Add service'}
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {onOpenCatalog && (
+            <button className="ghost-button" type="button" onClick={onOpenCatalog}>
+              Add from catalog
+            </button>
+          )}
+          <button
+            className="primary-cta"
+            type="button"
+            onClick={() => {
+              setEditingProviderServiceId('');
+              setProviderServiceForm(initialProviderService);
+              setShowProviderServiceComposer((current) => !current);
+            }}
+          >
+            {showProviderServiceComposer ? 'Hide form' : 'Custom service'}
+          </button>
+        </div>
       </div>
 
       {showProviderServiceComposer ? (
@@ -233,6 +281,15 @@ export default function ServicesPanel({
                     <span>Base {formatCurrency(service.basePriceKsh)}</span>
                     <span>{formatCurrency(service.pricePerKmKsh)}/km</span>
                   </div>
+                </div>
+
+                <div className="service-card-badges">
+                  <span className={`visibility-badge visibility-badge--${service.visibility ?? 'public'}`}>
+                    {service.visibility === 'estimation_only' ? 'Estimation only' : service.visibility === 'private' ? 'Private' : 'Public'}
+                  </span>
+                  <span className={`availability-badge ${service.isAcceptingJobs !== false ? 'availability-badge--open' : 'availability-badge--closed'}`}>
+                    {service.isAcceptingJobs !== false ? 'Accepting jobs' : 'Not accepting'}
+                  </span>
                 </div>
 
                 <p>{service.description || 'No description yet.'}</p>

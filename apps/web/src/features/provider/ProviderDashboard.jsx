@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import {
   initialProviderService,
@@ -15,10 +15,12 @@ import useProviderDashboardState from './hooks/useProviderDashboardState';
 import useProviderOrders from './hooks/useProviderOrders';
 import useVendorNetwork from './hooks/useVendorNetwork';
 import OrdersPanel from './OrdersPanel';
+import ProviderJobCard from './ProviderJobCard';
 import ProviderOverview from './ProviderOverview';
 import RatingsPanel from './RatingsPanel';
 import ServicesPanel from './ServicesPanel';
 import VendorsPanel from './VendorsPanel';
+import ServiceCatalogBrowser from '../service-catalog/ServiceCatalogBrowser';
 
 const providerBrandName = 'VIS Auto';
 const providerBrandLogo = '/assets/vis-auto-logo.png';
@@ -79,6 +81,8 @@ export default function ProviderDashboard() {
     setSectionErrors,
     patchSectionErrors,
   } = useProviderDashboardState();
+
+  const [showCatalogBrowser, setShowCatalogBrowser] = useState(false);
 
   const {
     activeVendorPartners,
@@ -422,8 +426,12 @@ export default function ProviderDashboard() {
     setShowAccountMenu(false);
   }
 
+  const incomingJobs = requests.filter((r) => r.status === 'searching');
+  const activeJobs = requests.filter((r) => r.status === 'provider_assigned' || r.status === 'in_progress');
+
   const sidebarItems = [
     { id: 'overview', label: 'Dashboard' },
+    { id: 'jobs', label: `Jobs${incomingJobs.length ? ` (${incomingJobs.length})` : ''}` },
     { id: 'services', label: 'Manage Services' },
     { id: 'vendors', label: 'Manage Vendors' },
     { id: 'orders', label: 'Order History' },
@@ -646,6 +654,34 @@ export default function ProviderDashboard() {
             </SectionErrorBoundary>
           ) : null}
 
+          {dashboardTab === 'jobs' ? (
+            <div className="dashboard-panel">
+              <div className="panel-head">
+                <div>
+                  <p className="eyebrow">Incoming & active</p>
+                  <h3>Jobs</h3>
+                </div>
+              </div>
+              {incomingJobs.length === 0 && activeJobs.length === 0 ? (
+                <p className="empty-state">No incoming or active jobs right now.</p>
+              ) : (
+                <div className="provider-jobs-list">
+                  {[...incomingJobs, ...activeJobs].map((job) => (
+                    <ProviderJobCard
+                      key={job.id}
+                      job={job}
+                      token={token}
+                      onStatusChange={async () => {
+                        const refreshed = await request('/roadside-requests/provider', undefined, 'GET', token);
+                        setRequests(Array.isArray(refreshed) ? refreshed : []);
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          ) : null}
+
           {dashboardTab === 'services' ? (
             <SectionErrorBoundary
               resetKey={`provider-services-${sectionErrors.services}-${providerServices.length}`}
@@ -659,19 +695,34 @@ export default function ProviderDashboard() {
                 skeleton="form"
                 title="Unable to load provider services."
               >
-                <ServicesPanel
-                  providerServices={providerServices}
-                  providerServiceForm={providerServiceForm}
-                  setProviderServiceForm={setProviderServiceForm}
-                  editingProviderServiceId={editingProviderServiceId}
-                  setEditingProviderServiceId={setEditingProviderServiceId}
-                  showProviderServiceComposer={showProviderServiceComposer}
-                  setShowProviderServiceComposer={setShowProviderServiceComposer}
-                  onSubmit={handleAddProviderService}
-                  onDelete={handleDeleteProviderService}
-                  loading={loading}
-                  message={message}
-                />
+                <>
+                  <ServicesPanel
+                    providerServices={providerServices}
+                    providerServiceForm={providerServiceForm}
+                    setProviderServiceForm={setProviderServiceForm}
+                    editingProviderServiceId={editingProviderServiceId}
+                    setEditingProviderServiceId={setEditingProviderServiceId}
+                    showProviderServiceComposer={showProviderServiceComposer}
+                    setShowProviderServiceComposer={setShowProviderServiceComposer}
+                    onSubmit={handleAddProviderService}
+                    onDelete={handleDeleteProviderService}
+                    onOpenCatalog={() => setShowCatalogBrowser(true)}
+                    loading={loading}
+                    message={message}
+                  />
+                  {showCatalogBrowser && (
+                    <ServiceCatalogBrowser
+                      token={token}
+                      existingServiceCatalogIds={providerServices.map((s) => s.serviceCatalogId).filter(Boolean)}
+                      onAdded={async () => {
+                        setShowCatalogBrowser(false);
+                        const refreshed = await request('/provider-services', undefined, 'GET', token);
+                        setProviderServices(Array.isArray(refreshed) ? refreshed : []);
+                      }}
+                      onClose={() => setShowCatalogBrowser(false)}
+                    />
+                  )}
+                </>
               </SectionState>
             </SectionErrorBoundary>
           ) : null}

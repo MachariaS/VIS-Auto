@@ -2,26 +2,21 @@ import { useEffect, useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { request } from '../../shared/helpers';
 import { initialRegister, initialLogin, initialVerify } from '../../shared/constants';
+import RegisterForm from './RegisterForm';
+import ServiceSelectionPanel from './ServiceSelectionPanel';
+import VehicleAddStep from './VehicleAddStep';
 
 export default function AuthPanel() {
   const {
-    step,
-    authIntent,
-    setUser,
-    setToken,
-    setStep,
-    setDashboardTab,
-    message,
-    setMessage,
-    resetToken,
-    setResetToken,
+    step, setStep, authIntent,
+    setUser, setToken, setDashboardTab,
+    message, setMessage,
+    resetToken, setResetToken,
+    token, user,
   } = useApp();
 
   const [mode, setMode] = useState(authIntent.mode);
-  const [registerForm, setRegisterForm] = useState({
-    ...initialRegister,
-    accountType: authIntent.accountType,
-  });
+  const [registerForm, setRegisterForm] = useState({ ...initialRegister, accountType: authIntent.accountType });
   const [loginForm, setLoginForm] = useState(initialLogin);
   const [verifyForm, setVerifyForm] = useState(initialVerify);
   const [forgotEmail, setForgotEmail] = useState('');
@@ -30,10 +25,12 @@ export default function AuthPanel() {
   const [loading, setLoading] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
   const [resendLoading, setResendLoading] = useState(false);
+  const [pendingUser, setPendingUser] = useState(null);
+  const [pendingToken, setPendingToken] = useState('');
 
   useEffect(() => {
     setMode(authIntent.mode);
-    setRegisterForm((current) => ({ ...current, accountType: authIntent.accountType }));
+    setRegisterForm((c) => ({ ...c, accountType: authIntent.accountType }));
   }, [authIntent]);
 
   useEffect(() => {
@@ -47,19 +44,16 @@ export default function AuthPanel() {
     return () => clearTimeout(timer);
   }, [resendCooldown]);
 
-  async function handleResend() {
-    setResendLoading(true);
-    try {
-      const data = await request('/auth/resend-otp', { email: verifyForm.email });
-      setDevOtp(data.devOtp ?? '');
-      setVerifyForm((current) => ({ ...current, otp: '' }));
-      setMessage('A new code has been sent.');
-      setResendCooldown(90);
-    } catch (error) {
-      setMessage(error.message || 'Could not resend code. Please try again.');
-    } finally {
-      setResendLoading(false);
-    }
+  function resetFlow(nextMode = 'login') {
+    setMode(nextMode);
+    setStep('auth');
+    setDevOtp('');
+    setVerifyForm(initialVerify);
+    setMessage('');
+  }
+
+  function onRegisterChange(field, value) {
+    setRegisterForm((c) => ({ ...c, [field]: value }));
   }
 
   async function handleRegister(event) {
@@ -70,7 +64,7 @@ export default function AuthPanel() {
       setMode('login');
       setLoginForm({ email: data.user.email, password: registerForm.password });
       setVerifyForm({ email: data.user.email, otp: '' });
-      setMessage(`Account ready. Sign in to continue as ${data.user.accountType}.`);
+      setMessage(`Account ready. Sign in to continue.`);
       setRegisterForm(initialRegister);
     } catch (error) {
       setMessage(error.message);
@@ -85,8 +79,6 @@ export default function AuthPanel() {
     try {
       const data = await request('/auth/login', loginForm);
       setDevOtp(data.devOtp ?? '');
-      setToken('');
-      setUser(null);
       setVerifyForm({ email: loginForm.email, otp: '' });
       setMessage(data.devOtp ? 'OTP sent. Use the code below for local testing.' : 'OTP sent.');
       setStep('otp');
@@ -102,12 +94,16 @@ export default function AuthPanel() {
     setLoading(true);
     try {
       const data = await request('/auth/verify-otp', verifyForm);
-      setToken(data.accessToken);
-      setUser(data.user);
       setDevOtp('');
-      setStep('dashboard');
-      setDashboardTab('overview');
-      setMessage(`Signed in as ${data.user.email}`);
+      if (data.user.accountType === 'provider') {
+        setPendingUser(data.user);
+        setPendingToken(data.accessToken);
+        setStep('service-selection');
+      } else {
+        setPendingUser(data.user);
+        setPendingToken(data.accessToken);
+        setStep('add-vehicle');
+      }
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -115,10 +111,19 @@ export default function AuthPanel() {
     }
   }
 
-  function handleForgotPassword() {
-    setForgotEmail(loginForm.email);
-    setMessage('');
-    setStep('forgot');
+  async function handleResend() {
+    setResendLoading(true);
+    try {
+      const data = await request('/auth/resend-otp', { email: verifyForm.email });
+      setDevOtp(data.devOtp ?? '');
+      setVerifyForm((c) => ({ ...c, otp: '' }));
+      setMessage('A new code has been sent.');
+      setResendCooldown(90);
+    } catch (error) {
+      setMessage(error.message || 'Could not resend code.');
+    } finally {
+      setResendLoading(false);
+    }
   }
 
   async function handleForgotSubmit(event) {
@@ -153,21 +158,39 @@ export default function AuthPanel() {
     }
   }
 
-  function handleSocialLogin(provider) {
-    setMessage(`${provider} sign-in will be connected after the core auth flow is stable.`);
+  function completeDashboard(userData, accessToken) {
+    setToken(accessToken);
+    setUser(userData);
+    setDashboardTab('overview');
+    setStep('dashboard');
+    setMessage(`Signed in as ${userData.email}`);
+    setPendingUser(null);
+    setPendingToken('');
   }
 
-  function resetFlow(nextMode = 'login') {
-    setMode(nextMode);
-    setStep('auth');
-    setDevOtp('');
-    setVerifyForm(initialVerify);
-    setMessage('');
+  if (step === 'service-selection') {
+    return (
+      <ServiceSelectionPanel
+        token={pendingToken}
+        user={pendingUser}
+        onComplete={() => completeDashboard(pendingUser, pendingToken)}
+      />
+    );
+  }
+
+  if (step === 'add-vehicle') {
+    return (
+      <VehicleAddStep
+        token={pendingToken}
+        onComplete={() => completeDashboard(pendingUser, pendingToken)}
+        onSkip={() => completeDashboard(pendingUser, pendingToken)}
+      />
+    );
   }
 
   if (step === 'forgot') {
     return (
-      <form className="auth-shell" id="auth" onSubmit={handleForgotSubmit}>
+      <form className="auth-shell" onSubmit={handleForgotSubmit}>
         <div className="auth-head">
           <span className="mini-pill">Reset</span>
           <h2>Forgot password</h2>
@@ -175,20 +198,11 @@ export default function AuthPanel() {
         </div>
         <label>
           <span>Email</span>
-          <input
-            type="email"
-            placeholder="you@example.com"
-            value={forgotEmail}
-            onChange={(e) => setForgotEmail(e.target.value)}
-            required
-          />
+          <input type="email" placeholder="you@example.com" value={forgotEmail}
+            onChange={(e) => setForgotEmail(e.target.value)} required />
         </label>
-        <button type="submit" disabled={loading}>
-          {loading ? 'Sending...' : 'Send reset link'}
-        </button>
-        <button className="ghost-button" type="button" onClick={() => resetFlow('login')}>
-          Back to sign in
-        </button>
+        <button type="submit" disabled={loading}>{loading ? 'Sending...' : 'Send reset link'}</button>
+        <button className="ghost-button" type="button" onClick={() => resetFlow('login')}>Back to sign in</button>
         {message ? <div className="status-banner">{message}</div> : null}
       </form>
     );
@@ -196,7 +210,7 @@ export default function AuthPanel() {
 
   if (step === 'reset') {
     return (
-      <form className="auth-shell" id="auth" onSubmit={handleResetSubmit}>
+      <form className="auth-shell" onSubmit={handleResetSubmit}>
         <div className="auth-head">
           <span className="mini-pill">New password</span>
           <h2>Set your password</h2>
@@ -204,27 +218,15 @@ export default function AuthPanel() {
         </div>
         <label>
           <span>New password</span>
-          <input
-            type="password"
-            placeholder="Minimum 8 characters"
-            value={resetForm.newPassword}
-            onChange={(e) => setResetForm({ ...resetForm, newPassword: e.target.value })}
-            required
-          />
+          <input type="password" placeholder="Min 8 chars — uppercase, number, symbol"
+            value={resetForm.newPassword} onChange={(e) => setResetForm({ ...resetForm, newPassword: e.target.value })} required />
         </label>
         <label>
           <span>Confirm password</span>
-          <input
-            type="password"
-            placeholder="Repeat your new password"
-            value={resetForm.confirmPassword}
-            onChange={(e) => setResetForm({ ...resetForm, confirmPassword: e.target.value })}
-            required
-          />
+          <input type="password" placeholder="Repeat your new password"
+            value={resetForm.confirmPassword} onChange={(e) => setResetForm({ ...resetForm, confirmPassword: e.target.value })} required />
         </label>
-        <button type="submit" disabled={loading}>
-          {loading ? 'Updating...' : 'Update password'}
-        </button>
+        <button type="submit" disabled={loading}>{loading ? 'Updating...' : 'Update password'}</button>
         {message ? <div className="status-banner">{message}</div> : null}
       </form>
     );
@@ -232,35 +234,24 @@ export default function AuthPanel() {
 
   if (step === 'otp') {
     return (
-      <form className="auth-shell" id="auth" onSubmit={handleVerify}>
+      <form className="auth-shell" onSubmit={handleVerify}>
         <div className="auth-head">
           <span className="mini-pill">OTP</span>
           <h2>Verify sign in</h2>
-          <p className="auth-copy">Enter the code sent to your email or SMS.</p>
+          <p className="auth-copy">Enter the code sent to your email.</p>
         </div>
         <label>
           <span>Code</span>
-          <input
-            placeholder="A3K9M2"
-            value={verifyForm.otp}
-            onChange={(event) => setVerifyForm({ ...verifyForm, otp: event.target.value.toUpperCase() })}
-          />
+          <input placeholder="A3K9M2" value={verifyForm.otp}
+            onChange={(e) => setVerifyForm({ ...verifyForm, otp: e.target.value.toUpperCase() })} />
         </label>
         {devOtp ? <div className="otp-box">Dev OTP: {devOtp}</div> : null}
-        <button type="submit" disabled={loading}>
-          {loading ? 'Verifying...' : 'Continue'}
+        <button type="submit" disabled={loading}>{loading ? 'Verifying...' : 'Continue'}</button>
+        <button className="ghost-button" type="button" onClick={handleResend}
+          disabled={resendCooldown > 0 || resendLoading}>
+          {resendLoading ? 'Sending...' : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
         </button>
-        <button
-          className="ghost-button"
-          type="button"
-          onClick={handleResend}
-          disabled={resendCooldown > 0 || resendLoading}
-        >
-          {resendLoading ? 'Sending...' : resendCooldown > 0 ? `Resend code in ${resendCooldown}s` : 'Resend code'}
-        </button>
-        <button className="ghost-button" type="button" onClick={() => resetFlow('login')}>
-          Back
-        </button>
+        <button className="ghost-button" type="button" onClick={() => resetFlow('login')}>Back</button>
         {message ? <div className="status-banner">{message}</div> : null}
       </form>
     );
@@ -268,89 +259,16 @@ export default function AuthPanel() {
 
   return (
     <div className="auth-shell" id="auth">
-      <div className="auth-head">
-        <span className="mini-pill">Access</span>
-        <h2>{mode === 'register' ? 'Join fast' : 'Welcome back'}</h2>
-        <p className="auth-copy">
-          {mode === 'register'
-            ? 'Create a new VIS Auto account to get started.'
-            : 'Use your existing VIS Auto account to continue.'}
-        </p>
-      </div>
-
       <div className="auth-tabs">
-        <button
-          className={mode === 'login' ? 'switch-active' : 'switch-idle'}
-          type="button"
-          onClick={() => setMode('login')}
-        >
-          Log in
-        </button>
-        <button
-          className={mode === 'register' ? 'switch-active' : 'switch-idle'}
-          type="button"
-          onClick={() => setMode('register')}
-        >
-          Create account
-        </button>
+        <button className={mode === 'login' ? 'switch-active' : 'switch-idle'}
+          type="button" onClick={() => setMode('login')}>Log in</button>
+        <button className={mode === 'register' ? 'switch-active' : 'switch-idle'}
+          type="button" onClick={() => setMode('register')}>Create account</button>
       </div>
 
       {mode === 'register' ? (
-        <form className="stack" onSubmit={handleRegister}>
-          <div className="auth-head">
-            <span className="mini-pill">Account</span>
-            <h2>Join fast</h2>
-          </div>
-          <label>
-            <span>Name</span>
-            <input
-              placeholder="Jane Doe"
-              value={registerForm.name}
-              onChange={(event) => setRegisterForm({ ...registerForm, name: event.target.value })}
-            />
-          </label>
-          <label>
-            <span>Email</span>
-            <input
-              placeholder="you@example.com"
-              type="email"
-              value={registerForm.email}
-              onChange={(event) => setRegisterForm({ ...registerForm, email: event.target.value })}
-            />
-          </label>
-          <label>
-            <span>Phone</span>
-            <input
-              placeholder="+254..."
-              value={registerForm.phone}
-              onChange={(event) => setRegisterForm({ ...registerForm, phone: event.target.value })}
-            />
-          </label>
-          <label>
-            <span>Role</span>
-            <select
-              value={registerForm.accountType}
-              onChange={(event) =>
-                setRegisterForm({ ...registerForm, accountType: event.target.value })
-              }
-            >
-              <option value="customer">Customer</option>
-              <option value="provider">Provider</option>
-            </select>
-          </label>
-          <label>
-            <span>Password</span>
-            <input
-              type="password"
-              placeholder="Minimum 8 characters"
-              value={registerForm.password}
-              onChange={(event) => setRegisterForm({ ...registerForm, password: event.target.value })}
-            />
-          </label>
-          <button type="submit" disabled={loading}>
-            {loading ? 'Creating...' : 'Create account'}
-          </button>
-        </form>
+        <RegisterForm form={registerForm} onChange={onRegisterChange}
+          onSubmit={handleRegister} loading={loading} message={message} />
       ) : (
         <form className="stack" onSubmit={handleLogin}>
           <div className="auth-head">
@@ -359,55 +277,33 @@ export default function AuthPanel() {
           </div>
           <label>
             <span>Email</span>
-            <input
-              placeholder="you@example.com"
-              type="email"
-              value={loginForm.email}
-              onChange={(event) => setLoginForm({ ...loginForm, email: event.target.value })}
-            />
+            <input placeholder="you@example.com" type="email" value={loginForm.email}
+              onChange={(e) => setLoginForm({ ...loginForm, email: e.target.value })} />
           </label>
           <label>
             <span>Password</span>
-            <input
-              type="password"
-              placeholder="Your password"
-              value={loginForm.password}
-              onChange={(event) => setLoginForm({ ...loginForm, password: event.target.value })}
-            />
+            <input type="password" placeholder="Your password" value={loginForm.password}
+              onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })} />
           </label>
-          <button type="submit" disabled={loading}>
-            {loading ? 'Signing in...' : 'Log in'}
-          </button>
+          <button type="submit" disabled={loading}>{loading ? 'Signing in...' : 'Log in'}</button>
           <div className="inline-actions">
-            <button className="link-button" type="button" onClick={handleForgotPassword}>
+            <button className="link-button" type="button"
+              onClick={() => { setForgotEmail(loginForm.email); setMessage(''); setStep('forgot'); }}>
               Forgot password
             </button>
           </div>
+          {message ? <div className="status-banner">{message}</div> : null}
         </form>
       )}
 
       <div className="social-stack">
-        <button
-          className="social-button"
-          type="button"
-          onClick={() => handleSocialLogin('Google')}
-        >
-          Continue with Google
-        </button>
-        <button
-          className="social-button"
-          type="button"
-          onClick={() => handleSocialLogin('Apple')}
-        >
-          Continue with Apple ID
-        </button>
+        <button className="social-button" type="button"
+          onClick={() => setMessage('Google sign-in coming soon.')}>Continue with Google</button>
+        <button className="social-button" type="button"
+          onClick={() => setMessage('Apple sign-in coming soon.')}>Continue with Apple ID</button>
       </div>
 
-      {message ? <div className="status-banner">{message}</div> : null}
-
-      <button className="ghost-button" type="button" onClick={() => setStep('entry')}>
-        Back to home
-      </button>
+      <button className="ghost-button" type="button" onClick={() => setStep('entry')}>Back to home</button>
     </div>
   );
 }

@@ -26,7 +26,7 @@ function AppShell() {
 
   if (step === 'dashboard' && user) {
     content = user.accountType === 'provider' ? <ProviderDashboard /> : <CustomerDashboard />;
-  } else if (step === 'auth' || step === 'otp') {
+  } else if (step === 'auth' || step === 'otp' || step === 'forgot' || step === 'reset' || step === 'service-selection' || step === 'add-vehicle') {
     content = (
       <section className="auth-page">
         <AuthPanel />

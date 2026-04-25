@@ -25,7 +25,7 @@ export function AppProvider({ children }) {
   const [profileSaving, setProfileSaving] = useState(false);
   const [profileLoading, setProfileLoading] = useState(false);
   const [passwordSaving, setPasswordSaving] = useState(false);
-  const [authIntent, setAuthIntent] = useState({ mode: 'login', accountType: 'customer' });
+  const [authIntent, setAuthIntent] = useState({ mode: 'login', accountType: 'car_owner' });
   const [resetToken, setResetToken] = useState('');
 
   function isProfileSyncUnavailable(error) {
@@ -161,11 +161,11 @@ export function AppProvider({ children }) {
   }
 
   function openLogin() {
-    setAuthIntent({ mode: 'login', accountType: 'customer' });
+    setAuthIntent({ mode: 'login', accountType: 'car_owner' });
     setStep('auth');
   }
 
-  function openRegister(accountType = 'customer') {
+  function openRegister(accountType = 'car_owner') {
     setAuthIntent({ mode: 'register', accountType });
     setStep('auth');
   }

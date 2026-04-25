@@ -112,7 +112,7 @@ export const initialRegister = {
   name: '',
   email: '',
   phone: '',
-  accountType: 'customer',
+  accountType: 'car_owner',
   password: '',
 };
 

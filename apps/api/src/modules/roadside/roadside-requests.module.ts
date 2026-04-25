@@ -7,6 +7,7 @@ import { VehiclesModule } from '../../shared/vehicles/vehicles.module';
 import { RoadsideRequestsController } from './roadside-requests.controller';
 import { RoadsideRequestEntity } from './roadside-request.entity';
 import { RoadsideRequestsService } from './roadside-requests.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
@@ -14,6 +15,7 @@ import { RoadsideRequestsService } from './roadside-requests.service';
     UsersModule,
     VehiclesModule,
     ProviderServicesModule,
+    NotificationsModule,
     TypeOrmModule.forFeature([RoadsideRequestEntity]),
   ],
   controllers: [RoadsideRequestsController],

@@ -76,8 +76,10 @@ export default function ProviderJobCard({ job, token, onStatusChange }) {
     setUpdating(true);
     try {
       await request(`/roadside-requests/${job.id}/status`, { status: 'provider_assigned' }, 'PATCH', token);
-      onStatusChange();
+      await onStatusChange();
     } catch {
+      // fall through
+    } finally {
       setUpdating(false);
     }
   }
@@ -86,8 +88,10 @@ export default function ProviderJobCard({ job, token, onStatusChange }) {
     setUpdating(true);
     try {
       await request(`/roadside-requests/${job.id}/status`, { status: 'cancelled' }, 'PATCH', token);
-      onStatusChange();
+      await onStatusChange();
     } catch {
+      // fall through
+    } finally {
       setUpdating(false);
     }
   }
@@ -98,8 +102,10 @@ export default function ProviderJobCard({ job, token, onStatusChange }) {
     setUpdating(true);
     try {
       await request(`/roadside-requests/${job.id}/status`, { status: nextStatus }, 'PATCH', token);
-      onStatusChange();
+      await onStatusChange();
     } catch {
+      // fall through
+    } finally {
       setUpdating(false);
     }
   }
@@ -117,16 +123,31 @@ export default function ProviderJobCard({ job, token, onStatusChange }) {
       </div>
 
       <div className="provider-job-card-meta">
-        {job.address && <p><span>📍</span>{job.address}{job.landmark ? ` — ${job.landmark}` : ''}</p>}
-        {job.distanceKm && <p><span>📏</span>{Number(job.distanceKm).toFixed(1)} km</p>}
-        {job.customer?.name && <p><span>👤</span>{job.customer.name}</p>}
+        {job.address && (
+          <span className="job-meta-chip">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/><circle cx="12" cy="9" r="2.5"/></svg>
+            {job.address}{job.landmark ? ` — ${job.landmark}` : ''}
+          </span>
+        )}
+        {job.distanceKm && (
+          <span className="job-meta-chip">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><path d="M3 12h18M3 6l9-4 9 4M3 18l9 4 9-4"/></svg>
+            {Number(job.distanceKm).toFixed(1)} km
+          </span>
+        )}
+        {job.customer?.name && (
+          <span className="job-meta-chip">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.58-7 8-7s8 3 8 7"/></svg>
+            {job.customer.name}
+          </span>
+        )}
       </div>
 
       <div className="provider-job-card-actions">
         {job.status === 'searching' && (
           <>
-            <button type="button" onClick={handleAccept} disabled={updating}>
-              {updating ? 'Accepting...' : 'Accept job'}
+            <button type="button" className="primary-cta" onClick={handleAccept} disabled={updating}>
+              {updating ? 'Accepting…' : 'Accept job'}
             </button>
             <button type="button" className="ghost-button danger" onClick={handleDecline} disabled={updating}>
               Decline
@@ -134,12 +155,12 @@ export default function ProviderJobCard({ job, token, onStatusChange }) {
           </>
         )}
         {(job.status === 'provider_assigned' || job.status === 'in_progress') && NEXT_STATUS[job.status] && (
-          <button type="button" onClick={handleNext} disabled={updating}>
-            {updating ? 'Updating...' : NEXT_LABEL[job.status]}
+          <button type="button" className="primary-cta" onClick={handleNext} disabled={updating}>
+            {updating ? 'Updating…' : NEXT_LABEL[job.status]}
           </button>
         )}
         {isActive && (
-          <span className="gps-indicator">📡 GPS broadcasting</span>
+          <span className="gps-indicator"><span className="gps-pulse" />GPS broadcasting</span>
         )}
       </div>
     </article>

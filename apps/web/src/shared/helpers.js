@@ -16,11 +16,19 @@ export async function request(path, body, method = 'POST', token, signal) {
     body: body ? JSON.stringify(body) : undefined,
   });
 
-  const data = await response.json();
+  const text = await response.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = {};
+  }
 
   if (!response.ok) {
     const error = new Error(
-      Array.isArray(data.message) ? data.message.join(', ') : data.message,
+      Array.isArray(data.message)
+        ? data.message.join(', ')
+        : data.message || `Request failed (${response.status})`,
     );
     error.status = response.status;
     error.path = path;

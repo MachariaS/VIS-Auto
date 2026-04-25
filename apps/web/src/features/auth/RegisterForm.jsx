@@ -79,7 +79,7 @@ export default function RegisterForm({ form, onChange, onSubmit, loading, messag
         />
       </label>
 
-      <button type="submit" disabled={loading}>
+      <button className="form-primary-action" type="submit" disabled={loading}>
         {loading ? 'Creating...' : 'Create account'}
       </button>
 

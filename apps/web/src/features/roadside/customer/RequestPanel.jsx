@@ -275,7 +275,7 @@ export default function RequestPanel({
         </p>
       </div>
 
-      <button type="submit" disabled={loading}>
+      <button className="form-primary-action" type="submit" disabled={loading}>
         {loading ? 'Submitting...' : 'Submit request'}
       </button>
     </form>

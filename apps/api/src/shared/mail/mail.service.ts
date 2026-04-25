@@ -38,7 +38,11 @@ export class MailService {
 
   async sendOtp(email: string, code: string): Promise<void> {
     if (!this.transporter) {
-      this.logger.debug(`[DEV] OTP for ${email}: ${code}`);
+      if (process.env.NODE_ENV !== 'production') {
+        this.logger.debug(`[DEV] OTP for ${email}: ${code}`);
+      } else {
+        this.logger.warn(`No mail transport configured — OTP not delivered to ${email}`);
+      }
       return;
     }
 
@@ -69,9 +73,25 @@ export class MailService {
     }
   }
 
+  async sendNotification(email: string, subject: string, html: string): Promise<void> {
+    if (!this.transporter) {
+      this.logger.debug(`[DEV] Notification email to ${email}: ${subject}`);
+      return;
+    }
+    try {
+      await this.transporter.sendMail({ from: this.fromAddress, to: email, subject, html });
+    } catch (error) {
+      this.logger.error(`Failed to send notification to ${email}`, error);
+    }
+  }
+
   async sendPasswordReset(email: string, resetLink: string): Promise<void> {
     if (!this.transporter) {
-      this.logger.debug(`[DEV] Password reset link for ${email}: ${resetLink}`);
+      if (process.env.NODE_ENV !== 'production') {
+        this.logger.debug(`[DEV] Password reset link for ${email}: ${resetLink}`);
+      } else {
+        this.logger.warn(`No mail transport configured — password reset not delivered to ${email}`);
+      }
       return;
     }
 

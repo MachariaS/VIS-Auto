@@ -43,46 +43,67 @@ export default function ServiceCatalogBrowser({ token, existingServiceCatalogIds
     services: group.services.filter((s) => !existingSet.has(s.id)),
   })).filter((g) => g.services.length > 0);
 
-  if (catalogLoading) return <div className="catalog-browser"><p>Loading catalog…</p></div>;
+  if (catalogLoading) {
+    return (
+      <div className="catalog-modal-backdrop">
+        <div className="catalog-browser"><p>Loading catalog…</p></div>
+      </div>
+    );
+  }
 
   return (
-    <div className="catalog-browser">
-      <div className="catalog-browser-head">
-        <h4>Add services from catalog</h4>
-        <button type="button" className="icon-button" onClick={onClose} aria-label="Close">✕</button>
+    <div className="catalog-modal-backdrop" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="catalog-browser">
+        <div className="catalog-browser-head">
+          <div>
+            <p className="eyebrow">Service catalog</p>
+            <h4>Add from catalog</h4>
+          </div>
+          <button type="button" className="icon-button" onClick={onClose} aria-label="Close">✕</button>
+        </div>
+
+        <div className="catalog-browser-body">
+          {availableGroups.length === 0 ? (
+            <p>You have already added all available services.</p>
+          ) : (
+            availableGroups.map((group) => (
+              <section key={group.category} className="service-catalog-group">
+                <h5 className="service-catalog-category">{group.category}</h5>
+                <div className="service-catalog-grid">
+                  {group.services.map((service) => (
+                    <button
+                      key={service.id}
+                      type="button"
+                      className={`service-catalog-card ${selected.has(service.id) ? 'service-catalog-card--selected' : ''}`}
+                      onClick={() => toggle(service.id)}
+                    >
+                      {selected.has(service.id) && <span className="service-catalog-check">✓</span>}
+                      <strong>{service.name}</strong>
+                      {service.description && <p>{service.description}</p>}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ))
+          )}
+        </div>
+
+        {message ? <div className="status-banner">{message}</div> : null}
+
+        <div className="catalog-browser-footer">
+          <span className="catalog-selection-count">
+            {selected.size > 0 ? `${selected.size} selected` : 'Select services to add'}
+          </span>
+          <button
+            type="button"
+            className="primary-cta"
+            onClick={handleAdd}
+            disabled={loading || selected.size === 0}
+          >
+            {loading ? 'Adding…' : `Add ${selected.size || ''} service${selected.size !== 1 ? 's' : ''}`}
+          </button>
+        </div>
       </div>
-
-      {availableGroups.length === 0 ? (
-        <p>You have already added all available services.</p>
-      ) : (
-        availableGroups.map((group) => (
-          <section key={group.category} className="service-catalog-group">
-            <h5 className="service-catalog-category">{group.category}</h5>
-            <div className="service-catalog-grid">
-              {group.services.map((service) => (
-                <button
-                  key={service.id}
-                  type="button"
-                  className={`service-catalog-card ${selected.has(service.id) ? 'service-catalog-card--selected' : ''}`}
-                  onClick={() => toggle(service.id)}
-                >
-                  <strong>{service.name}</strong>
-                  {service.description && <p>{service.description}</p>}
-                  {selected.has(service.id) && <span className="service-catalog-check">✓</span>}
-                </button>
-              ))}
-            </div>
-          </section>
-        ))
-      )}
-
-      {message ? <div className="status-banner">{message}</div> : null}
-
-      {selected.size > 0 && (
-        <button type="button" onClick={handleAdd} disabled={loading}>
-          {loading ? 'Adding...' : `Add ${selected.size} service${selected.size > 1 ? 's' : ''}`}
-        </button>
-      )}
     </div>
   );
 }

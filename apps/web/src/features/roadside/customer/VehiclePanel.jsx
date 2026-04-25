@@ -65,7 +65,7 @@ export default function VehiclePanel({ vehicleForm, setVehicleForm, onSubmit, lo
           onChange={(event) => setVehicleForm({ ...vehicleForm, notes: event.target.value })}
         />
       </label>
-      <button type="submit" disabled={loading}>
+      <button className="form-primary-action" type="submit" disabled={loading}>
         {loading ? 'Saving...' : 'Save vehicle'}
       </button>
     </form>

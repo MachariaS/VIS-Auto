@@ -141,7 +141,7 @@ export default function SettingsPanel() {
             }
           />
         </label>
-        <button type="button" onClick={onPasswordReset} disabled={passwordSaving}>
+        <button className="form-primary-action" type="button" onClick={onPasswordReset} disabled={passwordSaving}>
           {passwordSaving ? 'Updating...' : 'Update password'}
         </button>
       </div>

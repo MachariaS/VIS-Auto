@@ -1,4 +1,4 @@
-import { initialProviderService, serviceTypeOptions } from '../../../shared/constants';
+import { CATEGORY_BY_CODE, initialProviderService, SERVICE_CATEGORY_ORDER, serviceTypeOptions } from '../../../shared/constants';
 import { formatCurrency, getServiceImageUrl } from '../../../shared/helpers';
 
 function ServiceComposer({
@@ -199,6 +199,102 @@ function ServiceComposer({
   );
 }
 
+function ServiceCard({ service, setEditingProviderServiceId, setProviderServiceForm, setShowProviderServiceComposer, onDelete }) {
+  return (
+    <article className="provider-manage-card">
+      <div className="provider-manage-card-thumb">
+        <img src={getServiceImageUrl(service)} alt={service.serviceName} className="provider-manage-card-img" />
+      </div>
+      <div className="provider-manage-card-body">
+        <div className="provider-manage-card-head">
+          <strong>{service.serviceName}</strong>
+          <div className="provider-manage-prices">
+            <span>{formatCurrency(service.basePriceKsh)}</span>
+            <span className="price-dim">{formatCurrency(service.pricePerKmKsh)}/km</span>
+          </div>
+        </div>
+        <div className="service-card-badges">
+          <span className={`visibility-badge visibility-badge--${service.visibility ?? 'public'}`}>
+            {service.visibility === 'estimation_only' ? 'Estimation only' : service.visibility === 'private' ? 'Private' : 'Public'}
+          </span>
+          <span className={`availability-badge ${service.isAcceptingJobs !== false ? 'availability-badge--open' : 'availability-badge--closed'}`}>
+            {service.isAcceptingJobs !== false ? 'Accepting jobs' : 'Not accepting'}
+          </span>
+        </div>
+        {service.description ? <p className="provider-manage-card-desc">{service.description}</p> : null}
+        <div className="provider-manage-card-actions">
+          <button
+            className="ghost-button"
+            type="button"
+            onClick={() => {
+              setEditingProviderServiceId(service.id);
+              setProviderServiceForm({
+                serviceName: service.serviceName,
+                serviceCode: service.serviceCode,
+                basePriceKsh: String(service.basePriceKsh),
+                pricePerKmKsh: String(service.pricePerKmKsh),
+                description: service.description ?? '',
+                gasolineRegularPrice: service.fuelPricing?.gasoline?.regular ? String(service.fuelPricing.gasoline.regular) : '',
+                gasolineVPowerPrice: service.fuelPricing?.gasoline?.vpower ? String(service.fuelPricing.gasoline.vpower) : '',
+                dieselPrice: service.fuelPricing?.diesel?.standard ? String(service.fuelPricing.diesel.standard) : '',
+              });
+              setShowProviderServiceComposer(true);
+            }}
+          >
+            Edit
+          </button>
+          <button
+            className="ghost-button danger"
+            type="button"
+            onClick={() => {
+              if (window.confirm(`Remove "${service.serviceName}"? This cannot be undone.`)) {
+                onDelete(service.id);
+              }
+            }}
+          >
+            Remove
+          </button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function GroupedServiceCards({ providerServices, setEditingProviderServiceId, setProviderServiceForm, setShowProviderServiceComposer, onDelete }) {
+  const grouped = SERVICE_CATEGORY_ORDER.reduce((acc, cat) => {
+    const services = providerServices.filter((s) => (CATEGORY_BY_CODE[s.serviceCode] ?? 'Other') === cat);
+    if (services.length) acc.push({ category: cat, services });
+    return acc;
+  }, []);
+
+  const uncategorised = providerServices.filter(
+    (s) => !CATEGORY_BY_CODE[s.serviceCode] && !SERVICE_CATEGORY_ORDER.includes(s.serviceCode),
+  );
+  if (uncategorised.length) grouped.push({ category: 'Other', services: uncategorised });
+
+  return (
+    <div className="provider-manage-sections">
+      {grouped.map(({ category, services }) => (
+        <section key={category} className="provider-manage-section">
+          <h4 className="provider-manage-section-label">{category}</h4>
+          <div className="provider-manage-grid">
+            {services.map((service) => (
+              <ServiceCard
+                key={service.id}
+                service={service}
+                setEditingProviderServiceId={setEditingProviderServiceId}
+                setProviderServiceForm={setProviderServiceForm}
+                setShowProviderServiceComposer={setShowProviderServiceComposer}
+                onDelete={onDelete}
+              />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
+}
+
 export default function ServicesPanel({
   providerServices,
   providerServiceForm,
@@ -257,86 +353,16 @@ export default function ServicesPanel({
 
       {providerServices.length === 0 ? (
         <div className="empty-state">
-          No services published yet. Click Add service to create your first service.
+          No services published yet. Use Add from catalog or Custom service to get started.
         </div>
       ) : (
-        <div className="provider-manage-grid">
-          {providerServices.map((service) => (
-            <article className="provider-manage-card" key={service.id}>
-              <div
-                className="provider-manage-card-media"
-                style={{
-                  backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.02), rgba(15, 23, 42, 0.42)), url(${getServiceImageUrl(service)})`,
-                }}
-              >
-                <span className="provider-manage-pill">
-                  {serviceTypeOptions.find((option) => option.code === service.serviceCode)?.label}
-                </span>
-              </div>
-
-              <div className="provider-manage-card-copy">
-                <div className="provider-manage-card-head">
-                  <strong>{service.serviceName}</strong>
-                  <div className="provider-manage-prices">
-                    <span>Base {formatCurrency(service.basePriceKsh)}</span>
-                    <span>{formatCurrency(service.pricePerKmKsh)}/km</span>
-                  </div>
-                </div>
-
-                <div className="service-card-badges">
-                  <span className={`visibility-badge visibility-badge--${service.visibility ?? 'public'}`}>
-                    {service.visibility === 'estimation_only' ? 'Estimation only' : service.visibility === 'private' ? 'Private' : 'Public'}
-                  </span>
-                  <span className={`availability-badge ${service.isAcceptingJobs !== false ? 'availability-badge--open' : 'availability-badge--closed'}`}>
-                    {service.isAcceptingJobs !== false ? 'Accepting jobs' : 'Not accepting'}
-                  </span>
-                </div>
-
-                <p>{service.description || 'No description yet.'}</p>
-
-                <div className="provider-manage-card-actions">
-                <button
-                  className="ghost-button"
-                  type="button"
-                  onClick={() => {
-                    setEditingProviderServiceId(service.id);
-                    setProviderServiceForm({
-                      serviceName: service.serviceName,
-                      serviceCode: service.serviceCode,
-                      basePriceKsh: String(service.basePriceKsh),
-                      pricePerKmKsh: String(service.pricePerKmKsh),
-                      description: service.description ?? '',
-                      gasolineRegularPrice: service.fuelPricing?.gasoline?.regular
-                        ? String(service.fuelPricing.gasoline.regular)
-                        : '',
-                      gasolineVPowerPrice: service.fuelPricing?.gasoline?.vpower
-                        ? String(service.fuelPricing.gasoline.vpower)
-                        : '',
-                      dieselPrice: service.fuelPricing?.diesel?.standard
-                        ? String(service.fuelPricing.diesel.standard)
-                        : '',
-                    });
-                    setShowProviderServiceComposer(true);
-                  }}
-                >
-                  Edit service
-                </button>
-                <button
-                  className="ghost-button danger"
-                  type="button"
-                  onClick={() => {
-                    if (window.confirm(`Remove "${service.serviceName}"? This cannot be undone.`)) {
-                      onDelete(service.id);
-                    }
-                  }}
-                >
-                  Remove
-                </button>
-                </div>
-              </div>
-            </article>
-          ))}
-        </div>
+        <GroupedServiceCards
+          providerServices={providerServices}
+          setEditingProviderServiceId={setEditingProviderServiceId}
+          setProviderServiceForm={setProviderServiceForm}
+          setShowProviderServiceComposer={setShowProviderServiceComposer}
+          onDelete={onDelete}
+        />
       )}
     </section>
   );

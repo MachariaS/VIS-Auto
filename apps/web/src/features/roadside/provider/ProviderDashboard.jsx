@@ -1,11 +1,9 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../../../context/AppContext';
-import {
-  initialProviderService,
-  staticNotifications,
-} from '../../../shared/constants';
+import { initialProviderService } from '../../../shared/constants';
 import { mergeUniqueList, request } from '../../../shared/helpers';
-import { BellIcon, CloseIcon, MenuIcon } from '../../../shared/icons';
+import { BellIcon, CloseIcon, MenuIcon, MoonIcon, SunIcon } from '../../../shared/icons';
+import { playJobAlert, requestNotificationPermission, showBrowserNotification } from '../../../shared/notificationSound';
 import NotificationsTray from '../../shared/NotificationsTray';
 import ProfilePanel from '../../shared/ProfilePanel';
 import SettingsPanel from '../../shared/SettingsPanel';
@@ -30,6 +28,8 @@ export default function ProviderDashboard() {
   const {
     user,
     token,
+    theme,
+    toggleTheme,
     dashboardTab,
     setDashboardTab,
     setStep,
@@ -99,8 +99,10 @@ export default function ProviderDashboard() {
     vendorStats,
   } = useVendorNetwork({ token, user, addToast });
 
-  const vendorNotificationCount = pendingVendorRequests.length;
-  const notificationCount = staticNotifications.length + vendorNotificationCount;
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [bellRinging, setBellRinging] = useState(false);
+  const notificationCount = unreadCount;
+  const prevUnreadRef = useRef(null);
   const { filteredProviderOrders, orderCounts, selectedOrder } = useProviderOrders({
     requests,
     orderHistoryTab,
@@ -113,6 +115,35 @@ export default function ProviderDashboard() {
     if (!sessionReady || !token) return;
     void loadProviderDashboard(token);
   }, [sessionReady, token]);
+
+  useEffect(() => {
+    void requestNotificationPermission();
+  }, []);
+
+  useEffect(() => {
+    if (!token) return;
+
+    const fetchCount = async () => {
+      try {
+        const d = await request('/notifications/unread-count', undefined, 'GET', token);
+        const next = d?.count ?? 0;
+        setUnreadCount(next);
+
+        if (prevUnreadRef.current !== null && next > prevUnreadRef.current) {
+          playJobAlert();
+          showBrowserNotification('VIS Auto', 'You have a new job request');
+          setBellRinging(true);
+          setTimeout(() => setBellRinging(false), 1200);
+        }
+
+        prevUnreadRef.current = next;
+      } catch { /* non-fatal */ }
+    };
+
+    fetchCount();
+    const interval = setInterval(fetchCount, 20_000);
+    return () => clearInterval(interval);
+  }, [token]);
 
   useEffect(() => {
     if (providerServices.length === 0) return;
@@ -442,7 +473,7 @@ export default function ProviderDashboard() {
   ];
 
   return (
-    <section className="provider-shell-v2">
+    <section className="provider-shell-v2" data-theme={theme}>
       {showMobileSidebar ? (
         <button
           className="dashboard-drawer-scrim"
@@ -572,7 +603,15 @@ export default function ProviderDashboard() {
 
           <div className="provider-topbar-actions-v2">
             <button
-              className="icon-button notification-button"
+              className="icon-button"
+              type="button"
+              onClick={toggleTheme}
+              aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? <SunIcon /> : <MoonIcon />}
+            </button>
+            <button
+              className={`icon-button notification-button${bellRinging ? ' notification-button--ringing' : ''}`}
               type="button"
               onClick={() => {
                 setShowNotifications((current) => !current);
@@ -581,7 +620,9 @@ export default function ProviderDashboard() {
               aria-label="Notifications"
             >
               <BellIcon />
-              <span className="notification-count">{notificationCount}</span>
+              {notificationCount > 0 && (
+                <span className="notification-count">{notificationCount}</span>
+              )}
             </button>
 
             <div className="account-menu-wrap">
@@ -620,8 +661,8 @@ export default function ProviderDashboard() {
         <div className="provider-content-v2">
           {showNotifications ? (
             <NotificationsTray
-              pendingVendorRequests={pendingVendorRequests}
-              onOpenVendorRequest={openVendorRequestReview}
+              token={token}
+              onClose={() => setShowNotifications(false)}
             />
           ) : null}
 

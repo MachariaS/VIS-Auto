@@ -23,6 +23,8 @@ import { VendorsModule } from './modules/vendors/vendors.module';
 import { MailModule } from './shared/mail/mail.module';
 import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.module';
 import { ServiceCatalogEntity } from './modules/service-catalog/service-catalog.entity';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { NotificationEntity } from './modules/notifications/notification.entity';
 
 @Module({
   imports: [
@@ -42,9 +44,9 @@ import { ServiceCatalogEntity } from './modules/service-catalog/service-catalog.
             entities: [
               UserEntity, VehicleEntity, ProviderServiceEntity,
               RoadsideRequestEntity, OtpChallengeEntity, PasswordResetEntity,
-              ServiceCatalogEntity, VendorIntegrationEntity,
+              ServiceCatalogEntity, VendorIntegrationEntity, NotificationEntity,
             ],
-            synchronize: (process.env.DB_SYNCHRONIZE || 'false') === 'true',
+            synchronize: process.env.NODE_ENV !== 'production' && (process.env.DB_SYNCHRONIZE ?? 'false') === 'true',
           }
         : {
             type: 'postgres',
@@ -56,9 +58,9 @@ import { ServiceCatalogEntity } from './modules/service-catalog/service-catalog.
             entities: [
               UserEntity, VehicleEntity, ProviderServiceEntity,
               RoadsideRequestEntity, OtpChallengeEntity, PasswordResetEntity,
-              ServiceCatalogEntity, VendorIntegrationEntity,
+              ServiceCatalogEntity, VendorIntegrationEntity, NotificationEntity,
             ],
-            synchronize: (process.env.DB_SYNCHRONIZE || 'true') === 'true',
+            synchronize: process.env.NODE_ENV !== 'production' && (process.env.DB_SYNCHRONIZE ?? 'true') === 'true',
           },
     ),
     UsersModule,
@@ -70,6 +72,7 @@ import { ServiceCatalogEntity } from './modules/service-catalog/service-catalog.
     VendorsModule,
     MailModule,
     ServiceCatalogModule,
+    NotificationsModule,
   ],
   controllers: [AppController],
   providers: [

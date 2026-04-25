@@ -205,7 +205,7 @@ export default function AuthPanel() {
           <input type="email" placeholder="you@example.com" value={forgotEmail}
             onChange={(e) => setForgotEmail(e.target.value)} required />
         </label>
-        <button type="submit" disabled={loading}>{loading ? 'Sending...' : 'Send reset link'}</button>
+        <button className="form-primary-action" type="submit" disabled={loading}>{loading ? 'Sending...' : 'Send reset link'}</button>
         <button className="ghost-button" type="button" onClick={() => resetFlow('login')}>Back to sign in</button>
         {message ? <div className="status-banner">{message}</div> : null}
       </form>
@@ -230,7 +230,7 @@ export default function AuthPanel() {
           <input type="password" placeholder="Repeat your new password"
             value={resetForm.confirmPassword} onChange={(e) => setResetForm({ ...resetForm, confirmPassword: e.target.value })} required />
         </label>
-        <button type="submit" disabled={loading}>{loading ? 'Updating...' : 'Update password'}</button>
+        <button className="form-primary-action" type="submit" disabled={loading}>{loading ? 'Updating...' : 'Update password'}</button>
         {message ? <div className="status-banner">{message}</div> : null}
       </form>
     );
@@ -250,7 +250,7 @@ export default function AuthPanel() {
             onChange={(e) => setVerifyForm({ ...verifyForm, otp: e.target.value.toUpperCase() })} />
         </label>
         {devOtp ? <div className="otp-box">Dev OTP: {devOtp}</div> : null}
-        <button type="submit" disabled={loading}>{loading ? 'Verifying...' : 'Continue'}</button>
+        <button className="form-primary-action" type="submit" disabled={loading}>{loading ? 'Verifying...' : 'Continue'}</button>
         <button className="ghost-button" type="button" onClick={handleResend}
           disabled={resendCooldown > 0 || resendLoading}>
           {resendLoading ? 'Sending...' : resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend code'}
@@ -289,7 +289,7 @@ export default function AuthPanel() {
             <input type="password" placeholder="Your password" value={loginForm.password}
               onChange={(e) => setLoginForm({ ...loginForm, password: e.target.value })} />
           </label>
-          <button type="submit" disabled={loading}>{loading ? 'Signing in...' : 'Log in'}</button>
+          <button className="form-primary-action" type="submit" disabled={loading}>{loading ? 'Signing in...' : 'Log in'}</button>
           <div className="inline-actions">
             <button className="link-button" type="button"
               onClick={() => { setForgotEmail(loginForm.email); setMessage(''); setStep('forgot'); }}>

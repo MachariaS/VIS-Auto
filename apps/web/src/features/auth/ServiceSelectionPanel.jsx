@@ -84,7 +84,7 @@ export default function ServiceSelectionPanel({ token, user, onComplete }) {
       {message ? <div className="status-banner">{message}</div> : null}
 
       <div className="auth-actions">
-        <button type="button" onClick={handleConfirm} disabled={loading || selected.size === 0}>
+        <button className="form-primary-action" type="button" onClick={handleConfirm} disabled={loading || selected.size === 0}>
           {loading ? 'Saving...' : `Confirm ${selected.size > 0 ? `(${selected.size} selected)` : ''}`}
         </button>
         <p className="auth-copy-small">Minimum 1 service required</p>

@@ -59,7 +59,7 @@ export class UsersService {
     const user = await this.usersRepository.findOneBy({ email: email.trim().toLowerCase() });
 
     if (!user) {
-      throw new NotFoundException('User not found.');
+      return null;
     }
 
     const isValid = await compare(password, user.passwordHash);

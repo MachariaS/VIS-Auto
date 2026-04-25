@@ -82,7 +82,7 @@ export default function VehicleAddStep({ token, onComplete, onSkip }) {
         />
       </label>
 
-      <button type="submit" disabled={loading}>
+      <button className="form-primary-action" type="submit" disabled={loading}>
         {loading ? 'Saving...' : 'Add vehicle'}
       </button>
 

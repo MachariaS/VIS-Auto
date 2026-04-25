@@ -10,7 +10,6 @@ import {
   SunIcon,
   UserIcon,
 } from '../../../shared/icons';
-import { staticNotifications } from '../../../shared/constants';
 import NotificationsTray from '../../shared/NotificationsTray';
 import ProfilePanel from '../../shared/ProfilePanel';
 import SectionErrorBoundary from '../../shared/runtime/SectionErrorBoundary';
@@ -77,7 +76,19 @@ export default function CustomerDashboard() {
     [requests, vehicles.length],
   );
 
-  const notificationCount = 0;
+  const [unreadCount, setUnreadCount] = useState(0);
+  const notificationCount = unreadCount;
+
+  useEffect(() => {
+    if (!token) return;
+    const fetchCount = () =>
+      request('/notifications/unread-count', undefined, 'GET', token)
+        .then((d) => setUnreadCount(d?.count ?? 0))
+        .catch(() => {});
+    fetchCount();
+    const interval = setInterval(fetchCount, 60_000);
+    return () => clearInterval(interval);
+  }, [token]);
 
   useEffect(() => {
     if (!sessionReady || !token) return;
@@ -493,8 +504,8 @@ export default function CustomerDashboard() {
 
         {showNotifications ? (
           <NotificationsTray
-            pendingVendorRequests={[]}
-            onOpenVendorRequest={() => {}}
+            token={token}
+            onClose={() => setShowNotifications(false)}
           />
         ) : null}
 

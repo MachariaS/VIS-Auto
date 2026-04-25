@@ -9,6 +9,7 @@ import { Repository } from 'typeorm';
 import { ProviderServicesService } from '../roadside/services/provider-services.service';
 import { UsersService } from '../../shared/users/users.service';
 import { VendorIntegrationEntity } from './vendor-integration.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export interface VendorPartnerSummary {
   id: string;
@@ -45,6 +46,7 @@ export class VendorsService {
   constructor(
     private readonly usersService: UsersService,
     private readonly providerServicesService: ProviderServicesService,
+    private readonly notificationsService: NotificationsService,
     @InjectRepository(VendorIntegrationEntity)
     private readonly vendorIntegrationsRepository: Repository<VendorIntegrationEntity>,
   ) {}
@@ -77,6 +79,14 @@ export class VendorsService {
 
     const saved = await this.vendorIntegrationsRepository.save(request);
 
+    void this.notificationsService.create({
+      userId: request.vendorProviderId,
+      title: 'Integration request accepted',
+      body: `Your integration request with ${request.vendorName} has been accepted.`,
+      type: 'vendor',
+      refId: saved.id,
+    });
+
     return this.toVendorPartner(saved);
   }
 
@@ -95,6 +105,14 @@ export class VendorsService {
     request.reviewedAt = new Date();
 
     const saved = await this.vendorIntegrationsRepository.save(request);
+
+    void this.notificationsService.create({
+      userId: request.vendorProviderId,
+      title: 'Integration request declined',
+      body: `Your integration request with ${request.vendorName} was not accepted at this time.`,
+      type: 'vendor',
+      refId: saved.id,
+    });
 
     return this.toVendorRequest(saved);
   }

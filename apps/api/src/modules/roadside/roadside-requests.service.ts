@@ -7,6 +7,26 @@ import { VehiclesService } from '../../shared/vehicles/vehicles.service';
 import { CreateRoadsideRequestDto } from './dto/create-roadside-request.dto';
 import { RoadsideRequestEntity } from './roadside-request.entity';
 import { UpdateProviderLocationDto } from './dto/update-provider-location.dto';
+import { NotificationsService } from '../notifications/notifications.service';
+
+const JOB_STATUS_COPY: Record<string, { title: string; body: string }> = {
+  provider_assigned: {
+    title: 'Provider on the way',
+    body: 'A provider has accepted your request and is heading to you.',
+  },
+  in_progress: {
+    title: 'Service in progress',
+    body: 'Your provider has arrived and the service has started.',
+  },
+  completed: {
+    title: 'Service completed',
+    body: 'Your service is complete. Thank you for using VIS Auto.',
+  },
+  cancelled: {
+    title: 'Request cancelled',
+    body: 'Your roadside request has been cancelled.',
+  },
+};
 
 export interface RoadsideRequest {
   id: string;
@@ -81,6 +101,7 @@ export class RoadsideRequestsService {
     private readonly usersService: UsersService,
     private readonly vehiclesService: VehiclesService,
     private readonly providerServicesService: ProviderServicesService,
+    private readonly notificationsService: NotificationsService,
     @InjectRepository(RoadsideRequestEntity)
     private readonly roadsideRequestsRepository: Repository<RoadsideRequestEntity>,
   ) {}
@@ -153,6 +174,21 @@ export class RoadsideRequestsService {
 
     const saved = await this.roadsideRequestsRepository.save(request);
 
+    const copy = JOB_STATUS_COPY[status];
+    if (copy) {
+      const customer = await this.usersService.findById(request.userId);
+      void this.notificationsService.create({
+        userId: request.userId,
+        title: copy.title,
+        body: `${copy.body} — ${request.issueType}`,
+        type: 'job_update',
+        refId: request.id,
+        email: customer?.email,
+        emailSubject: `VIS Auto — ${copy.title}`,
+        emailHtml: buildJobStatusEmail(copy.title, copy.body, request.issueType),
+      });
+    }
+
     return this.toRoadsideRequest(saved, true);
   }
 
@@ -196,6 +232,22 @@ export class RoadsideRequestsService {
     });
 
     const saved = await this.roadsideRequestsRepository.save(request);
+
+    const provider = await this.usersService.findById(providerService.providerId);
+    void this.notificationsService.create({
+      userId: providerService.providerId,
+      title: 'New job request',
+      body: `${providerService.serviceName} — ${dto.address.trim()}`,
+      type: 'job_update',
+      refId: saved.id,
+      email: provider?.email,
+      emailSubject: 'VIS Auto — New job request',
+      emailHtml: buildJobStatusEmail(
+        'New job request',
+        `A customer has requested ${providerService.serviceName} at ${dto.address.trim()}.`,
+        providerService.serviceName,
+      ),
+    });
 
     return this.toRoadsideRequest(saved);
   }
@@ -408,4 +460,20 @@ interface ProviderServiceLike {
       standard?: number;
     };
   };
+}
+
+function buildJobStatusEmail(title: string, body: string, jobType: string): string {
+  return `
+    <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px 24px">
+      <h2 style="font-size:20px;color:#1f2f25;margin:0 0 8px">${title}</h2>
+      <p style="color:#5b6c62;margin:0 0 16px">${body}</p>
+      <div style="background:#f6f8f6;border-radius:12px;padding:16px 20px;margin-bottom:24px">
+        <p style="margin:0;font-size:13px;color:#8a9a90">Service type</p>
+        <strong style="color:#1f2f25">${jobType}</strong>
+      </div>
+      <p style="color:#8a9a90;font-size:13px;margin:0">
+        Open the VIS Auto app to view full details or contact your provider.
+      </p>
+    </div>
+  `;
 }

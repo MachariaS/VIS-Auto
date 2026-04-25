@@ -6,12 +6,14 @@ import { UsersModule } from '../../shared/users/users.module';
 import { VendorIntegrationEntity } from './vendor-integration.entity';
 import { VendorsController } from './vendors.controller';
 import { VendorsService } from './vendors.service';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
     AuthModule,
     UsersModule,
     ProviderServicesModule,
+    NotificationsModule,
     TypeOrmModule.forFeature([VendorIntegrationEntity]),
   ],
   controllers: [VendorsController],

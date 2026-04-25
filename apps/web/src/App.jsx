@@ -1,7 +1,7 @@
 import { AppProvider, useApp } from './context/AppContext';
 import AuthPanel from './features/auth/AuthPanel';
-import CustomerDashboard from './features/customer/CustomerDashboard';
-import ProviderDashboard from './features/provider/ProviderDashboard';
+import CustomerDashboard from './features/roadside/customer/CustomerDashboard';
+import ProviderDashboard from './features/roadside/provider/ProviderDashboard';
 import ToastViewport from './features/shared/runtime/ToastViewport';
 import VisLandingPage from './VisLandingPage';
 

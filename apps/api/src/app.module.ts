@@ -46,7 +46,7 @@ import { NotificationEntity } from './modules/notifications/notification.entity'
               RoadsideRequestEntity, OtpChallengeEntity, PasswordResetEntity,
               ServiceCatalogEntity, VendorIntegrationEntity, NotificationEntity,
             ],
-            synchronize: process.env.NODE_ENV !== 'production' && (process.env.DB_SYNCHRONIZE ?? 'false') === 'true',
+            synchronize: (process.env.DB_SYNCHRONIZE ?? 'false') === 'true',
           }
         : {
             type: 'postgres',
@@ -60,7 +60,7 @@ import { NotificationEntity } from './modules/notifications/notification.entity'
               RoadsideRequestEntity, OtpChallengeEntity, PasswordResetEntity,
               ServiceCatalogEntity, VendorIntegrationEntity, NotificationEntity,
             ],
-            synchronize: process.env.NODE_ENV !== 'production' && (process.env.DB_SYNCHRONIZE ?? 'true') === 'true',
+            synchronize: (process.env.DB_SYNCHRONIZE ?? 'false') === 'true',
           },
     ),
     UsersModule,

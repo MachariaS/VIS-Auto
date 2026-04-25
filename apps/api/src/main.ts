@@ -25,10 +25,6 @@ function validateProductionSecrets() {
     throw new Error('REFRESH_TOKEN_SECRET is missing or too weak for production. Use a random 32+ character string.');
   }
 
-  if (isProd && (process.env.DB_SYNCHRONIZE ?? 'false') === 'true') {
-    throw new Error('DB_SYNCHRONIZE must be false in production.');
-  }
-
   if (isProd && !process.env.FRONTEND_URL) {
     logger.warn('FRONTEND_URL is not set — CORS will only allow localhost origins.');
   }

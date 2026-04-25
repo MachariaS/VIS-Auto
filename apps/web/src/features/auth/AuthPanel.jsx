@@ -38,7 +38,7 @@ export default function AuthPanel() {
 
   useEffect(() => {
     if (step !== 'otp') return;
-    setResendCooldown(30);
+    setResendCooldown(90);
   }, [step]);
 
   useEffect(() => {
@@ -54,7 +54,7 @@ export default function AuthPanel() {
       setDevOtp(data.devOtp ?? '');
       setVerifyForm((current) => ({ ...current, otp: '' }));
       setMessage('A new code has been sent.');
-      setResendCooldown(30);
+      setResendCooldown(90);
     } catch (error) {
       setMessage(error.message || 'Could not resend code. Please try again.');
     } finally {

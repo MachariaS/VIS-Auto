@@ -7,7 +7,7 @@
     "npm": "10.x"
   },
   "scripts": {
-    "build": "cd apps/api && npm ci && npm run build",
+    "build": "cd apps/api && npm ci --include=dev && npm run build",
     "start": "cd apps/api && node dist/main.js"
   }
 }

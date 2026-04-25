@@ -27,6 +27,7 @@ export default function AuthPanel() {
   const [resendLoading, setResendLoading] = useState(false);
   const [pendingUser, setPendingUser] = useState(null);
   const [pendingToken, setPendingToken] = useState('');
+  const [isNewRegistration, setIsNewRegistration] = useState(false);
 
   useEffect(() => {
     setMode(authIntent.mode);
@@ -66,6 +67,7 @@ export default function AuthPanel() {
       setVerifyForm({ email: data.user.email, otp: '' });
       setMessage(`Account ready. Sign in to continue.`);
       setRegisterForm(initialRegister);
+      setIsNewRegistration(true);
     } catch (error) {
       setMessage(error.message);
     } finally {
@@ -95,15 +97,17 @@ export default function AuthPanel() {
     try {
       const data = await request('/auth/verify-otp', verifyForm);
       setDevOtp('');
-      if (data.user.accountType === 'provider') {
-        setPendingUser(data.user);
-        setPendingToken(data.accessToken);
+      setPendingUser(data.user);
+      setPendingToken(data.accessToken);
+
+      if (isNewRegistration && data.user.accountType === 'provider') {
         setStep('service-selection');
-      } else {
-        setPendingUser(data.user);
-        setPendingToken(data.accessToken);
+      } else if (isNewRegistration && data.user.accountType === 'car_owner') {
         setStep('add-vehicle');
+      } else {
+        completeDashboard(data.user, data.accessToken);
       }
+      setIsNewRegistration(false);
     } catch (error) {
       setMessage(error.message);
     } finally {

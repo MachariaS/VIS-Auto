@@ -21,6 +21,8 @@ import { VehicleEntity } from './vehicles/vehicle.entity';
 import { VendorIntegrationEntity } from './vendors/vendor-integration.entity';
 import { VendorsModule } from './vendors/vendors.module';
 import { MailModule } from './mail/mail.module';
+import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.module';
+import { ServiceCatalogEntity } from './modules/service-catalog/service-catalog.entity';
 
 @Module({
   imports: [
@@ -40,7 +42,7 @@ import { MailModule } from './mail/mail.module';
             entities: [
               UserEntity, VehicleEntity, ProviderServiceEntity,
               RoadsideRequestEntity, OtpChallengeEntity, PasswordResetEntity,
-              VendorIntegrationEntity,
+              ServiceCatalogEntity, VendorIntegrationEntity,
             ],
             synchronize: (process.env.DB_SYNCHRONIZE || 'false') === 'true',
           }
@@ -54,7 +56,7 @@ import { MailModule } from './mail/mail.module';
             entities: [
               UserEntity, VehicleEntity, ProviderServiceEntity,
               RoadsideRequestEntity, OtpChallengeEntity, PasswordResetEntity,
-              VendorIntegrationEntity,
+              ServiceCatalogEntity, VendorIntegrationEntity,
             ],
             synchronize: (process.env.DB_SYNCHRONIZE || 'true') === 'true',
           },
@@ -67,6 +69,7 @@ import { MailModule } from './mail/mail.module';
     RoadsideRequestsModule,
     VendorsModule,
     MailModule,
+    ServiceCatalogModule,
   ],
   controllers: [AppController],
   providers: [

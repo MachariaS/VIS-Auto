@@ -3,7 +3,7 @@ export interface User {
   email: string;
   name: string;
   phone?: string;
-  accountType: 'customer' | 'provider';
+  accountType: 'car_owner' | 'provider';
   profile?: Record<string, unknown>;
   passwordHash: string;
   createdAt: string;

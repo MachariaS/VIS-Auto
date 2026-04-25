@@ -191,7 +191,7 @@ export class RoadsideRequestsService {
       notes: dto.notes?.trim() || undefined,
       fuelDetails,
       status: 'searching',
-      etaMinutes: this.estimateEta(providerService.serviceCode, dto.distanceKm),
+      etaMinutes: this.estimateEta(providerService.catalogCode ?? '', dto.distanceKm),
       estimatedPriceKsh: Math.round(estimatedPriceKsh),
     });
 
@@ -255,7 +255,8 @@ export class RoadsideRequestsService {
   }
 
   private buildFuelDetails(dto: CreateRoadsideRequestDto, providerService: ProviderServiceLike) {
-    if (providerService.serviceCode !== 'fuel_delivery') {
+    const code = providerService.catalogCode ?? providerService.serviceCode ?? '';
+    if (code !== 'fuel_delivery') {
       return undefined;
     }
 
@@ -394,7 +395,8 @@ export class RoadsideRequestsService {
 }
 
 interface ProviderServiceLike {
-  serviceCode: string;
+  serviceCode?: string;
+  catalogCode?: string;
   basePriceKsh: number;
   pricePerKmKsh: number;
   fuelPricing?: {

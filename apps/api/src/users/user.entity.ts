@@ -15,7 +15,7 @@ export class UserEntity {
   phone?: string;
 
   @Column({ type: 'varchar' })
-  accountType!: 'customer' | 'provider';
+  accountType!: 'car_owner' | 'provider';
 
   @Column({ type: 'jsonb', nullable: true })
   profile?: Record<string, unknown>;

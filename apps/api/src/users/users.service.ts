@@ -17,8 +17,9 @@ interface CreateUserInput {
   email: string;
   name: string;
   phone?: string;
-  accountType: 'customer' | 'provider';
+  accountType: 'car_owner' | 'provider';
   password: string;
+  businessName?: string;
 }
 
 @Injectable()
@@ -36,12 +37,16 @@ export class UsersService {
       throw new ConflictException('A user with that email already exists.');
     }
 
+    const profile = input.businessName
+      ? { business: { name: input.businessName.trim() } }
+      : undefined;
+
     const user = this.usersRepository.create({
       email,
       name: input.name.trim(),
       phone: input.phone?.trim() || undefined,
       accountType: input.accountType,
-      profile: undefined,
+      profile,
       passwordHash: await hash(input.password, 10),
     });
 

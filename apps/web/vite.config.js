@@ -11,6 +11,7 @@ const API_ROUTES = [
   '/roadside-requests',
   '/vendors',
   '/locations',
+  '/service-catalog',
 ];
 
 export default defineConfig({

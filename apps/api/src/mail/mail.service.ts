@@ -1,5 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { MailtrapTransport } from 'mailtrap';
 import * as nodemailer from 'nodemailer';
 
 @Injectable()
@@ -9,22 +10,29 @@ export class MailService {
   private readonly logger = new Logger(MailService.name);
 
   constructor(private readonly configService: ConfigService) {
-    const host = this.configService.get<string>('SMTP_HOST');
-    const user = this.configService.get<string>('SMTP_USER');
-    const pass = this.configService.get<string>('SMTP_PASS');
+    const mailtrapToken = this.configService.get<string>('MAILTRAP_TOKEN');
+    const smtpHost = this.configService.get<string>('SMTP_HOST');
+    const smtpUser = this.configService.get<string>('SMTP_USER');
+    const smtpPass = this.configService.get<string>('SMTP_PASS');
 
-    this.fromAddress = this.configService.get<string>('MAIL_FROM', 'VIS Auto <noreply@vis-auto.com>');
+    this.fromAddress = this.configService.get<string>('MAIL_FROM', 'VIS Auto <hello@vis-auto.tech>');
 
-    if (host && user && pass) {
+    if (mailtrapToken) {
+      this.transporter = nodemailer.createTransport(
+        MailtrapTransport({ token: mailtrapToken }),
+      );
+      this.logger.log('Mail: using Mailtrap API (production delivery)');
+    } else if (smtpHost && smtpUser && smtpPass) {
       this.transporter = nodemailer.createTransport({
-        host,
+        host: smtpHost,
         port: Number(this.configService.get('SMTP_PORT', '587')),
         secure: false,
-        auth: { user, pass },
+        auth: { user: smtpUser, pass: smtpPass },
       });
+      this.logger.log('Mail: using SMTP (sandbox mode)');
     } else {
       this.transporter = null;
-      this.logger.warn('SMTP not configured — OTP will only appear in dev mode');
+      this.logger.warn('Mail: no transport configured — codes logged to console only');
     }
   }
 

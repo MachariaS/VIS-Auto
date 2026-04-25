@@ -30,6 +30,7 @@ export default function CustomerDashboard() {
     setDashboardTab,
     addToast,
     sessionReady,
+    setStep,
     signOut,
     toggleTheme,
     openDashboard,
@@ -417,7 +418,7 @@ export default function CustomerDashboard() {
             >
               <MenuIcon />
             </button>
-            <button className="brand-inline" type="button" onClick={() => openDashboard()}>
+            <button className="brand-inline" type="button" onClick={() => setStep('entry')}>
               VIS
             </button>
             <div className="topbar-copy">

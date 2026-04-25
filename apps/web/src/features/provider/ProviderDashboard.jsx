@@ -30,6 +30,7 @@ export default function ProviderDashboard() {
     token,
     dashboardTab,
     setDashboardTab,
+    setStep,
     message,
     addToast,
     sessionReady,
@@ -461,6 +462,7 @@ export default function ProviderDashboard() {
           onClick={() => {
             setShowAccountMenu(false);
             setShowNotifications(false);
+            setStep('entry');
           }}
         >
           <div className="provider-brand-logo-v2">

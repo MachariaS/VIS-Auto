@@ -7,3 +7,4 @@ coverage/
 *.log
 .DS_Store
 apps/api/node_modules.broken-20260329/
+.vercel

@@ -49,7 +49,7 @@ export class AuthService {
       this.otpChallengesRepository.create({ email, code, expiresAt, attempts: 0 }),
     );
 
-    await this.mailService.sendOtp(email, code);
+    void this.mailService.sendOtp(email, code);
 
     return {
       message: 'OTP generated for verification.',
@@ -196,7 +196,7 @@ export class AuthService {
 
       const frontendUrl = this.configService.get<string>('FRONTEND_URL', 'http://localhost:3000');
       const resetLink = `${frontendUrl}?reset=${token}`;
-      await this.mailService.sendPasswordReset(normalizedEmail, resetLink);
+      void this.mailService.sendPasswordReset(normalizedEmail, resetLink);
     }
 
     return { message: 'If that email has an account, a reset link has been sent.' };

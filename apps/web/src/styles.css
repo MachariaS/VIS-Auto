@@ -1235,6 +1235,129 @@ h1 {
   position: static;
 }
 
+.service-catalog-group {
+  display: grid;
+  gap: 10px;
+}
+
+.service-catalog-category {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-soft);
+  margin: 0;
+}
+
+.service-catalog-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+}
+
+.service-catalog-card {
+  position: relative;
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+  border-radius: 12px;
+  border: 2px solid var(--border-soft);
+  background: var(--bg-elevated);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.service-catalog-card:hover {
+  border-color: var(--accent);
+}
+
+.service-catalog-card--selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-elevated));
+}
+
+.service-catalog-card strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.service-catalog-card p {
+  font-size: 11px;
+  color: var(--text-soft);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.service-catalog-check {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  font-size: 14px;
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.auth-actions {
+  display: grid;
+  gap: 8px;
+  text-align: center;
+}
+
+.auth-copy-small {
+  font-size: 12px;
+  color: var(--text-soft);
+  margin: 0;
+  text-align: center;
+}
+
+.auth-type-cards {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.auth-type-card {
+  display: grid;
+  gap: 4px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 2px solid var(--border-soft);
+  background: var(--bg-elevated);
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.auth-type-card:hover {
+  border-color: var(--accent);
+}
+
+.auth-type-card--active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-elevated));
+}
+
+.auth-type-card strong {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-main);
+}
+
+.auth-type-card p {
+  font-size: 12px;
+  color: var(--text-soft);
+  margin: 0;
+  line-height: 1.4;
+}
+
+.auth-type-icon {
+  font-size: 22px;
+  display: block;
+  margin-bottom: 6px;
+}
+
 .auth-head {
   display: grid;
   gap: 8px;

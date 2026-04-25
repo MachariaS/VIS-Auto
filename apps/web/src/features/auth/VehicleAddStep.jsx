@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { request } from '../../shared/helpers';
 import { initialVehicle } from '../../shared/constants';
+import VehicleMakeModelFields from '../../shared/VehicleMakeModelFields';
 
 export default function VehicleAddStep({ token, onComplete, onSkip }) {
   const [form, setForm] = useState(initialVehicle);
@@ -42,35 +43,12 @@ export default function VehicleAddStep({ token, onComplete, onSkip }) {
         />
       </label>
 
-      <label>
-        <span>Make</span>
-        <input
-          placeholder="Toyota"
-          value={form.make}
-          onChange={(e) => onChange('make', e.target.value)}
-          required
-        />
-      </label>
-
-      <label>
-        <span>Model</span>
-        <input
-          placeholder="Corolla"
-          value={form.model}
-          onChange={(e) => onChange('model', e.target.value)}
-          required
-        />
-      </label>
-
-      <label>
-        <span>Year</span>
-        <input
-          type="number"
-          value={form.year}
-          onChange={(e) => onChange('year', Number(e.target.value))}
-          required
-        />
-      </label>
+      <VehicleMakeModelFields
+        make={form.make}
+        model={form.model}
+        year={form.year}
+        onChange={onChange}
+      />
 
       <label>
         <span>Registration plate</span>
@@ -83,7 +61,7 @@ export default function VehicleAddStep({ token, onComplete, onSkip }) {
       </label>
 
       <button className="form-primary-action" type="submit" disabled={loading}>
-        {loading ? 'Saving...' : 'Add vehicle'}
+        {loading ? 'Saving…' : 'Add vehicle'}
       </button>
 
       <button type="button" className="ghost-button" onClick={onSkip}>

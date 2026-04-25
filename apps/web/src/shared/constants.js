@@ -120,12 +120,21 @@ export const providerVehicleTypeOptions = [
 ];
 
 export const countryOptions = [
-  { code: 'KE', label: 'Kenya' },
-  { code: 'UG', label: 'Uganda' },
-  { code: 'TZ', label: 'Tanzania' },
-  { code: 'RW', label: 'Rwanda' },
-  { code: 'BI', label: 'Burundi' },
-  { code: 'SS', label: 'South Sudan' },
+  { code: 'KE', label: 'Kenya',        phoneCode: '+254' },
+  { code: 'UG', label: 'Uganda',       phoneCode: '+256' },
+  { code: 'TZ', label: 'Tanzania',     phoneCode: '+255' },
+  { code: 'RW', label: 'Rwanda',       phoneCode: '+250' },
+  { code: 'BI', label: 'Burundi',      phoneCode: '+257' },
+  { code: 'SS', label: 'South Sudan',  phoneCode: '+211' },
+  { code: 'ET', label: 'Ethiopia',     phoneCode: '+251' },
+  { code: 'SO', label: 'Somalia',      phoneCode: '+252' },
+  { code: 'NG', label: 'Nigeria',      phoneCode: '+234' },
+  { code: 'GH', label: 'Ghana',        phoneCode: '+233' },
+  { code: 'ZA', label: 'South Africa', phoneCode: '+27'  },
+  { code: 'GB', label: 'UK',           phoneCode: '+44'  },
+  { code: 'US', label: 'USA',          phoneCode: '+1'   },
+  { code: 'IN', label: 'India',        phoneCode: '+91'  },
+  { code: 'CN', label: 'China',        phoneCode: '+86'  },
 ];
 
 export const branchTypeOptions = ['Main Branch', 'Satellite Branch', 'Affiliate Branch'];

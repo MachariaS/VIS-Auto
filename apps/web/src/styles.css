@@ -621,6 +621,31 @@ h1 {
   gap: 14px;
 }
 
+/* ── Phone field ── */
+.phone-field {
+  display: flex;
+  gap: 8px;
+}
+
+.phone-code-select {
+  width: 160px;
+  flex-shrink: 0;
+}
+
+.phone-number-input {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── Vehicle make datalist wrapper ── */
+.make-input-wrap {
+  position: relative;
+}
+
+.make-input-wrap input {
+  width: 100%;
+}
+
 .vis-landing-page {
   display: grid;
   gap: 20px;

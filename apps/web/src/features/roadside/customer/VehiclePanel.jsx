@@ -1,6 +1,10 @@
-import { initialVehicle } from '../../../shared/constants';
+import VehicleMakeModelFields from '../../../shared/VehicleMakeModelFields';
 
 export default function VehiclePanel({ vehicleForm, setVehicleForm, onSubmit, loading }) {
+  function onChange(field, value) {
+    setVehicleForm((current) => ({ ...current, [field]: value }));
+  }
+
   return (
     <form className="dashboard-panel stack" onSubmit={onSubmit}>
       <div className="panel-head">
@@ -9,64 +13,58 @@ export default function VehiclePanel({ vehicleForm, setVehicleForm, onSubmit, lo
           <h3>Add a car</h3>
         </div>
       </div>
+
       <div className="form-grid">
         <label>
           <span>Nickname</span>
           <input
+            placeholder="e.g. My Toyota"
             value={vehicleForm.nickname}
-            onChange={(event) => setVehicleForm({ ...vehicleForm, nickname: event.target.value })}
-          />
-        </label>
-        <label>
-          <span>Make</span>
-          <input
-            value={vehicleForm.make}
-            onChange={(event) => setVehicleForm({ ...vehicleForm, make: event.target.value })}
-          />
-        </label>
-        <label>
-          <span>Model</span>
-          <input
-            value={vehicleForm.model}
-            onChange={(event) => setVehicleForm({ ...vehicleForm, model: event.target.value })}
-          />
-        </label>
-        <label>
-          <span>Year</span>
-          <input
-            type="number"
-            value={vehicleForm.year}
-            onChange={(event) =>
-              setVehicleForm({ ...vehicleForm, year: Number(event.target.value) })
-            }
+            onChange={(e) => onChange('nickname', e.target.value)}
+            required
           />
         </label>
         <label>
           <span>Registration</span>
           <input
+            placeholder="KCA 000A"
             value={vehicleForm.registrationNumber}
-            onChange={(event) =>
-              setVehicleForm({ ...vehicleForm, registrationNumber: event.target.value })
-            }
-          />
-        </label>
-        <label>
-          <span>Color</span>
-          <input
-            value={vehicleForm.color}
-            onChange={(event) => setVehicleForm({ ...vehicleForm, color: event.target.value })}
+            onChange={(e) => onChange('registrationNumber', e.target.value)}
+            required
           />
         </label>
       </div>
-      <label>
-        <span>Notes</span>
-        <textarea
-          value={vehicleForm.notes}
-          onChange={(event) => setVehicleForm({ ...vehicleForm, notes: event.target.value })}
+
+      <div className="form-grid">
+        <VehicleMakeModelFields
+          make={vehicleForm.make}
+          model={vehicleForm.model}
+          year={vehicleForm.year}
+          onChange={onChange}
         />
-      </label>
+      </div>
+
+      <div className="form-grid">
+        <label>
+          <span>Color</span>
+          <input
+            placeholder="e.g. Silver"
+            value={vehicleForm.color ?? ''}
+            onChange={(e) => onChange('color', e.target.value)}
+          />
+        </label>
+        <label>
+          <span>Notes</span>
+          <input
+            placeholder="Any notes about this vehicle"
+            value={vehicleForm.notes ?? ''}
+            onChange={(e) => onChange('notes', e.target.value)}
+          />
+        </label>
+      </div>
+
       <button className="form-primary-action" type="submit" disabled={loading}>
-        {loading ? 'Saving...' : 'Save vehicle'}
+        {loading ? 'Saving…' : 'Save vehicle'}
       </button>
     </form>
   );

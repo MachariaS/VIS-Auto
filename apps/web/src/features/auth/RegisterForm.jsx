@@ -1,3 +1,5 @@
+import PhoneField from '../../shared/PhoneField';
+
 export default function RegisterForm({ form, onChange, onSubmit, loading, message }) {
   return (
     <form className="auth-shell stack" onSubmit={onSubmit}>
@@ -60,11 +62,11 @@ export default function RegisterForm({ form, onChange, onSubmit, loading, messag
       )}
 
       <label>
-        <span>Phone (optional)</span>
-        <input
-          placeholder="+254..."
+        <span>Phone number</span>
+        <PhoneField
           value={form.phone}
-          onChange={(e) => onChange('phone', e.target.value)}
+          onChange={(v) => onChange('phone', v)}
+          required
         />
       </label>
 
@@ -80,7 +82,7 @@ export default function RegisterForm({ form, onChange, onSubmit, loading, messag
       </label>
 
       <button className="form-primary-action" type="submit" disabled={loading}>
-        {loading ? 'Creating...' : 'Create account'}
+        {loading ? 'Creating…' : 'Create account'}
       </button>
 
       {message ? <div className="status-banner">{message}</div> : null}

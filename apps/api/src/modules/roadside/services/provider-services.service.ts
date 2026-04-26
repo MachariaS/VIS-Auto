@@ -52,17 +52,20 @@ export class ProviderServicesService {
         .where('u."isOnline" = true')
         .andWhere('ps."isAcceptingJobs" = true')
         .andWhere('ps.visibility = :v', { v: 'public' })
+        .andWhere('ps."basePriceKsh" > 0')
         .orderBy('ps."createdAt"', 'DESC')
         .getMany();
       return services.map((s) => this.toDto(s));
     } catch (err) {
-      // Fallback: isOnline column may not exist yet in prod — return all public+accepting services
-      this.logger.warn('listAll JOIN failed (isOnline column missing?), using fallback filter', err?.message);
+      // Fallback: isOnline column may not exist yet — return all public+accepting+priced services
+      this.logger.warn('listAll JOIN failed, using fallback filter', err?.message);
       const services = await this.repo.find({
         where: { isAcceptingJobs: true, visibility: 'public' as ServiceVisibility },
         order: { createdAt: 'DESC' },
       });
-      return services.map((s) => this.toDto(s));
+      return services
+        .filter((s) => s.basePriceKsh > 0)
+        .map((s) => this.toDto(s));
     }
   }
 

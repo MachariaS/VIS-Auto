@@ -86,6 +86,15 @@ function AddressSearch({ value, onChange, onSelect }) {
 }
 
 // Codes must match the backend service catalog codes exactly
+function haversineKm(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.asin(Math.sqrt(a));
+}
+
 const SERVICE_CARDS = [
   { code: 'towing',               label: 'Towing',          icon: '🚛', desc: 'Vehicle tow to garage or destination' },
   { code: 'battery_jump_start',   label: 'Battery jump',    icon: '⚡', desc: 'Jump start a flat battery on site' },
@@ -179,22 +188,25 @@ export default function RequestPanel({
   }
 
   const filteredProviders = providerCatalog.filter(
-    (item) => item.serviceCode === serviceFilter,
+    (item) => (item.catalogCode || item.serviceCode) === serviceFilter,
   );
 
   const selectedProviderService = providerCatalog.find(
     (item) => item.id === roadsideForm.providerServiceId,
   );
 
+  const isFuelDelivery =
+    selectedProviderService?.catalogCode === 'fuel_delivery' ||
+    selectedProviderService?.serviceCode === 'fuel_delivery';
+
   const selectedFuelLitres = getSelectedFuelLitres(roadsideForm);
   const deliveryEstimate = selectedProviderService
     ? Number(roadsideForm.distanceKm || 0) * selectedProviderService.pricePerKmKsh +
       selectedProviderService.basePriceKsh
     : 0;
-  const fuelEstimate =
-    selectedProviderService?.serviceCode === 'fuel_delivery'
-      ? getFuelUnitPrice(selectedProviderService, roadsideForm) * selectedFuelLitres
-      : 0;
+  const fuelEstimate = isFuelDelivery
+    ? getFuelUnitPrice(selectedProviderService, roadsideForm) * selectedFuelLitres
+    : 0;
   const totalEstimate = deliveryEstimate + fuelEstimate;
 
   const stepLabels = ['Service', 'Location', 'Provider', 'Confirm'];
@@ -316,7 +328,19 @@ export default function RequestPanel({
                   key={svc.id}
                   svc={svc}
                   selected={roadsideForm.providerServiceId === svc.id}
-                  onSelect={() => setRoadsideForm({ ...roadsideForm, providerServiceId: svc.id })}
+                  onSelect={() => {
+                    const cLat = Number(roadsideForm.latitude);
+                    const cLng = Number(roadsideForm.longitude);
+                    const autoKm =
+                      cLat && cLng
+                        ? Math.max(1, haversineKm(cLat, cLng, -1.2921, 36.8219)).toFixed(1)
+                        : roadsideForm.distanceKm || '5';
+                    setRoadsideForm({
+                      ...roadsideForm,
+                      providerServiceId: svc.id,
+                      distanceKm: String(autoKm),
+                    });
+                  }}
                 />
               ))}
             </div>
@@ -374,7 +398,7 @@ export default function RequestPanel({
           </label>
 
           <label>
-            <span>Approx. distance (km)</span>
+            <span>Distance to provider (km) — auto-estimated, tap to correct</span>
             <input
               type="number"
               min="0.1"
@@ -387,7 +411,7 @@ export default function RequestPanel({
             />
           </label>
 
-          {selectedProviderService?.serviceCode === 'fuel_delivery' && (
+          {isFuelDelivery && (
             <div className="soft-block">
               <p className="eyebrow">Fuel details</p>
               <div className="service-toggle-row">

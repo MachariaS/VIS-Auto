@@ -111,7 +111,7 @@ export default function CustomerDashboard() {
   }, [vehicles]);
 
   useEffect(() => {
-    const filtered = providerCatalog.filter((item) => item.serviceCode === serviceFilter);
+    const filtered = providerCatalog.filter((item) => (item.catalogCode || item.serviceCode) === serviceFilter);
     if (filtered.length === 0) {
       if (roadsideForm.providerServiceId) {
         setRoadsideForm((current) => ({ ...current, providerServiceId: '' }));
@@ -200,7 +200,7 @@ export default function CustomerDashboard() {
       setProviderCatalog(catalogData);
 
       if (catalogData.length > 0) {
-        setServiceFilter(catalogData[0].serviceCode);
+        setServiceFilter(catalogData[0].catalogCode || catalogData[0].serviceCode || 'towing');
         setRoadsideForm((current) => ({
           ...current,
           providerServiceId: current.providerServiceId || catalogData[0].id,
@@ -269,13 +269,13 @@ export default function CustomerDashboard() {
         landmark: roadsideForm.landmark,
         notes: roadsideForm.notes,
         fuelLitres:
-          selectedProviderService?.serviceCode === 'fuel_delivery' ? selectedFuelLitres : undefined,
+          (selectedProviderService?.catalogCode || selectedProviderService?.serviceCode) === 'fuel_delivery' ? selectedFuelLitres : undefined,
         fuelType:
-          selectedProviderService?.serviceCode === 'fuel_delivery'
+          (selectedProviderService?.catalogCode || selectedProviderService?.serviceCode) === 'fuel_delivery'
             ? roadsideForm.fuelType
             : undefined,
         gasolineGrade:
-          selectedProviderService?.serviceCode === 'fuel_delivery' &&
+          (selectedProviderService?.catalogCode || selectedProviderService?.serviceCode) === 'fuel_delivery' &&
           roadsideForm.fuelType === 'gasoline'
             ? roadsideForm.gasolineGrade
             : undefined,

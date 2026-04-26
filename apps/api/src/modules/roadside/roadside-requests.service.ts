@@ -295,13 +295,37 @@ export class RoadsideRequestsService {
     request.providerLongitude = dto.longitude;
     request.providerLocationUpdatedAt = new Date();
 
-    if (dto.etaMinutes !== undefined) {
+    // Recalculate ETA from current provider position to customer (30 km/h avg city speed)
+    if (
+      request.latitude !== null && request.latitude !== undefined &&
+      request.longitude !== null && request.longitude !== undefined
+    ) {
+      const remainingKm = this.haversineKm(
+        dto.latitude,
+        dto.longitude,
+        Number(request.latitude),
+        Number(request.longitude),
+      );
+      const freshEta = Math.max(1, Math.ceil(remainingKm * 2)); // 30 km/h ≈ 2 min/km
+      request.etaMinutes = freshEta;
+    } else if (dto.etaMinutes !== undefined) {
       request.etaMinutes = Math.round(dto.etaMinutes);
     }
 
     const saved = await this.roadsideRequestsRepository.save(request);
 
     return this.toTrackingStatus(saved);
+  }
+
+  private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371;
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.asin(Math.sqrt(a));
   }
 
   private estimateEta(serviceCode: string, distanceKm: number) {

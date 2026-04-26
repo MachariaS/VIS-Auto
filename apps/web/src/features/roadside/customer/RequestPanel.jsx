@@ -163,6 +163,45 @@ function ProviderMatchCard({ svc, selected, onSelect }) {
   );
 }
 
+function SortedProviderList({ providers, roadsideForm, setRoadsideForm }) {
+  const cLat = Number(roadsideForm.latitude) || 0;
+  const cLng = Number(roadsideForm.longitude) || 0;
+
+  // Fetch ratings for all providers (cached in module-level object)
+  // Score = rating (0-5, weighted ×2) + inverse distance bonus
+  const scored = providers.map((svc) => {
+    const dist = cLat && cLng ? haversineKm(cLat, cLng, -1.2921, 36.8219) : 5;
+    const ratingScore = (ratingCache[svc.providerId]?.average ?? 0) * 2;
+    const distScore = Math.max(0, 10 - dist);
+    const priceScore = svc.basePriceKsh > 0 ? Math.max(0, 5 - svc.basePriceKsh / 1000) : 0;
+    return { svc, score: ratingScore + distScore + priceScore, dist };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+
+  function handleSelect(svc, dist) {
+    const autoKm = Math.max(1, dist || 5).toFixed(1);
+    setRoadsideForm({ ...roadsideForm, providerServiceId: svc.id, distanceKm: String(autoKm) });
+  }
+
+  return (
+    <div className="provider-match-list">
+      {scored.map(({ svc, score, dist }, idx) => (
+        <div key={svc.id} style={{ position: 'relative' }}>
+          {idx === 0 && (
+            <span className="provider-recommended-badge">⭐ Recommended</span>
+          )}
+          <ProviderMatchCard
+            svc={svc}
+            selected={roadsideForm.providerServiceId === svc.id}
+            onSelect={() => handleSelect(svc, dist)}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function RequestPanel({
   vehicles,
   providerCatalog,
@@ -322,28 +361,11 @@ export default function RequestPanel({
               </button>
             </div>
           ) : (
-            <div className="provider-match-list">
-              {filteredProviders.map((svc) => (
-                <ProviderMatchCard
-                  key={svc.id}
-                  svc={svc}
-                  selected={roadsideForm.providerServiceId === svc.id}
-                  onSelect={() => {
-                    const cLat = Number(roadsideForm.latitude);
-                    const cLng = Number(roadsideForm.longitude);
-                    const autoKm =
-                      cLat && cLng
-                        ? Math.max(1, haversineKm(cLat, cLng, -1.2921, 36.8219)).toFixed(1)
-                        : roadsideForm.distanceKm || '5';
-                    setRoadsideForm({
-                      ...roadsideForm,
-                      providerServiceId: svc.id,
-                      distanceKm: String(autoKm),
-                    });
-                  }}
-                />
-              ))}
-            </div>
+            <SortedProviderList
+              providers={filteredProviders}
+              roadsideForm={roadsideForm}
+              setRoadsideForm={setRoadsideForm}
+            />
           )}
           <div className="step-nav">
             <button className="ghost-button" type="button" onClick={() => setStep(2)}>

@@ -13,6 +13,8 @@ const API_ROUTES = [
   '/locations',
   '/service-catalog',
   '/notifications',
+  '/ratings',
+  '/providers',
 ];
 
 export default defineConfig({

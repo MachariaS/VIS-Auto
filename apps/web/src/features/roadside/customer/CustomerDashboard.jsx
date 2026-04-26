@@ -12,6 +12,7 @@ import {
 } from '../../../shared/icons';
 import NotificationsTray from '../../shared/NotificationsTray';
 import CustomerProfilePanel from './CustomerProfilePanel';
+import RatingPrompt from './RatingPrompt';
 import SectionErrorBoundary from '../../shared/runtime/SectionErrorBoundary';
 import SectionState from '../../shared/runtime/SectionState';
 import useCustomerDashboardState from './hooks/useCustomerDashboardState';
@@ -67,6 +68,7 @@ export default function CustomerDashboard() {
   } = useCustomerDashboardState();
 
   const [activeRequest, setActiveRequest] = useState(null);
+  const [ratingRequest, setRatingRequest] = useState(null);
 
   const requestStats = useMemo(
     () => ({
@@ -608,8 +610,23 @@ export default function CustomerDashboard() {
           <ActiveJobPanel
             requestItem={activeRequest}
             token={token}
-            onDone={() => {
+            onDone={(completedItem) => {
               setActiveRequest(null);
+              if (completedItem) {
+                setRatingRequest(completedItem);
+                setDashboardTab('rate-job');
+              } else {
+                setDashboardTab('history');
+              }
+            }}
+          />
+        ) : null}
+        {dashboardTab === 'rate-job' && ratingRequest ? (
+          <RatingPrompt
+            completedRequest={ratingRequest}
+            token={token}
+            onDone={() => {
+              setRatingRequest(null);
               setDashboardTab('history');
             }}
           />

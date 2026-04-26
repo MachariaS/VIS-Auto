@@ -74,6 +74,8 @@ export interface RoadsideRequest {
 
 export interface RoadsideRequestTrackingStatus {
   id: string;
+  userId: string;
+  providerId: string;
   status: RoadsideRequest['status'];
   etaMinutes: number;
   address: string;
@@ -424,6 +426,8 @@ export class RoadsideRequestsService {
   private toTrackingStatus(request: RoadsideRequestEntity): RoadsideRequestTrackingStatus {
     return {
       id: request.id,
+      userId: request.userId,
+      providerId: request.providerId,
       status: request.status,
       etaMinutes: Number(request.etaMinutes),
       address: request.address,

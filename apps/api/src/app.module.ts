@@ -25,6 +25,8 @@ import { ServiceCatalogModule } from './modules/service-catalog/service-catalog.
 import { ServiceCatalogEntity } from './modules/service-catalog/service-catalog.entity';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { NotificationEntity } from './modules/notifications/notification.entity';
+import { RatingsModule } from './modules/ratings/ratings.module';
+import { RatingEntity } from './modules/ratings/rating.entity';
 
 @Module({
   imports: [
@@ -44,7 +46,7 @@ import { NotificationEntity } from './modules/notifications/notification.entity'
             entities: [
               UserEntity, VehicleEntity, ProviderServiceEntity,
               RoadsideRequestEntity, OtpChallengeEntity, PasswordResetEntity,
-              ServiceCatalogEntity, VendorIntegrationEntity, NotificationEntity,
+              ServiceCatalogEntity, VendorIntegrationEntity, NotificationEntity, RatingEntity,
             ],
             synchronize: (process.env.DB_SYNCHRONIZE ?? 'false') === 'true',
           }
@@ -58,7 +60,7 @@ import { NotificationEntity } from './modules/notifications/notification.entity'
             entities: [
               UserEntity, VehicleEntity, ProviderServiceEntity,
               RoadsideRequestEntity, OtpChallengeEntity, PasswordResetEntity,
-              ServiceCatalogEntity, VendorIntegrationEntity, NotificationEntity,
+              ServiceCatalogEntity, VendorIntegrationEntity, NotificationEntity, RatingEntity,
             ],
             synchronize: (process.env.DB_SYNCHRONIZE ?? 'false') === 'true',
           },
@@ -73,6 +75,7 @@ import { NotificationEntity } from './modules/notifications/notification.entity'
     MailModule,
     ServiceCatalogModule,
     NotificationsModule,
+    RatingsModule,
   ],
   controllers: [AppController],
   providers: [

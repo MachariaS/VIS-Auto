@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { fuelLiterOptions } from '../../../shared/constants';
 import { formatCurrency, getFuelUnitPrice, getSelectedFuelLitres, getServiceImageUrl } from '../../../shared/helpers';
 
@@ -96,22 +96,62 @@ const SERVICE_CARDS = [
   { code: 'winching',             label: 'Winching',        icon: '⛓️', desc: 'Pull from ditch, mud or off-road' },
 ];
 
-function Stars({ rating }) {
-  const n = typeof rating === 'number' ? rating : 4.5;
+function Stars({ rating, count }) {
+  const n = typeof rating === 'number' ? rating : 0;
   return (
     <span className="provider-stars">
       {[1, 2, 3, 4, 5].map((i) => (
-        <span key={i} style={{ color: i <= Math.round(n) ? '#f59e0b' : '#ccc' }}>★</span>
+        <span key={i} style={{ color: i <= Math.round(n) ? '#f59e0b' : 'var(--border-soft)' }}>★</span>
       ))}
       <span className="provider-rating-num">{n.toFixed(1)}</span>
+      {count > 0 && <span className="provider-rating-count">({count})</span>}
     </span>
   );
 }
 
-function getProviderRating(id) {
-  if (!id) return 4.5;
-  const code = id.charCodeAt(0) || 0;
-  return 4.0 + (code % 9) / 10;
+const ratingCache = {};
+
+function useProviderRating(providerId) {
+  const [data, setData] = useState(ratingCache[providerId] ?? null);
+  useEffect(() => {
+    if (!providerId || ratingCache[providerId] !== undefined) return;
+    fetch(`/providers/${providerId}/ratings`)
+      .then((r) => r.json())
+      .then((d) => { ratingCache[providerId] = d; setData(d); })
+      .catch(() => { ratingCache[providerId] = null; });
+  }, [providerId]);
+  return data;
+}
+
+function ProviderMatchCard({ svc, selected, onSelect }) {
+  const ratings = useProviderRating(svc.providerId);
+  const avg = ratings?.average ?? null;
+  const count = ratings?.count ?? 0;
+  return (
+    <button
+      type="button"
+      className={`provider-match-card ${selected ? 'provider-match-card--selected' : ''}`}
+      onClick={onSelect}
+    >
+      <div className="provider-match-thumb" style={{ backgroundImage: `url(${getServiceImageUrl(svc)})` }} />
+      <div className="provider-match-body">
+        <div className="provider-match-top">
+          <strong>{svc.providerName}</strong>
+        </div>
+        <p className="provider-match-service">{svc.serviceName}</p>
+        {avg !== null ? (
+          <Stars rating={avg} count={count} />
+        ) : (
+          <span className="provider-no-rating">New provider</span>
+        )}
+        <div className="provider-match-meta">
+          <span>Base {formatCurrency(svc.basePriceKsh)}</span>
+          <span>{formatCurrency(svc.pricePerKmKsh)}/km</span>
+        </div>
+      </div>
+      {selected && <span className="provider-match-check">✓</span>}
+    </button>
+  );
 }
 
 export default function RequestPanel({
@@ -270,35 +310,12 @@ export default function RequestPanel({
           ) : (
             <div className="provider-match-list">
               {filteredProviders.map((svc) => (
-                <button
+                <ProviderMatchCard
                   key={svc.id}
-                  type="button"
-                  className={`provider-match-card ${roadsideForm.providerServiceId === svc.id ? 'provider-match-card--selected' : ''}`}
-                  onClick={() =>
-                    setRoadsideForm({ ...roadsideForm, providerServiceId: svc.id })
-                  }
-                >
-                  <div
-                    className="provider-match-thumb"
-                    style={{
-                      backgroundImage: `url(${getServiceImageUrl(svc)})`,
-                    }}
-                  />
-                  <div className="provider-match-body">
-                    <div className="provider-match-top">
-                      <strong>{svc.providerName}</strong>
-                    </div>
-                    <p className="provider-match-service">{svc.serviceName}</p>
-                    <Stars rating={getProviderRating(svc.id)} />
-                    <div className="provider-match-meta">
-                      <span>Base {formatCurrency(svc.basePriceKsh)}</span>
-                      <span>{formatCurrency(svc.pricePerKmKsh)}/km</span>
-                    </div>
-                  </div>
-                  {roadsideForm.providerServiceId === svc.id && (
-                    <span className="provider-match-check">✓</span>
-                  )}
-                </button>
+                  svc={svc}
+                  selected={roadsideForm.providerServiceId === svc.id}
+                  onSelect={() => setRoadsideForm({ ...roadsideForm, providerServiceId: svc.id })}
+                />
               ))}
             </div>
           )}

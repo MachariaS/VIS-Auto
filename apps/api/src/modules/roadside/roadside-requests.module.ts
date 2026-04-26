@@ -20,5 +20,6 @@ import { NotificationsModule } from '../notifications/notifications.module';
   ],
   controllers: [RoadsideRequestsController],
   providers: [RoadsideRequestsService],
+  exports: [RoadsideRequestsService],
 })
 export class RoadsideRequestsModule {}

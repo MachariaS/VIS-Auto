@@ -37,10 +37,13 @@ export default function ActiveJobPanel({ requestItem, token, onDone }) {
 
   useEffect(() => {
     if (currentStatus === 'completed' || currentStatus === 'cancelled') {
-      const timer = setTimeout(onDone, 2500);
+      const timer = setTimeout(
+        () => onDone(currentStatus === 'completed' ? requestItem : null),
+        2500,
+      );
       return () => clearTimeout(timer);
     }
-  }, [currentStatus, onDone]);
+  }, [currentStatus]);
 
   useEffect(() => {
     if (!tracking?.etaMinutes) return;

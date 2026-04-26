@@ -190,13 +190,23 @@ export class UsersService {
     return value as Record<string, unknown>;
   }
 
+  async toggleAvailability(userId: string) {
+    const user = await this.findRequiredUser(userId);
+    user.isOnline = !user.isOnline;
+    user.availabilityChangedAt = new Date();
+    const saved = await this.usersRepository.save(user);
+    return this.toSafeUser(saved);
+  }
+
   toSafeUser(user: User | UserEntity) {
+    const entity = user as UserEntity;
     return {
       id: user.id,
       email: user.email,
       name: user.name,
       phone: user.phone,
       accountType: user.accountType,
+      isOnline: entity.isOnline ?? false,
       profile: user.profile,
       createdAt:
         user.createdAt instanceof Date ? user.createdAt.toISOString() : String(user.createdAt),

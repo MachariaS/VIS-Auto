@@ -1,13 +1,13 @@
-import { Body, Controller, Get, IsInt, IsOptional, IsString, Max, Min, Param, Post, Request, UseGuards } from '@nestjs/common';
-import { IsInt as IsIntV, Max as MaxV, Min as MinV } from 'class-validator';
+import { Body, Controller, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
+import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { JwtAuthGuard, type AuthenticatedRequest } from '../../shared/auth/jwt-auth.guard';
 import { RatingsService } from './ratings.service';
 import { RoadsideRequestsService } from '../roadside/roadside-requests.service';
 
 class SubmitRatingDto {
-  @IsIntV()
-  @MinV(1)
-  @MaxV(5)
+  @IsInt()
+  @Min(1)
+  @Max(5)
   score!: number;
 
   @IsString()

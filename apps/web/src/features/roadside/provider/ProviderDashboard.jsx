@@ -602,6 +602,10 @@ export default function ProviderDashboard() {
           </div>
 
           <div className="provider-topbar-actions-v2">
+            <div className={`provider-online-badge ${user?.isOnline ? 'provider-online-badge--on' : 'provider-online-badge--off'}`}>
+              <span className="provider-online-dot" />
+              {user?.isOnline ? 'Online' : 'Offline'}
+            </div>
             <button
               className="icon-button"
               type="button"
@@ -681,6 +685,7 @@ export default function ProviderDashboard() {
               >
                 <ProviderOverview
                   user={user}
+                  token={token}
                   requests={requests}
                   providerServices={providerServices}
                   onAddService={() => {

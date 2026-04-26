@@ -302,7 +302,9 @@ export default function RequestPanel({
           </p>
           {filteredProviders.length === 0 ? (
             <div className="cust-empty">
-              <p>No providers available for this service. Try another.</p>
+              <span style={{ fontSize: 32 }}>😴</span>
+              <p><strong>No providers currently online</strong></p>
+              <p style={{ fontSize: 13 }}>All providers for this service are offline right now. Try a different service or check back shortly.</p>
               <button className="ghost-button" type="button" onClick={() => setStep(1)}>
                 ← Change service
               </button>

@@ -20,6 +20,12 @@ export class UserEntity {
   @Column({ type: 'jsonb', nullable: true })
   profile?: Record<string, unknown>;
 
+  @Column({ default: false })
+  isOnline!: boolean;
+
+  @Column({ type: 'timestamp', nullable: true })
+  availabilityChangedAt?: Date;
+
   @Column()
   passwordHash!: string;
 

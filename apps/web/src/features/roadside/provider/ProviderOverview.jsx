@@ -1,8 +1,53 @@
+import { useState } from 'react';
 import { futureProviderModules, serviceTypeOptions } from '../../../shared/constants';
-import { formatCurrency, getServiceImageUrl } from '../../../shared/helpers';
+import { formatCurrency, getServiceImageUrl, request } from '../../../shared/helpers';
+import { useApp } from '../../../context/AppContext';
+
+function AvailabilityToggle({ user, token }) {
+  const { setUser } = useApp();
+  const [toggling, setToggling] = useState(false);
+  const isOnline = user?.isOnline ?? false;
+
+  async function toggle() {
+    setToggling(true);
+    try {
+      const updated = await request('/users/me/availability', undefined, 'PATCH', token);
+      setUser(updated);
+    } catch { /* non-fatal */ } finally {
+      setToggling(false);
+    }
+  }
+
+  return (
+    <div className={`availability-toggle-card ${isOnline ? 'availability-toggle-card--online' : 'availability-toggle-card--offline'}`}>
+      <div className="availability-toggle-info">
+        <div className="availability-toggle-dot-wrap">
+          <span className={`availability-toggle-dot ${isOnline ? 'availability-toggle-dot--on' : ''}`} />
+        </div>
+        <div>
+          <strong>{isOnline ? 'You are online' : 'You are offline'}</strong>
+          <p>
+            {isOnline
+              ? 'Customers can see and request your services.'
+              : 'You are hidden from the customer catalog. Go online to receive jobs.'}
+          </p>
+        </div>
+      </div>
+      <button
+        type="button"
+        className={isOnline ? 'ghost-button danger' : 'primary-cta'}
+        onClick={toggle}
+        disabled={toggling}
+      >
+        {toggling ? 'Updating…' : isOnline ? 'Go offline' : 'Go online'}
+      </button>
+    </div>
+  );
+}
 
 export default function ProviderOverview({
   user,
+  token,
   requests,
   providerServices,
   onAddService,
@@ -159,6 +204,8 @@ export default function ProviderOverview({
           Add Service
         </button>
       </div>
+
+      <AvailabilityToggle user={user} token={token} />
 
       <div className="provider-stat-strip-v2">
         {dashboardStatCards.map((card) => (

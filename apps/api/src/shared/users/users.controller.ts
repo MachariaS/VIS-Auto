@@ -29,4 +29,9 @@ export class UsersController {
   ) {
     return this.usersService.updatePassword(req.user.sub, dto);
   }
+
+  @Patch('me/availability')
+  toggleAvailability(@Request() req: AuthenticatedRequest) {
+    return this.usersService.toggleAvailability(req.user.sub);
+  }
 }

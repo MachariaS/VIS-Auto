@@ -42,7 +42,14 @@ export class ProviderServicesService {
   }
 
   async listAll() {
-    const services = await this.repo.find({ order: { createdAt: 'DESC' } });
+    const services = await this.repo
+      .createQueryBuilder('ps')
+      .innerJoin('users', 'u', 'u.id = ps.providerId')
+      .where('u.isOnline = true')
+      .andWhere('ps.isAcceptingJobs = true')
+      .andWhere('ps.visibility = :v', { v: 'public' })
+      .orderBy('ps.createdAt', 'DESC')
+      .getMany();
     return services.map((s) => this.toDto(s));
   }
 

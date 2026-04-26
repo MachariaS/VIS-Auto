@@ -1,10 +1,11 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { ServiceCatalogService } from '../../service-catalog/service-catalog.service';
 import { UsersService } from '../../../shared/users/users.service';
 import { CreateProviderServiceDto } from './dto/create-provider-service.dto';
 import { ProviderServiceEntity, ServiceVisibility } from './provider-service.entity';
+import { UserEntity } from '../../../shared/users/user.entity';
 
 export interface ProviderService {
   id: string;
@@ -41,16 +42,28 @@ export class ProviderServicesService {
     return services.map((s) => this.toDto(s));
   }
 
+  private readonly logger = new Logger(ProviderServicesService.name);
+
   async listAll() {
-    const services = await this.repo
-      .createQueryBuilder('ps')
-      .innerJoin('users', 'u', 'u.id = ps.providerId')
-      .where('u.isOnline = true')
-      .andWhere('ps.isAcceptingJobs = true')
-      .andWhere('ps.visibility = :v', { v: 'public' })
-      .orderBy('ps.createdAt', 'DESC')
-      .getMany();
-    return services.map((s) => this.toDto(s));
+    try {
+      const services = await this.repo
+        .createQueryBuilder('ps')
+        .innerJoin(UserEntity, 'u', 'u.id = ps."providerId"')
+        .where('u."isOnline" = true')
+        .andWhere('ps."isAcceptingJobs" = true')
+        .andWhere('ps.visibility = :v', { v: 'public' })
+        .orderBy('ps."createdAt"', 'DESC')
+        .getMany();
+      return services.map((s) => this.toDto(s));
+    } catch (err) {
+      // Fallback: isOnline column may not exist yet in prod — return all public+accepting services
+      this.logger.warn('listAll JOIN failed (isOnline column missing?), using fallback filter', err?.message);
+      const services = await this.repo.find({
+        where: { isAcceptingJobs: true, visibility: 'public' as ServiceVisibility },
+        order: { createdAt: 'DESC' },
+      });
+      return services.map((s) => this.toDto(s));
+    }
   }
 
   async bulkCreate(providerId: string, serviceCatalogIds: string[]) {

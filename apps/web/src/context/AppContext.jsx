@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import {
   SESSION_STORAGE_KEY,
   THEME_STORAGE_KEY,
@@ -38,10 +38,14 @@ export function AppProvider({ children }) {
   }
 
   useEffect(() => {
-    fetch(getApiUrl('/health'))
-      .then((res) => res.json())
-      .then((data) => setHealth(data))
-      .catch(() => setHealth({ status: 'offline', service: 'vis-assist-api' }));
+    // Deferred health check — fires after 3s so it never blocks the initial render
+    const t = setTimeout(() => {
+      fetch(getApiUrl('/health'))
+        .then((res) => res.json())
+        .then((data) => setHealth(data))
+        .catch(() => setHealth({ status: 'offline', service: 'vis-assist-api' }));
+    }, 3000);
+    return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
@@ -80,12 +84,26 @@ export function AppProvider({ children }) {
           setStep(parsed.step ?? 'dashboard');
           setDashboardTab(parsed.dashboardTab ?? 'overview');
 
-          // Recover the access token from the httpOnly refresh cookie — no JWT in localStorage
+          // Recover access token then immediately load profile — single waterfall, not two sequential trips
           fetch(getApiUrl('/auth/refresh'), { method: 'POST', credentials: 'include' })
             .then((res) => (res.ok ? res.json() : Promise.reject()))
-            .then((data) => {
-              setToken(data.accessToken);
+            .then(async (data) => {
+              const accessToken = data.accessToken;
               if (data.user) setUser(data.user);
+              setToken(accessToken);
+              // Fetch profile in parallel so dashboard has fresh data immediately
+              try {
+                const profileData = await fetch(getApiUrl('/users/me/profile'), {
+                  headers: { Authorization: `Bearer ${accessToken}` },
+                  credentials: 'include',
+                }).then((r) => r.ok ? r.json() : null);
+                if (profileData?.user) setUser(profileData.user);
+                if (profileData?.profile) {
+                  setProfileSettings((current) =>
+                    mergeProfileSettings(profileData.user || data.user, current, profileData.profile),
+                  );
+                }
+              } catch { /* non-fatal — profile will load lazily */ }
             })
             .catch(() => {
               // Refresh token expired or missing — require re-login
@@ -135,8 +153,11 @@ export function AppProvider({ children }) {
     setProfileSettings((current) => mergeProfileSettings(user, current, { preferences: { theme } }));
   }, [theme, user]);
 
+  const profileLoadedRef = useRef(false);
   useEffect(() => {
     if (!sessionReady || !token || !user) return;
+    if (profileLoadedRef.current) return;
+    profileLoadedRef.current = true;
     void loadRemoteProfile(token, user);
   }, [sessionReady, token, user?.id]);
 

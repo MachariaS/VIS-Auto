@@ -47,7 +47,7 @@ export class UsersService {
       phone: input.phone?.trim() || undefined,
       accountType: input.accountType,
       profile,
-      passwordHash: await hash(input.password, 10),
+      passwordHash: await hash(input.password, 8),
     });
 
     const saved = await this.usersRepository.save(user);
@@ -124,7 +124,7 @@ export class UsersService {
 
   async setPassword(userId: string, newPassword: string) {
     const user = await this.findRequiredUser(userId);
-    user.passwordHash = await hash(newPassword, 10);
+    user.passwordHash = await hash(newPassword, 8);
     await this.usersRepository.save(user);
   }
 

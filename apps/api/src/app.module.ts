@@ -43,6 +43,7 @@ import { RatingEntity } from './modules/ratings/rating.entity';
             type: 'postgres',
             url: process.env.DATABASE_URL,
             ssl: { rejectUnauthorized: false },
+            extra: { max: 5, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000 },
             entities: [
               UserEntity, VehicleEntity, ProviderServiceEntity,
               RoadsideRequestEntity, OtpChallengeEntity, PasswordResetEntity,
@@ -57,6 +58,7 @@ import { RatingEntity } from './modules/ratings/rating.entity';
             username: process.env.DB_USER || 'vis_user',
             password: process.env.DB_PASSWORD || 'vis_password',
             database: process.env.DB_NAME || 'vis_assist',
+            extra: { max: 10 },
             entities: [
               UserEntity, VehicleEntity, ProviderServiceEntity,
               RoadsideRequestEntity, OtpChallengeEntity, PasswordResetEntity,

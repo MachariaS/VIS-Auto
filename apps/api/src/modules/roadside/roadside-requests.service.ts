@@ -112,6 +112,7 @@ export class RoadsideRequestsService {
     const requests = await this.roadsideRequestsRepository.find({
       where: { userId },
       order: { createdAt: 'DESC' },
+      take: 100,
     });
 
     return Promise.all(requests.map((request) => this.toRoadsideRequest(request)));
@@ -121,6 +122,7 @@ export class RoadsideRequestsService {
     const requests = await this.roadsideRequestsRepository.find({
       where: { providerId },
       order: { createdAt: 'DESC' },
+      take: 200,
     });
 
     if (requests.length === 0) return [];

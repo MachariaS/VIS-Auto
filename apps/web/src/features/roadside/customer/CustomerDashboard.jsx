@@ -302,34 +302,39 @@ export default function CustomerDashboard() {
 
   function handleUseCurrentLocation() {
     if (!navigator.geolocation) {
-      addToast({
-        type: 'error',
-        title: 'Location unavailable',
-        message: 'Geolocation is not supported in this browser.',
-      });
+      addToast({ type: 'error', title: 'Location unavailable', message: 'Geolocation is not supported in this browser.' });
       return;
     }
     setLoading(true);
     navigator.geolocation.getCurrentPosition(
-      (position) => {
-        setRoadsideForm((current) => ({
-          ...current,
-          latitude: position.coords.latitude.toFixed(6),
-          longitude: position.coords.longitude.toFixed(6),
-        }));
-        addToast({
-          type: 'success',
-          title: 'Location captured',
-          message: 'Current coordinates were added to the request.',
-        });
+      async (position) => {
+        const lat = position.coords.latitude.toFixed(6);
+        const lng = position.coords.longitude.toFixed(6);
+        let address = `${lat}, ${lng}`;
+        let landmark = '';
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
+          );
+          const data = await res.json();
+          if (data?.display_name) {
+            const parts = data.display_name.split(',').slice(0, 4).join(',').trim();
+            address = parts;
+            landmark =
+              data.address?.amenity ||
+              data.address?.building ||
+              data.address?.shop ||
+              data.address?.road ||
+              '';
+          }
+        } catch { /* use coordinate fallback */ }
+
+        setRoadsideForm((current) => ({ ...current, latitude: lat, longitude: lng, address, landmark }));
+        addToast({ type: 'success', title: 'Location captured', message: address });
         setLoading(false);
       },
       () => {
-        addToast({
-          type: 'error',
-          title: 'Location failed',
-          message: 'Unable to capture location. Enter coordinates manually.',
-        });
+        addToast({ type: 'error', title: 'Location failed', message: 'Unable to capture location. Please type your address.' });
         setLoading(false);
       },
     );

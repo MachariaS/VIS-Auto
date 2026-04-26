@@ -1,6 +1,89 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { fuelLiterOptions } from '../../../shared/constants';
 import { formatCurrency, getFuelUnitPrice, getSelectedFuelLitres, getServiceImageUrl } from '../../../shared/helpers';
+
+async function suggestLocations(query) {
+  if (!query || query.length < 3) return [];
+  try {
+    const params = new URLSearchParams({
+      q: query, format: 'jsonv2', addressdetails: '1', limit: '6',
+      countrycodes: 'ke,ug,tz,rw,bi,et',
+    });
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`);
+    const data = await res.json();
+    return Array.isArray(data)
+      ? data.map((item) => ({
+          display: item.display_name,
+          short: item.display_name.split(',').slice(0, 3).join(', '),
+          lat: item.lat,
+          lng: item.lon,
+          landmark: item.address?.amenity || item.address?.building || item.address?.shop || item.address?.road || '',
+        }))
+      : [];
+  } catch { return []; }
+}
+
+function AddressSearch({ value, onChange, onSelect }) {
+  const [suggestions, setSuggestions] = useState([]);
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const timerRef = useRef(null);
+  const wrapRef = useRef(null);
+
+  useEffect(() => {
+    function onPointerDown(e) {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    }
+    document.addEventListener('pointerdown', onPointerDown);
+    return () => document.removeEventListener('pointerdown', onPointerDown);
+  }, []);
+
+  function handleChange(val) {
+    onChange(val);
+    clearTimeout(timerRef.current);
+    if (val.length < 3) { setSuggestions([]); setOpen(false); return; }
+    setBusy(true);
+    timerRef.current = setTimeout(async () => {
+      const results = await suggestLocations(val);
+      setSuggestions(results);
+      setOpen(results.length > 0);
+      setBusy(false);
+    }, 420);
+  }
+
+  function pick(s) {
+    onSelect(s);
+    setSuggestions([]);
+    setOpen(false);
+  }
+
+  return (
+    <div className="address-search-wrap" ref={wrapRef}>
+      <div className="address-search-input-row">
+        <input
+          placeholder="Street, area or landmark"
+          value={value}
+          onChange={(e) => handleChange(e.target.value)}
+          autoComplete="off"
+          required
+        />
+        {busy && <span className="address-search-spinner">⟳</span>}
+      </div>
+      {open && suggestions.length > 0 && (
+        <ul className="address-suggestions">
+          {suggestions.map((s, i) => (
+            <li key={i}>
+              <button type="button" onClick={() => pick(s)}>
+                <strong>{s.short.split(',')[0]}</strong>
+                <span>{s.short.split(',').slice(1).join(',').trim()}</span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
 
 const SERVICE_CARDS = [
   { code: 'towing',        label: 'Towing',       icon: '🚛', desc: 'Vehicle tow to garage or destination' },
@@ -123,17 +206,22 @@ export default function RequestPanel({
           <p className="step-hint">Enter your location or use GPS</p>
           <label>
             <span>Address</span>
-            <input
-              placeholder="Street, area or landmark"
+            <AddressSearch
               value={roadsideForm.address || ''}
-              onChange={(e) =>
-                setRoadsideForm({ ...roadsideForm, address: e.target.value })
+              onChange={(val) => setRoadsideForm({ ...roadsideForm, address: val })}
+              onSelect={(s) =>
+                setRoadsideForm({
+                  ...roadsideForm,
+                  address: s.short,
+                  landmark: s.landmark || roadsideForm.landmark || '',
+                  latitude: s.lat,
+                  longitude: s.lng,
+                })
               }
-              required
             />
           </label>
           <label>
-            <span>Landmark (optional)</span>
+            <span>Landmark (optional — auto-filled, tap to edit)</span>
             <input
               placeholder="Near a recognisable landmark"
               value={roadsideForm.landmark || ''}

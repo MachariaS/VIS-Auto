@@ -1,8 +1,6 @@
-import { lazy, Suspense, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { formatCurrency } from '../../../shared/helpers';
 import useRequestTracking from './hooks/useRequestTracking';
-
-const MapView = lazy(() => import('../../../shared/MapView'));
 
 const STATUS_LABELS = {
   searching: 'Searching',
@@ -21,6 +19,32 @@ const STATUS_COLOR = {
 };
 
 const TABS = ['All', 'Active', 'Completed', 'Cancelled'];
+
+function StaticMapEmbed({ lat, lng, label }) {
+  if (!lat || !lng) return null;
+  const zoom = 15;
+  const src = `https://www.openstreetmap.org/export/embed.html?bbox=${Number(lng) - 0.01},${Number(lat) - 0.01},${Number(lng) + 0.01},${Number(lat) + 0.01}&layer=mapnik&marker=${lat},${lng}`;
+  const href = `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lng}#map=${zoom}/${lat}/${lng}`;
+  return (
+    <div className="history-map-wrap">
+      <iframe
+        title={label}
+        src={src}
+        className="history-map-iframe"
+        loading="lazy"
+        referrerPolicy="no-referrer"
+      />
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="history-map-link"
+      >
+        Open in OpenStreetMap ↗
+      </a>
+    </div>
+  );
+}
 
 function statusGroup(status) {
   if (['searching', 'provider_assigned', 'in_progress'].includes(status)) return 'Active';
@@ -169,18 +193,11 @@ export default function HistoryPanel({ requests, token }) {
                 )}
               </div>
 
-              <Suspense fallback={<div className="map-loading">Loading map…</div>}>
-                <MapView
-                  customerLat={selected.latitude}
-                  customerLng={selected.longitude}
-                  providerLat={tracking?.providerLatitude}
-                  providerLng={tracking?.providerLongitude}
-                  customerLabel={selected.address || 'Your location'}
-                  providerLabel={selected.providerName || 'Provider'}
-                  height={320}
-                  className="history-map"
-                />
-              </Suspense>
+              <StaticMapEmbed
+                lat={selected.latitude}
+                lng={selected.longitude}
+                label={selected.address || 'Request location'}
+              />
             </div>
           )}
         </>

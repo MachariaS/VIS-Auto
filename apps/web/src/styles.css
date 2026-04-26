@@ -300,14 +300,110 @@ svg {
 
 .tracking-summary-card,
 .tracking-map-card {
-  border-radius: 24px;
+  border-radius: 16px;
   border: 1px solid var(--border-soft);
-  background: rgba(255, 255, 255, 0.03);
-  padding: 18px;
+  background: var(--bg-elevated);
+  overflow: hidden;
+  display: grid;
+  gap: 0;
 }
 
-.tracking-summary-head,
 .tracking-map-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 14px 16px 12px;
+}
+
+.tracking-map-head h5 { margin: 0; font-size: 14px; }
+.tracking-map-head p { margin: 2px 0 0; font-size: 12px; color: var(--text-soft); }
+
+.tracking-status-badge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  color: var(--accent);
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.tracking-map-frame-wrap { display: grid; }
+.tracking-map-frame { width: 100%; height: 280px; border: none; display: block; }
+.tracking-map-osm-link {
+  display: block;
+  padding: 6px 14px;
+  font-size: 11px;
+  color: var(--text-soft);
+  text-decoration: none;
+  background: var(--bg-soft);
+  border-top: 1px solid var(--border-soft);
+}
+.tracking-map-osm-link:hover { color: var(--text-main); }
+
+.tracking-map-placeholder {
+  height: 180px;
+  display: grid;
+  place-items: center;
+  font-size: 13px;
+  color: var(--text-soft);
+  background: var(--bg-soft);
+}
+
+.tracking-locations {
+  display: grid;
+  gap: 10px;
+  padding: 14px 16px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.tracking-location-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.tracking-location-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  margin-top: 4px;
+}
+.tracking-location-dot--customer { background: #f97316; }
+.tracking-location-dot--provider { background: #22c55e; }
+
+.tracking-location-row label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-soft);
+  display: block;
+}
+
+.tracking-location-row strong {
+  font-size: 13px;
+  color: var(--text-main);
+  font-weight: 500;
+}
+
+.tracking-distance-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--accent);
+  width: fit-content;
+}
+
+.tracking-summary-head {
   display: flex;
   justify-content: space-between;
   gap: 16px;
@@ -315,26 +411,16 @@ svg {
   margin-bottom: 14px;
 }
 
-.tracking-summary-head h4,
-.tracking-map-head h5 {
-  margin: 0;
-}
+.tracking-summary-head h4 { margin: 0; }
+.tracking-summary-head p { margin: 4px 0 0; color: var(--text-soft); }
 
-.tracking-summary-head p,
-.tracking-map-head span {
-  margin: 4px 0 0;
-  color: var(--text-soft);
-}
-
-.tracking-summary-grid,
-.tracking-coordinates {
+.tracking-summary-grid {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
-.tracking-summary-grid article,
-.tracking-coordinates p {
+.tracking-summary-grid article {
   margin: 0;
   display: grid;
   gap: 4px;
@@ -343,72 +429,9 @@ svg {
   background: rgba(148, 163, 184, 0.08);
 }
 
-.tracking-summary-grid label,
-.tracking-coordinates strong {
+.tracking-summary-grid label {
   color: var(--text-soft);
   font-size: 0.84rem;
-}
-
-.tracking-map-stage {
-  position: relative;
-  min-height: 260px;
-  border-radius: 22px;
-  background:
-    radial-gradient(circle at top left, rgba(34, 197, 94, 0.16), transparent 42%),
-    linear-gradient(180deg, rgba(15, 23, 42, 0.16), rgba(15, 23, 42, 0.34)),
-    repeating-linear-gradient(
-      90deg,
-      rgba(148, 163, 184, 0.08) 0,
-      rgba(148, 163, 184, 0.08) 1px,
-      transparent 1px,
-      transparent 48px
-    ),
-    repeating-linear-gradient(
-      0deg,
-      rgba(148, 163, 184, 0.08) 0,
-      rgba(148, 163, 184, 0.08) 1px,
-      transparent 1px,
-      transparent 48px
-    );
-  overflow: hidden;
-}
-
-.tracking-route-line {
-  position: absolute;
-  inset: 18% 14%;
-  border-radius: 999px;
-  border: 2px dashed rgba(216, 118, 64, 0.4);
-}
-
-.tracking-marker {
-  position: absolute;
-  transform: translate(-50%, -50%);
-  display: grid;
-  justify-items: center;
-  gap: 8px;
-}
-
-.tracking-marker span {
-  width: 18px;
-  height: 18px;
-  border-radius: 999px;
-  border: 3px solid rgba(255, 255, 255, 0.9);
-}
-
-.tracking-marker.customer span {
-  background: #f97316;
-}
-
-.tracking-marker.provider span {
-  background: #22c55e;
-}
-
-.tracking-marker label {
-  padding: 6px 10px;
-  border-radius: 999px;
-  background: rgba(15, 23, 42, 0.82);
-  color: #fff;
-  font-size: 0.78rem;
 }
 
 .mini-state {

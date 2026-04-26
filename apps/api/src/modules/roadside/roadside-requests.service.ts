@@ -233,21 +233,23 @@ export class RoadsideRequestsService {
 
     const saved = await this.roadsideRequestsRepository.save(request);
 
-    const provider = await this.usersService.findById(providerService.providerId);
-    void this.notificationsService.create({
-      userId: providerService.providerId,
-      title: 'New job request',
-      body: `${providerService.serviceName} — ${dto.address.trim()}`,
-      type: 'job_update',
-      refId: saved.id,
-      email: provider?.email,
-      emailSubject: 'VIS Auto — New job request',
-      emailHtml: buildJobStatusEmail(
-        'New job request',
-        `A customer has requested ${providerService.serviceName} at ${dto.address.trim()}.`,
-        providerService.serviceName,
-      ),
-    });
+    // Fire-and-forget — do not await so the response returns immediately
+    void this.usersService.findById(providerService.providerId).then((provider) =>
+      this.notificationsService.create({
+        userId: providerService.providerId,
+        title: 'New job request',
+        body: `${providerService.serviceName} — ${dto.address.trim()}`,
+        type: 'job_update',
+        refId: saved.id,
+        email: provider?.email,
+        emailSubject: 'VIS Auto — New job request',
+        emailHtml: buildJobStatusEmail(
+          'New job request',
+          `A customer has requested ${providerService.serviceName} at ${dto.address.trim()}.`,
+          providerService.serviceName,
+        ),
+      }),
+    );
 
     return this.toRoadsideRequest(saved);
   }

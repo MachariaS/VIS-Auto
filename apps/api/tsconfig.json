@@ -12,6 +12,7 @@
     "allowSyntheticDefaultImports": true,
     "target": "ES2023",
     "types": ["node"],
+    "ignoreDeprecations": "5.0",
     "sourceMap": true,
     "outDir": "./dist",
     "baseUrl": "./",

@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { fuelLiterOptions } from '../../../shared/constants';
 import { formatCurrency, getFuelUnitPrice, getSelectedFuelLitres, getServiceImageUrl } from '../../../shared/helpers';
-import LocationPickerMap from '../../../shared/LocationPickerMap';
+
+const LocationPickerMap = lazy(() => import('../../../shared/LocationPickerMap'));
 
 const SERVICE_CARDS = [
   { code: 'towing',         label: 'Towing',          icon: '🚛', desc: 'Vehicle tow to garage or destination' },
@@ -121,14 +122,16 @@ export default function RequestPanel({
           <h3>Where are you?</h3>
           <p className="step-hint">Tap the map or use your GPS location</p>
 
-          <LocationPickerMap
-            lat={roadsideForm.latitude}
-            lng={roadsideForm.longitude}
-            onPick={(lat, lng) => {
-              setRoadsideForm({ ...roadsideForm, latitude: String(lat), longitude: String(lng) });
-            }}
-            height={280}
-          />
+          <Suspense fallback={<div className="map-loading">Loading map…</div>}>
+            <LocationPickerMap
+              lat={roadsideForm.latitude}
+              lng={roadsideForm.longitude}
+              onPick={(lat, lng) => {
+                setRoadsideForm({ ...roadsideForm, latitude: String(lat), longitude: String(lng) });
+              }}
+              height={280}
+            />
+          </Suspense>
 
           <div className="location-inputs">
             <label>

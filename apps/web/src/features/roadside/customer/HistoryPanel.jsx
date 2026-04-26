@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { formatCurrency } from '../../../shared/helpers';
 import useRequestTracking from './hooks/useRequestTracking';
-import MapView from '../../../shared/MapView';
+
+const MapView = lazy(() => import('../../../shared/MapView'));
 
 const STATUS_LABELS = {
   searching: 'Searching',
@@ -168,16 +169,18 @@ export default function HistoryPanel({ requests, token }) {
                 )}
               </div>
 
-              <MapView
-                customerLat={selected.latitude}
-                customerLng={selected.longitude}
-                providerLat={tracking?.providerLatitude}
-                providerLng={tracking?.providerLongitude}
-                customerLabel={selected.address || 'Your location'}
-                providerLabel={selected.providerName || 'Provider'}
-                height={320}
-                className="history-map"
-              />
+              <Suspense fallback={<div className="map-loading">Loading map…</div>}>
+                <MapView
+                  customerLat={selected.latitude}
+                  customerLng={selected.longitude}
+                  providerLat={tracking?.providerLatitude}
+                  providerLng={tracking?.providerLongitude}
+                  customerLabel={selected.address || 'Your location'}
+                  providerLabel={selected.providerName || 'Provider'}
+                  height={320}
+                  className="history-map"
+                />
+              </Suspense>
             </div>
           )}
         </>

@@ -5043,4 +5043,5 @@ button:disabled {
 
 .history-map { border-radius: 12px; overflow: hidden; }
 .map-view-wrap { border-radius: 12px; overflow: hidden; }
+.map-loading { height: 260px; border-radius: 12px; background: var(--bg-soft); display: grid; place-items: center; font-size: 13px; color: var(--text-soft); }
 .catalog-selection-count { font-size: 13px; color: var(--text-soft); }

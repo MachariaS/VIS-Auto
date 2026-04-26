@@ -18,7 +18,7 @@ import useCustomerDashboardState from './hooks/useCustomerDashboardState';
 import CustomerOverview from './CustomerOverview';
 import HistoryPanel from './HistoryPanel';
 import RequestPanel from './RequestPanel';
-import VehiclePanel from './VehiclePanel';
+import VehiclesTab from './VehiclesTab';
 import ActiveJobPanel from './tracking/ActiveJobPanel';
 
 export default function CustomerDashboard() {
@@ -522,7 +522,12 @@ export default function CustomerDashboard() {
               skeleton="grid"
               title="Unable to load dashboard overview."
             >
-              <CustomerOverview onNewRequest={() => setDashboardTab('request')} />
+              <CustomerOverview
+                requests={requests}
+                vehicles={vehicles}
+                onNewRequest={() => setDashboardTab('request')}
+                onViewHistory={() => setDashboardTab('history')}
+              />
             </SectionState>
           </SectionErrorBoundary>
         ) : null}
@@ -566,7 +571,8 @@ export default function CustomerDashboard() {
               skeleton="form"
               title="Unable to load vehicles."
             >
-              <VehiclePanel
+              <VehiclesTab
+                vehicles={vehicles}
                 vehicleForm={vehicleForm}
                 setVehicleForm={setVehicleForm}
                 onSubmit={handleAddVehicle}

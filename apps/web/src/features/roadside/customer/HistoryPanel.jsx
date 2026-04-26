@@ -1,144 +1,187 @@
 import { useEffect, useState } from 'react';
 import { formatCurrency } from '../../../shared/helpers';
 import useRequestTracking from './hooks/useRequestTracking';
-import TrackingMapCard from './tracking/TrackingMapCard';
+import MapView from '../../../shared/MapView';
 
-function formatTrackingStatus(status) {
-  return status.replaceAll('_', ' ');
+const STATUS_LABELS = {
+  searching: 'Searching',
+  provider_assigned: 'Assigned',
+  in_progress: 'In progress',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+};
+
+const STATUS_COLOR = {
+  searching: '#f59e0b',
+  provider_assigned: '#84cc16',
+  in_progress: '#3b82f6',
+  completed: '#10b981',
+  cancelled: '#6b7280',
+};
+
+const TABS = ['All', 'Active', 'Completed', 'Cancelled'];
+
+function statusGroup(status) {
+  if (['searching', 'provider_assigned', 'in_progress'].includes(status)) return 'Active';
+  if (status === 'completed') return 'Completed';
+  if (status === 'cancelled') return 'Cancelled';
+  return 'All';
 }
 
 export default function HistoryPanel({ requests, token }) {
-  const [selectedRequestId, setSelectedRequestId] = useState('');
+  const [tab, setTab] = useState('All');
+  const [selectedId, setSelectedId] = useState(null);
 
-  const selectedRequest = requests.find((requestItem) => requestItem.id === selectedRequestId) || requests[0];
-  const { tracking, trackingError, trackingLoading } = useRequestTracking({
-    token,
-    selectedRequest,
-  });
+  const filtered = tab === 'All' ? requests : requests.filter((r) => statusGroup(r.status) === tab);
+  const selected = requests.find((r) => r.id === selectedId);
+
+  const { tracking } = useRequestTracking({ token, selectedRequest: selected });
 
   useEffect(() => {
-    if (requests.length === 0) {
-      if (selectedRequestId) setSelectedRequestId('');
-      return;
-    }
+    if (!selectedId && filtered.length > 0) setSelectedId(filtered[0].id);
+  }, [filtered.length]);
 
-    if (!requests.some((requestItem) => requestItem.id === selectedRequestId)) {
-      setSelectedRequestId(requests[0].id);
-    }
-  }, [requests, selectedRequestId]);
-
-  if (requests.length === 0) {
-    return <div className="dashboard-panel empty-state">No requests yet.</div>;
-  }
+  const tabCounts = {
+    All: requests.length,
+    Active: requests.filter((r) => statusGroup(r.status) === 'Active').length,
+    Completed: requests.filter((r) => r.status === 'completed').length,
+    Cancelled: requests.filter((r) => r.status === 'cancelled').length,
+  };
 
   return (
-    <section className="dashboard-panel stack">
-      <div className="panel-head">
+    <section className="cust-history">
+      <div className="cust-history-header">
         <div>
-          <p className="eyebrow">History</p>
-          <h3>Request tracking</h3>
+          <p className="eyebrow">Roadside requests</p>
+          <h3>Request history</h3>
         </div>
       </div>
 
-      <div className="request-tracking-layout">
-        <div className="request-tracking-list">
-          {requests.map((roadsideRequest) => (
-            <button
-              className={
-                selectedRequest?.id === roadsideRequest.id
-                  ? 'request-track-card active'
-                  : 'request-track-card'
-              }
-              type="button"
-              key={roadsideRequest.id}
-              onClick={() => setSelectedRequestId(roadsideRequest.id)}
-            >
-              <div className="info-top">
-                <strong>{roadsideRequest.issueType}</strong>
-                <span className="mini-pill">{formatTrackingStatus(roadsideRequest.status)}</span>
-              </div>
-              <p>{roadsideRequest.address}</p>
-              <div className="info-meta">
-                <span>{roadsideRequest.providerName}</span>
-                <span>{roadsideRequest.distanceKm} km</span>
-                <span>{roadsideRequest.etaMinutes} min ETA</span>
-                <span>{formatCurrency(roadsideRequest.estimatedPriceKsh)}</span>
-              </div>
-            </button>
-          ))}
+      <div className="history-tabs">
+        {TABS.map((t) => (
+          <button
+            key={t}
+            type="button"
+            className={`history-tab ${tab === t ? 'history-tab--active' : ''}`}
+            onClick={() => setTab(t)}
+          >
+            {t}
+            {tabCounts[t] > 0 && <span className="history-tab-count">{tabCounts[t]}</span>}
+          </button>
+        ))}
+      </div>
+
+      {filtered.length === 0 ? (
+        <div className="cust-empty">
+          <span style={{ fontSize: 32 }}>📋</span>
+          <p>No {tab.toLowerCase()} requests.</p>
         </div>
-
-        {selectedRequest ? (
-          <div className="request-tracking-detail">
-            <article className="tracking-summary-card">
-              <div className="tracking-summary-head">
-                <div>
-                  <h4>{selectedRequest.issueType}</h4>
-                  <p>{selectedRequest.providerName}</p>
-                </div>
-                <span className="mini-pill">
-                  {formatTrackingStatus(tracking?.status || selectedRequest.status)}
+      ) : (
+        <>
+          <div className="history-table">
+            <div className="history-table-head">
+              <span>Request ID</span>
+              <span>Service</span>
+              <span>Location</span>
+              <span>Date</span>
+              <span>Estimate</span>
+              <span>Status</span>
+            </div>
+            {filtered.map((r) => (
+              <button
+                key={r.id}
+                type="button"
+                className={`history-row ${selectedId === r.id ? 'history-row--active' : ''}`}
+                onClick={() => setSelectedId(r.id === selectedId ? null : r.id)}
+              >
+                <span className="history-cell-id">#{r.id.slice(0, 8).toUpperCase()}</span>
+                <span className="history-cell-service">{r.issueType}</span>
+                <span className="history-cell-location">{r.address || '—'}</span>
+                <span className="history-cell-date">
+                  {new Date(r.createdAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: '2-digit' })}
                 </span>
+                <span className="history-cell-amount">{formatCurrency(r.estimatedPriceKsh)}</span>
+                <span
+                  className="history-cell-status"
+                  style={{ color: STATUS_COLOR[r.status] }}
+                >
+                  {r.status === 'searching' && <span className="status-pulse" />}
+                  {STATUS_LABELS[r.status] ?? r.status}
+                </span>
+              </button>
+            ))}
+          </div>
+
+          {selected && (
+            <div className="history-detail">
+              <div className="history-detail-header">
+                <div>
+                  <p className="eyebrow">Request details</p>
+                  <h4>
+                    {selected.issueType}
+                    <span
+                      className="history-detail-badge"
+                      style={{ background: STATUS_COLOR[selected.status] + '22', color: STATUS_COLOR[selected.status] }}
+                    >
+                      {STATUS_LABELS[selected.status]}
+                    </span>
+                  </h4>
+                </div>
+                <strong className="history-detail-amount">{formatCurrency(selected.estimatedPriceKsh)}</strong>
               </div>
 
-              <div className="tracking-summary-grid">
+              <div className="history-detail-grid">
                 <article>
-                  <label>Live ETA</label>
-                  <strong>{tracking?.etaMinutes ?? selectedRequest.etaMinutes} min</strong>
+                  <label>Provider</label>
+                  <strong>{selected.providerName || '—'}</strong>
                 </article>
                 <article>
-                  <label>Destination</label>
-                  <strong>{tracking?.address || selectedRequest.address}</strong>
+                  <label>Distance</label>
+                  <strong>{Number(selected.distanceKm).toFixed(1)} km</strong>
                 </article>
                 <article>
-                  <label>Provider update</label>
+                  <label>ETA</label>
+                  <strong>{tracking?.etaMinutes ?? selected.etaMinutes} min</strong>
+                </article>
+                <article>
+                  <label>Date</label>
                   <strong>
-                    {tracking?.updatedAt
-                      ? new Date(tracking.updatedAt).toLocaleTimeString('en-KE', {
-                          hour: '2-digit',
-                          minute: '2-digit',
-                        })
-                      : 'Awaiting location ping'}
+                    {new Date(selected.createdAt).toLocaleString('en-KE', {
+                      day: 'numeric', month: 'short', year: 'numeric',
+                      hour: '2-digit', minute: '2-digit',
+                    })}
                   </strong>
                 </article>
-                <article>
-                  <label>Estimate</label>
-                  <strong>{formatCurrency(selectedRequest.estimatedPriceKsh)}</strong>
-                </article>
+                {selected.vehicle && (
+                  <article>
+                    <label>Vehicle served</label>
+                    <strong>
+                      {selected.vehicle.year} {selected.vehicle.make} {selected.vehicle.model} — {selected.vehicle.registrationNumber}
+                    </strong>
+                  </article>
+                )}
+                {selected.notes && (
+                  <article style={{ gridColumn: '1 / -1' }}>
+                    <label>Notes</label>
+                    <strong>{selected.notes}</strong>
+                  </article>
+                )}
               </div>
-            </article>
 
-            <TrackingMapCard requestItem={selectedRequest} tracking={tracking} />
-
-            <article className="tracking-summary-card">
-              <div className="tracking-summary-head">
-                <div>
-                  <h4>Tracking feed</h4>
-                  <p>Polling every 10 seconds while the request is active.</p>
-                </div>
-              </div>
-              {trackingLoading ? <div className="mini-state">Refreshing live status...</div> : null}
-              {trackingError ? <div className="mini-state error">{trackingError}</div> : null}
-              <div className="card-list">
-                <article className="info-card">
-                  <div className="info-top">
-                    <strong>Current status</strong>
-                    <span className="mini-pill">
-                      {formatTrackingStatus(tracking?.status || selectedRequest.status)}
-                    </span>
-                  </div>
-                  <p>{selectedRequest.notes || 'No special instructions were added.'}</p>
-                  <div className="info-meta">
-                    <span>{selectedRequest.providerName}</span>
-                    <span>{tracking?.etaMinutes ?? selectedRequest.etaMinutes} min ETA</span>
-                    <span>{selectedRequest.distanceKm} km</span>
-                  </div>
-                </article>
-              </div>
-            </article>
-          </div>
-        ) : null}
-      </div>
+              <MapView
+                customerLat={selected.latitude}
+                customerLng={selected.longitude}
+                providerLat={tracking?.providerLatitude}
+                providerLng={tracking?.providerLongitude}
+                customerLabel={selected.address || 'Your location'}
+                providerLabel={selected.providerName || 'Provider'}
+                height={320}
+                className="history-map"
+              />
+            </div>
+          )}
+        </>
+      )}
     </section>
   );
 }

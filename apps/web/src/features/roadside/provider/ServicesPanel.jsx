@@ -1,6 +1,26 @@
 import { CATEGORY_BY_CODE, initialProviderService, SERVICE_CATEGORY_ORDER, serviceTypeOptions } from '../../../shared/constants';
 import { formatCurrency, getServiceImageUrl } from '../../../shared/helpers';
 
+const SERVICE_ICON = {
+  towing: '🚛', battery_jump_start: '⚡', tyre_change: '🛞', lockout_assistance: '🔓',
+  fuel_delivery: '⛽', winching: '⛓️', fuel_petrol_regular: '⛽', fuel_petrol_premium: '⛽',
+  fuel_diesel: '🛢️', fluid_top_up: '💧', on_site_diagnosis: '🔍', oil_change: '🛢️',
+  minor_repairs: '🔧', tyre_fitting: '🛞', brake_pad_replacement: '🛑',
+  brake_disc_replacement: '🛑', brake_fluid_flush: '💧', clutch_replacement: '⚙️',
+  gearbox_service: '⚙️', cv_joint_replacement: '⚙️', timing_belt_service: '⏱️',
+  radiator_service: '🌡️', full_engine_service: '🔩', ecu_remap: '💻',
+  turbo_service: '🌀', exhaust_service: '💨', air_intake_service: '💨',
+  engine_rebuild: '🔩', electrical_diagnosis: '⚡', battery_replacement: '🔋',
+  alternator_repair: '⚡', car_audio_install: '🎵', camera_alarm_install: '📷',
+  lighting_upgrade: '💡', dent_repair: '🔨', scratch_repair: '🎨', panel_beating: '🔨',
+  full_respray: '🎨', windscreen_service: '🪟', rust_treatment: '🛡️',
+  wheel_alignment: '🎯', wheel_balancing: '⚖️', shock_absorber_service: '🔩',
+  suspension_service: '🔧', rim_repair: '⭕', ac_regas: '❄️', ac_repair: '❄️',
+  cabin_filter_replacement: '🌬️', car_wash_exterior: '🚿', car_wash_full: '🚿',
+  detailing: '✨', engine_bay_clean: '🧹', ceramic_coating: '💎', ppf_wrap: '🛡️',
+  pre_purchase_inspection: '🔍', roadworthy_inspection: '✅', insurance_inspection: '📋',
+};
+
 function ServiceComposer({
   providerServiceForm,
   setProviderServiceForm,
@@ -203,7 +223,11 @@ function ServiceCard({ service, setEditingProviderServiceId, setProviderServiceF
   return (
     <article className="provider-manage-card">
       <div className="provider-manage-card-thumb">
-        <img src={getServiceImageUrl(service)} alt={service.serviceName} className="provider-manage-card-img" />
+        {SERVICE_ICON[service.serviceCode] ? (
+          <div className="provider-manage-card-icon">{SERVICE_ICON[service.serviceCode]}</div>
+        ) : (
+          <img src={getServiceImageUrl(service)} alt={service.serviceName} className="provider-manage-card-img" />
+        )}
       </div>
       <div className="provider-manage-card-body">
         <div className="provider-manage-card-head">

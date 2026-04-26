@@ -64,4 +64,12 @@ export class VehiclesService {
     if (vehicleIds.length === 0) return [];
     return this.vehiclesRepository.findBy({ id: In(vehicleIds) });
   }
+
+  async updateProfile(userId: string, vehicleId: string, profile: Record<string, unknown>) {
+    const vehicle = await this.vehiclesRepository.findOneBy({ id: vehicleId, userId });
+    if (!vehicle) throw new Error('Vehicle not found.');
+    vehicle.profile = profile;
+    const saved = await this.vehiclesRepository.save(vehicle);
+    return { ...saved, createdAt: saved.createdAt.toISOString() };
+  }
 }

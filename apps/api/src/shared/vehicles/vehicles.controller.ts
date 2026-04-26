@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard, type AuthenticatedRequest } from '../../shared/auth/jwt-auth.guard';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
 import { VehiclesService } from './vehicles.service';
@@ -16,5 +16,14 @@ export class VehiclesController {
   @Post()
   create(@Request() req: AuthenticatedRequest, @Body() dto: CreateVehicleDto) {
     return this.vehiclesService.create(req.user.sub, dto);
+  }
+
+  @Patch(':id/profile')
+  updateProfile(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') id: string,
+    @Body() profile: Record<string, unknown>,
+  ) {
+    return this.vehiclesService.updateProfile(req.user.sub, id, profile);
   }
 }

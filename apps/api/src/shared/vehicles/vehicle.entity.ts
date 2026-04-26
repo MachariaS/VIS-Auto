@@ -30,6 +30,9 @@ export class VehicleEntity {
   @Column({ type: 'text', nullable: true })
   notes?: string;
 
+  @Column({ type: 'jsonb', nullable: true })
+  profile?: Record<string, unknown>;
+
   @CreateDateColumn()
   createdAt!: Date;
 }

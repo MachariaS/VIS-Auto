@@ -11,7 +11,7 @@ import {
   UserIcon,
 } from '../../../shared/icons';
 import NotificationsTray from '../../shared/NotificationsTray';
-import ProfilePanel from '../../shared/ProfilePanel';
+import CustomerProfilePanel from './CustomerProfilePanel';
 import SectionErrorBoundary from '../../shared/runtime/SectionErrorBoundary';
 import SectionState from '../../shared/runtime/SectionState';
 import useCustomerDashboardState from './hooks/useCustomerDashboardState';
@@ -582,6 +582,7 @@ export default function CustomerDashboard() {
                 setVehicleForm={setVehicleForm}
                 onSubmit={handleAddVehicle}
                 loading={loading}
+                token={token}
               />
             </SectionState>
           </SectionErrorBoundary>
@@ -613,7 +614,7 @@ export default function CustomerDashboard() {
             }}
           />
         ) : null}
-        {dashboardTab === 'profile' ? <ProfilePanel /> : null}
+        {dashboardTab === 'profile' ? <CustomerProfilePanel providerCatalog={providerCatalog} /> : null}
       </div>
     </section>
   );

@@ -7,7 +7,7 @@ const initialState = {
   providerCatalog: [],
   vehicleForm: initialVehicle,
   roadsideForm: initialRoadsideRequest,
-  serviceFilter: 'battery_jump',
+  serviceFilter: 'towing',
   loading: false,
   showNotifications: false,
   showAccountMenu: false,

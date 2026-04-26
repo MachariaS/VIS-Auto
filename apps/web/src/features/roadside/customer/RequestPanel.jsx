@@ -85,12 +85,15 @@ function AddressSearch({ value, onChange, onSelect }) {
   );
 }
 
+// Codes must match the backend service catalog codes exactly
 const SERVICE_CARDS = [
-  { code: 'towing',        label: 'Towing',       icon: '🚛', desc: 'Vehicle tow to garage or destination' },
-  { code: 'battery_jump',  label: 'Battery jump', icon: '⚡', desc: 'Jump start a flat battery on site' },
-  { code: 'tire_change',   label: 'Tyre change',  icon: '🛞', desc: 'Swap flat tyre with vehicle spare' },
-  { code: 'lockout',       label: 'Lockout',       icon: '🔓', desc: 'Unlock when keys are inside' },
-  { code: 'fuel_delivery', label: 'Fuel delivery', icon: '⛽', desc: 'Fuel delivered to your location' },
+  { code: 'towing',               label: 'Towing',          icon: '🚛', desc: 'Vehicle tow to garage or destination' },
+  { code: 'battery_jump_start',   label: 'Battery jump',    icon: '⚡', desc: 'Jump start a flat battery on site' },
+  { code: 'tyre_change',          label: 'Tyre change',     icon: '🛞', desc: 'Swap flat tyre with vehicle spare' },
+  { code: 'lockout_assistance',   label: 'Lockout',         icon: '🔓', desc: 'Unlock when keys are inside' },
+  { code: 'fuel_delivery',        label: 'Fuel delivery',   icon: '⛽', desc: 'Fuel delivered to your location' },
+  { code: 'on_site_diagnosis',    label: 'Diagnosis',       icon: '🔍', desc: 'OBD scan and fault code reading' },
+  { code: 'winching',             label: 'Winching',        icon: '⛓️', desc: 'Pull from ditch, mud or off-road' },
 ];
 
 function Stars({ rating }) {

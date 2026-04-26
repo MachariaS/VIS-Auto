@@ -12,6 +12,7 @@ export interface ProviderService {
   providerName: string;
   serviceCatalogId?: string;
   catalogCode?: string;
+  serviceCode?: string;
   serviceName: string;
   serviceCategory?: string;
   serviceImageUrl?: string;
@@ -88,6 +89,7 @@ export class ProviderServicesService {
     const service = this.repo.create({
       providerId,
       providerName: provider.name,
+      catalogCode: dto.serviceCode,
       serviceName: dto.serviceName.trim(),
       serviceCategory: dto.serviceCategory?.trim() || undefined,
       serviceImageUrl: dto.serviceImageUrl?.trim() || undefined,
@@ -171,6 +173,7 @@ export class ProviderServicesService {
   private toDto(service: ProviderServiceEntity): ProviderService {
     return {
       ...service,
+      serviceCode: service.catalogCode,
       serviceImageUrl: service.serviceImageUrl || '/assets/other_services.jpeg',
       createdAt: service.createdAt.toISOString(),
     };

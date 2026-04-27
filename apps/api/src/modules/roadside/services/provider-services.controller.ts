@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Put, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Param, Patch, Post, Put, Query, Request, UseGuards } from '@nestjs/common';
 import { IsArray, IsBoolean, IsIn, IsString } from 'class-validator';
 import { JwtAuthGuard, type AuthenticatedRequest } from '../../../shared/auth/jwt-auth.guard';
 import type { ServiceVisibility } from './provider-service.entity';
@@ -32,8 +32,13 @@ export class ProviderServicesController {
   }
 
   @Get('catalog')
-  listCatalog() {
-    return this.providerServicesService.listAll();
+  listCatalog(
+    @Query('lat') lat?: string,
+    @Query('lng') lng?: string,
+  ) {
+    const customerLat = lat ? Number(lat) : undefined;
+    const customerLng = lng ? Number(lng) : undefined;
+    return this.providerServicesService.listAll(customerLat, customerLng);
   }
 
   @Post('bulk')

@@ -114,6 +114,18 @@ export class UsersService {
     user.phone = phone;
     user.profile = profile;
 
+    // Extract provider base location from first branch address
+    if (user.accountType === 'provider') {
+      const locations = (profile as Record<string, unknown>)?.business as Record<string, unknown>;
+      const firstLoc = Array.isArray(locations?.locations) ? (locations.locations as Record<string, unknown>[])[0] : null;
+      const lat = firstLoc?.latitude ? Number(firstLoc.latitude) : null;
+      const lng = firstLoc?.longitude ? Number(firstLoc.longitude) : null;
+      if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
+        user.baseLat = lat;
+        user.baseLng = lng;
+      }
+    }
+
     const saved = await this.usersRepository.save(user);
 
     return {
@@ -207,6 +219,8 @@ export class UsersService {
       phone: user.phone,
       accountType: user.accountType,
       isOnline: entity.isOnline ?? false,
+      baseLat: entity.baseLat ?? null,
+      baseLng: entity.baseLng ?? null,
       profile: user.profile,
       createdAt:
         user.createdAt instanceof Date ? user.createdAt.toISOString() : String(user.createdAt),

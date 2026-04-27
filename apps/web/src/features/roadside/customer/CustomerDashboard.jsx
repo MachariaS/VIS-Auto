@@ -165,7 +165,12 @@ export default function CustomerDashboard() {
     const [vehicleResult, requestResult, catalogResult] = await Promise.allSettled([
       request('/vehicles', undefined, 'GET', accessToken),
       request('/roadside-requests', undefined, 'GET', accessToken),
-      request('/provider-services/catalog', undefined, 'GET', accessToken),
+      (() => {
+        const loc = roadsideForm.latitude && roadsideForm.longitude
+          ? `?lat=${roadsideForm.latitude}&lng=${roadsideForm.longitude}`
+          : '';
+        return request(`/provider-services/catalog${loc}`, undefined, 'GET', accessToken);
+      })(),
     ]);
 
     if (vehicleResult.status === 'fulfilled') {

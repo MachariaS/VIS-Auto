@@ -46,11 +46,17 @@ export default function ActiveJobPanel({ requestItem, token, onDone }) {
   }, [currentStatus]);
 
   useEffect(() => {
-    if (!tracking?.etaMinutes) return;
-    setEtaDisplay(tracking.etaMinutes);
-    if (tracking.etaMinutes <= 0) return;
-    const interval = setInterval(() => setEtaDisplay((prev) => Math.max(0, (prev ?? 0) - 1)), 60000);
+    // Sync to server-recalculated ETA on every poll — local countdown only between polls
+    const serverEta = tracking?.etaMinutes;
+    if (serverEta == null) return;
+    setEtaDisplay(serverEta);
+    if (serverEta <= 0) return;
+    const interval = setInterval(
+      () => setEtaDisplay((prev) => Math.max(0, (prev ?? 0) - 1)),
+      60_000,
+    );
     return () => clearInterval(interval);
+  // Reset whenever server sends a new ETA value
   }, [tracking?.etaMinutes]);
 
   async function handleCancel() {

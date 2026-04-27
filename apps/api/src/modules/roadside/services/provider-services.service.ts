@@ -14,6 +14,8 @@ export interface ProviderService {
   serviceCatalogId?: string;
   catalogCode?: string;
   serviceCode?: string;
+  providerBaseLat?: number | null;
+  providerBaseLng?: number | null;
   serviceName: string;
   serviceCategory?: string;
   serviceImageUrl?: string;
@@ -44,7 +46,7 @@ export class ProviderServicesService {
 
   private readonly logger = new Logger(ProviderServicesService.name);
 
-  async listAll() {
+  async listAll(customerLat?: number, customerLng?: number) {
     try {
       const services = await this.repo
         .createQueryBuilder('ps')
@@ -55,18 +57,44 @@ export class ProviderServicesService {
         .andWhere('ps."basePriceKsh" > 0')
         .orderBy('ps."createdAt"', 'DESC')
         .getMany();
-      return services.map((s) => this.toDto(s));
+
+      // Batch-load provider base locations for radius filtering
+      const providerIds = [...new Set(services.map((s) => s.providerId))];
+      const providers = await this.usersService.findByIds(providerIds);
+      const providerMap = new Map(providers.map((p) => [p.id, p as unknown as { baseLat?: number; baseLng?: number }]));
+
+      const dtos = services.map((s) => {
+        const prov = providerMap.get(s.providerId);
+        return this.toDto(s, prov?.baseLat ?? null, prov?.baseLng ?? null);
+      });
+
+      // Radius filter: only exclude if provider has a base location AND customer is outside maxRadius
+      if (customerLat && customerLng) {
+        return dtos.filter((s) => {
+          if (!s.providerBaseLat || !s.providerBaseLng || !s.maxRadiusKm) return true;
+          const dist = this.haversineKm(customerLat, customerLng, s.providerBaseLat, s.providerBaseLng);
+          return dist <= s.maxRadiusKm;
+        });
+      }
+
+      return dtos;
     } catch (err) {
-      // Fallback: isOnline column may not exist yet — return all public+accepting+priced services
       this.logger.warn('listAll JOIN failed, using fallback filter', err?.message);
       const services = await this.repo.find({
         where: { isAcceptingJobs: true, visibility: 'public' as ServiceVisibility },
         order: { createdAt: 'DESC' },
       });
-      return services
-        .filter((s) => s.basePriceKsh > 0)
-        .map((s) => this.toDto(s));
+      return services.filter((s) => s.basePriceKsh > 0).map((s) => this.toDto(s));
     }
+  }
+
+  private haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
+    const R = 6371;
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.asin(Math.sqrt(a));
   }
 
   async bulkCreate(providerId: string, serviceCatalogIds: string[]) {
@@ -193,10 +221,12 @@ export class ProviderServicesService {
     if (prices.some((v) => Number(v) < 0)) throw new BadRequestException('Fuel prices must be zero or higher.');
   }
 
-  private toDto(service: ProviderServiceEntity): ProviderService {
+  private toDto(service: ProviderServiceEntity, baseLat: number | null = null, baseLng: number | null = null): ProviderService {
     return {
       ...service,
       serviceCode: service.catalogCode,
+      providerBaseLat: baseLat,
+      providerBaseLng: baseLng,
       serviceImageUrl: service.serviceImageUrl || '/assets/other_services.jpeg',
       createdAt: service.createdAt.toISOString(),
     };

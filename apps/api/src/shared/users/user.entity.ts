@@ -27,6 +27,12 @@ export class UserEntity {
   @Column({ type: 'timestamp', nullable: true })
   availabilityChangedAt?: Date;
 
+  @Column({ type: 'float', nullable: true })
+  baseLat?: number;
+
+  @Column({ type: 'float', nullable: true })
+  baseLng?: number;
+
   @Column()
   passwordHash!: string;
 

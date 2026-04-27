@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useApp } from '../../../context/AppContext';
 import { countryOptions } from '../../../shared/constants';
 import PhoneField from '../../../shared/PhoneField';
+import DeleteAccountModal from '../../../shared/DeleteAccountModal';
 
 const THEMES = [
   { value: 'dark',  label: '🌙 Dark',  desc: 'Easy on the eyes at night' },
@@ -17,8 +19,9 @@ const NOTIFICATION_PREFS = [
 export default function CustomerProfilePanel({ providerCatalog = [] }) {
   const {
     user, token, message, profileSettings, profileSaving, profileLoading,
-    handleProfileFieldChange, handleSaveProfile, theme, toggleTheme,
+    handleProfileFieldChange, handleSaveProfile, theme, toggleTheme, signOut,
   } = useApp();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const prefs = profileSettings.preferences ?? {};
   const notifPrefs = prefs.notifications ?? {};
@@ -203,6 +206,35 @@ export default function CustomerProfilePanel({ providerCatalog = [] }) {
           </div>
         </div>
       </div>
+
+      {/* ── Danger zone ── */}
+      <div className="danger-zone">
+        <div className="danger-zone-head">
+          <h4>Danger zone</h4>
+          <p>Permanent actions that cannot be reversed.</p>
+        </div>
+        <div className="danger-zone-row">
+          <div>
+            <strong>Delete account</strong>
+            <p>Permanently delete your account and all associated data.</p>
+          </div>
+          <button
+            type="button"
+            className="danger-cta"
+            onClick={() => setShowDeleteModal(true)}
+          >
+            Delete account
+          </button>
+        </div>
+      </div>
+
+      {showDeleteModal && (
+        <DeleteAccountModal
+          token={token}
+          onConfirm={signOut}
+          onClose={() => setShowDeleteModal(false)}
+        />
+      )}
     </div>
   );
 }

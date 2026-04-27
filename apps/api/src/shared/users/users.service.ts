@@ -7,7 +7,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { compare, hash } from 'bcrypt';
-import { In, Repository } from 'typeorm';
+import { DataSource, In, Repository } from 'typeorm';
 import { UpdateMyPasswordDto } from './dto/update-my-password.dto';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
 import { UserEntity } from './user.entity';
@@ -27,6 +27,7 @@ export class UsersService {
   constructor(
     @InjectRepository(UserEntity)
     private readonly usersRepository: Repository<UserEntity>,
+    private readonly dataSource: DataSource,
   ) {}
 
   async create(input: CreateUserInput) {
@@ -208,6 +209,30 @@ export class UsersService {
     user.availabilityChangedAt = new Date();
     const saved = await this.usersRepository.save(user);
     return this.toSafeUser(saved);
+  }
+
+  async deleteAccount(userId: string, password: string) {
+    const user = await this.findRequiredUser(userId);
+
+    const isValid = await compare(password, user.passwordHash);
+    if (!isValid) {
+      throw new UnauthorizedException('Incorrect password. Account not deleted.');
+    }
+
+    await this.dataSource.transaction(async (em) => {
+      // Clear related data in dependency order
+      await em.query(`DELETE FROM notifications WHERE "userId" = $1`, [userId]);
+      await em.query(`DELETE FROM ratings WHERE "customerId" = $1 OR "providerId" = $1`, [userId]);
+      await em.query(`DELETE FROM roadside_requests WHERE "userId" = $1 OR "providerId" = $1`, [userId]);
+      await em.query(`DELETE FROM provider_services WHERE "providerId" = $1`, [userId]);
+      await em.query(`DELETE FROM vehicles WHERE "userId" = $1`, [userId]);
+      await em.query(`DELETE FROM vendor_integrations WHERE "providerId" = $1 OR "vendorProviderId" = $1`, [userId]);
+      await em.query(`DELETE FROM otp_challenges WHERE email = $1`, [user.email]);
+      await em.query(`DELETE FROM password_resets WHERE email = $1`, [user.email]);
+      await em.query(`DELETE FROM users WHERE id = $1`, [userId]);
+    });
+
+    return { deleted: true };
   }
 
   toSafeUser(user: User | UserEntity) {

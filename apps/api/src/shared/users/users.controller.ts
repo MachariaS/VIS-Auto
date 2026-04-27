@@ -1,4 +1,10 @@
-import { Body, Controller, Get, Patch, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, HttpStatus, Patch, Post, Request, UseGuards } from '@nestjs/common';
+import { IsString } from 'class-validator';
+
+class DeleteAccountDto {
+  @IsString()
+  password!: string;
+}
 import { JwtAuthGuard, type AuthenticatedRequest } from '../../shared/auth/jwt-auth.guard';
 import { UpdateMyPasswordDto } from './dto/update-my-password.dto';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
@@ -33,5 +39,11 @@ export class UsersController {
   @Patch('me/availability')
   toggleAvailability(@Request() req: AuthenticatedRequest) {
     return this.usersService.toggleAvailability(req.user.sub);
+  }
+
+  @Delete('me')
+  @HttpCode(HttpStatus.OK)
+  deleteAccount(@Request() req: AuthenticatedRequest, @Body() dto: DeleteAccountDto) {
+    return this.usersService.deleteAccount(req.user.sub, dto.password);
   }
 }

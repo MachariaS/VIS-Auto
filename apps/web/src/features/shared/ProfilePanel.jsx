@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useApp } from '../../context/AppContext';
+import DeleteAccountModal from '../../shared/DeleteAccountModal';
 import {
   branchTypeOptions,
   countryOptions,
@@ -31,9 +32,11 @@ export default function ProfilePanel({ vendorStats }) {
     updateBusinessLocation,
     removeBusinessLocation,
     handleSaveProfile,
+    signOut,
   } = useApp();
 
   const [locationBias, setLocationBias] = useState({ latitude: null, longitude: null });
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [locationResolvingIndex, setLocationResolvingIndex] = useState(null);
   const [locationSearchingIndex, setLocationSearchingIndex] = useState(null);
   const [locationSuggestionsByIndex, setLocationSuggestionsByIndex] = useState({});
@@ -793,6 +796,30 @@ export default function ProfilePanel({ vendorStats }) {
           {profileSaving ? 'Saving...' : profileLoading ? 'Syncing...' : 'Save my profile'}
         </button>
       </form>
+
+      <div className="danger-zone">
+        <div className="danger-zone-head">
+          <h4>Danger zone</h4>
+          <p>Permanent actions that cannot be reversed.</p>
+        </div>
+        <div className="danger-zone-row">
+          <div>
+            <strong>Delete account</strong>
+            <p>Permanently delete your account and all associated data including services, jobs, and ratings.</p>
+          </div>
+          <button type="button" className="danger-cta" onClick={() => setShowDeleteModal(true)}>
+            Delete account
+          </button>
+        </div>
+      </div>
+
+      {showDeleteModal && (
+        <DeleteAccountModal
+          token={token}
+          onConfirm={signOut}
+          onClose={() => setShowDeleteModal(false)}
+        />
+      )}
     </section>
   );
 }

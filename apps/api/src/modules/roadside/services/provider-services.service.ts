@@ -50,11 +50,10 @@ export class ProviderServicesService {
     try {
       const services = await this.repo
         .createQueryBuilder('ps')
-        .innerJoin(UserEntity, 'u', 'u.id = ps."providerId"')
+        .innerJoin(UserEntity, 'u', 'u.id::text = ps."providerId"')
         .where('u."isOnline" = true')
         .andWhere('ps."isAcceptingJobs" = true')
         .andWhere('ps.visibility = :v', { v: 'public' })
-        .andWhere('ps."basePriceKsh" > 0')
         .orderBy('ps."createdAt"', 'DESC')
         .getMany();
 
@@ -84,7 +83,7 @@ export class ProviderServicesService {
         where: { isAcceptingJobs: true, visibility: 'public' as ServiceVisibility },
         order: { createdAt: 'DESC' },
       });
-      return services.filter((s) => s.basePriceKsh > 0).map((s) => this.toDto(s));
+      return services.map((s) => this.toDto(s));
     }
   }
 

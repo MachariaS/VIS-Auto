@@ -37,8 +37,14 @@ export default function TrackingMapCard({ requestItem, tracking }) {
   const providerLocation = tracking?.providerLocation;
   const cLat = requestItem?.latitude;
   const cLng = requestItem?.longitude;
-  const pLat = providerLocation?.latitude;
-  const pLng = providerLocation?.longitude;
+  // Use live GPS if available, otherwise fall back to provider's stored base location
+  const pLat = providerLocation?.latitude
+    ?? tracking?.providerBaseLat
+    ?? requestItem?.providerBaseLat;
+  const pLng = providerLocation?.longitude
+    ?? tracking?.providerBaseLng
+    ?? requestItem?.providerBaseLng;
+  const isLiveLocation = !!providerLocation?.latitude;
 
   const customerAddr = useAddress(cLat, cLng);
   const providerAddr = useAddress(pLat, pLng);
@@ -71,6 +77,7 @@ export default function TrackingMapCard({ requestItem, tracking }) {
             customerLng={Number(cLng)}
             providerLat={pLat ? Number(pLat) : null}
             providerLng={pLng ? Number(pLng) : null}
+            isLiveLocation={isLiveLocation}
           />
         ) : (
           <div className="tracking-map-placeholder">📍 Waiting for location…</div>
@@ -85,7 +92,7 @@ export default function TrackingMapCard({ requestItem, tracking }) {
         <div className="tracking-location-row">
           <span className="tracking-location-dot tracking-location-dot--provider" />
           <div>
-            <label>Provider</label>
+            <label>Provider {isLiveLocation ? '· live' : '· base location'}</label>
             <strong>{pLat ? (providerAddr || 'Resolving…') : 'Waiting for provider location'}</strong>
           </div>
         </div>

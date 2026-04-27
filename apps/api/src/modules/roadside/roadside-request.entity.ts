@@ -63,6 +63,12 @@ export class RoadsideRequestEntity {
   estimatedPriceKsh!: number;
 
   @Column({ type: 'numeric', precision: 10, scale: 6, nullable: true })
+  providerBaseLat?: number;
+
+  @Column({ type: 'numeric', precision: 10, scale: 6, nullable: true })
+  providerBaseLng?: number;
+
+  @Column({ type: 'numeric', precision: 10, scale: 6, nullable: true })
   providerLatitude?: number;
 
   @Column({ type: 'numeric', precision: 10, scale: 6, nullable: true })

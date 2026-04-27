@@ -1,5 +1,7 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { formatCurrency, request } from '../../../shared/helpers';
+
+const LiveMap = lazy(() => import('../tracking/LiveMap'));
 
 const STATUS_LABELS = {
   searching: 'New request',
@@ -142,6 +144,18 @@ export default function ProviderJobCard({ job, token, onStatusChange }) {
           </span>
         )}
       </div>
+
+      {job.latitude && job.longitude && (
+        <Suspense fallback={<div className="map-loading" style={{ height: 200 }}>Loading map…</div>}>
+          <LiveMap
+            customerLat={Number(job.latitude)}
+            customerLng={Number(job.longitude)}
+            providerLat={null}
+            providerLng={null}
+            isLiveLocation={false}
+          />
+        </Suspense>
+      )}
 
       <div className="provider-job-card-actions">
         {job.status === 'searching' && (

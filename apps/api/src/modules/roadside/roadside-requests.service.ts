@@ -83,6 +83,8 @@ export interface RoadsideRequestTrackingStatus {
   longitude: number;
   providerName: string;
   issueType: string;
+  providerBaseLat?: number;
+  providerBaseLng?: number;
   providerLocation: {
     latitude: number;
     longitude: number;
@@ -234,6 +236,13 @@ export class RoadsideRequestsService {
       etaMinutes: this.estimateEta(providerService.catalogCode ?? '', dto.distanceKm),
       estimatedPriceKsh: Math.round(estimatedPriceKsh),
     });
+
+    // Snapshot provider base location so the tracking map shows it immediately
+    const providerUser = await this.usersService.findById(providerService.providerId);
+    if (providerUser?.baseLat && providerUser?.baseLng) {
+      request.providerBaseLat = Number(providerUser.baseLat);
+      request.providerBaseLng = Number(providerUser.baseLng);
+    }
 
     const saved = await this.roadsideRequestsRepository.save(request);
 
@@ -461,6 +470,8 @@ export class RoadsideRequestsService {
       longitude: Number(request.longitude),
       providerName: request.providerName,
       issueType: request.issueType,
+      providerBaseLat: request.providerBaseLat ? Number(request.providerBaseLat) : undefined,
+      providerBaseLng: request.providerBaseLng ? Number(request.providerBaseLng) : undefined,
       providerLocation:
         request.providerLatitude === null ||
         request.providerLatitude === undefined ||

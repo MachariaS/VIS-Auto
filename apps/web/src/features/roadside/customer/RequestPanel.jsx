@@ -180,8 +180,18 @@ function SortedProviderList({ providers, roadsideForm, setRoadsideForm }) {
   scored.sort((a, b) => b.score - a.score);
 
   function handleSelect(svc, dist) {
-    const autoKm = Math.max(1, dist || 5).toFixed(1);
-    setRoadsideForm({ ...roadsideForm, providerServiceId: svc.id, distanceKm: String(autoKm) });
+    // Prefer Haversine to provider's actual base location; fall back to rough estimate
+    const pLat = svc.providerBaseLat;
+    const pLng = svc.providerBaseLng;
+    let autoKm = dist || 5;
+    if (cLat && cLng && pLat && pLng) {
+      autoKm = haversineKm(cLat, cLng, Number(pLat), Number(pLng));
+    }
+    setRoadsideForm({
+      ...roadsideForm,
+      providerServiceId: svc.id,
+      distanceKm: String(Math.max(1, autoKm).toFixed(1)),
+    });
   }
 
   return (

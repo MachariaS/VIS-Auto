@@ -5328,6 +5328,68 @@ button:disabled {
   background: currentColor;
 }
 
+/* ══ Provider setup prompt ═══════════════════════════════════════════════════ */
+.provider-setup-prompt {
+  display: flex; align-items: flex-start; gap: 16px;
+  background: color-mix(in srgb, var(--accent) 8%, var(--v2-surface, #fff));
+  border: 1.5px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 14px; padding: 18px;
+}
+.provider-setup-icon { font-size: 28px; flex-shrink: 0; }
+.provider-setup-copy { flex: 1; }
+.provider-setup-copy strong { display: block; font-size: 14px; font-weight: 700; color: var(--v2-text-main, #1d2d23); margin-bottom: 4px; }
+.provider-setup-copy p { margin: 0; font-size: 12px; color: var(--v2-text-soft, #5d6e63); line-height: 1.5; }
+.provider-setup-actions { display: flex; gap: 8px; flex-shrink: 0; align-items: center; flex-wrap: wrap; }
+
+/* ══ Service selection (registration step) ═══════════════════════════════════ */
+.service-select-shell {
+  display: flex; flex-direction: column; gap: 16px;
+  max-width: 680px; width: 100%; margin: 0 auto; padding: 24px 16px;
+}
+.service-select-head { display: grid; gap: 8px; }
+.service-select-head h2 { margin: 0; }
+.service-select-count {
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 13px; font-weight: 600; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  padding: 4px 12px; border-radius: 999px; width: fit-content;
+}
+.service-select-loading, .service-select-empty {
+  padding: 32px; text-align: center; color: var(--text-soft); font-size: 13px;
+}
+.service-select-catalog { display: grid; gap: 8px; }
+
+.service-select-group {
+  border: 1px solid var(--border-soft);
+  border-radius: 14px; overflow: hidden;
+  background: var(--bg-elevated);
+}
+.service-select-group-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 16px; width: 100%;
+  background: transparent; border: none; cursor: pointer; text-align: left;
+  transition: background 0.12s;
+}
+.service-select-group-head:hover { background: var(--bg-soft); }
+.service-select-group-icon { font-size: 18px; flex-shrink: 0; }
+.service-select-group-name { flex: 1; font-size: 14px; font-weight: 600; color: var(--text-main); }
+.service-select-group-badge {
+  font-size: 11px; font-weight: 700;
+  background: var(--accent); color: #1a2e05;
+  padding: 2px 7px; border-radius: 999px;
+}
+.service-select-group-chevron { font-size: 10px; color: var(--text-soft); }
+.service-select-group-body { padding: 12px 14px 14px; border-top: 1px solid var(--border-soft); display: grid; gap: 10px; }
+.service-select-all { font-size: 12px; }
+
+.service-select-footer {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 14px 0 0; border-top: 1px solid var(--border-soft);
+  flex-wrap: wrap;
+}
+.service-select-summary { font-size: 13px; color: var(--text-soft); }
+.service-select-footer-actions { display: flex; gap: 10px; }
+
 /* ══ Danger zone ═════════════════════════════════════════════════════════════ */
 .danger-zone {
   border: 1.5px solid color-mix(in srgb, #ef4444 35%, transparent);

@@ -207,6 +207,27 @@ export default function ProviderOverview({
 
       <AvailabilityToggle user={user} token={token} />
 
+      {providerServices.length === 0 && (
+        <div className="provider-setup-prompt">
+          <div className="provider-setup-icon">🔧</div>
+          <div className="provider-setup-copy">
+            <strong>Complete your setup — add your first service</strong>
+            <p>
+              Customers can't find you yet. Add at least one service from the catalog
+              or create a custom service to go live.
+            </p>
+          </div>
+          <div className="provider-setup-actions">
+            <button className="primary-cta" type="button" onClick={onAddService}>
+              + Custom service
+            </button>
+            <button className="ghost-button" type="button" onClick={onManageServices}>
+              Browse catalog
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="provider-stat-strip-v2">
         {dashboardStatCards.map((card) => (
           <article className={`provider-stat-card-v2 ${card.tone}`} key={card.label}>

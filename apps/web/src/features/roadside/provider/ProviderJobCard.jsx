@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { formatCurrency, request } from '../../../shared/helpers';
 
-const LiveMap = lazy(() => import('../tracking/LiveMap'));
+const LiveMap = lazy(() => import('../customer/tracking/LiveMap'));
 
 const STATUS_LABELS = {
   searching: 'New request',

@@ -672,6 +672,7 @@ export default function ProviderDashboard() {
                 setShowNotifications(false);
                 setDashboardTab(tab);
               }}
+              onUnreadChange={(count) => setUnreadCount(count)}
             />
           ) : null}
 

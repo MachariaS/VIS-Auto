@@ -8,31 +8,33 @@ const TYPE_ICON = {
   system: '📣',
 };
 
-// Map notification type → dashboard tab for provider and customer
+const TYPE_COLOR = {
+  job_update: '#84cc16',
+  vendor: '#3b82f6',
+  auth: '#f59e0b',
+  system: '#6b7280',
+};
+
 function resolveNavigation(item, userAccountType) {
   const type = item.type;
-  const title = (item.title || '').toLowerCase();
-  const body = (item.body || '').toLowerCase();
-
   if (type === 'job_update') {
-    if (title.includes('new job') || body.includes('requested')) {
-      // Provider: new incoming job
-      return userAccountType === 'provider' ? 'jobs' : 'history';
-    }
-    if (title.includes('accepted') || title.includes('assigned') || title.includes('en route') || title.includes('in progress')) {
-      return userAccountType === 'provider' ? 'jobs' : 'history';
-    }
-    if (title.includes('complete') || title.includes('cancelled')) {
-      return 'history';
-    }
     return userAccountType === 'provider' ? 'jobs' : 'history';
   }
-
   if (type === 'vendor') {
-    return 'vendors';
+    return userAccountType === 'provider' ? 'vendors' : null;
   }
+  return null;
+}
 
-  return null; // auth / system — no navigation
+function resolveCtaLabel(item, userAccountType) {
+  if (item.type === 'job_update') {
+    const title = (item.title || '').toLowerCase();
+    if (title.includes('new job')) return userAccountType === 'provider' ? 'Accept or decline →' : 'Track request →';
+    if (title.includes('complete')) return 'Leave a review →';
+    return userAccountType === 'provider' ? 'View jobs →' : 'Track request →';
+  }
+  if (item.type === 'vendor') return 'Open vendor hub →';
+  return null;
 }
 
 function timeAgo(dateStr) {
@@ -45,7 +47,13 @@ function timeAgo(dateStr) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-export default function NotificationsTray({ token, userAccountType = 'provider', onClose, onNavigate }) {
+export default function NotificationsTray({
+  token,
+  userAccountType = 'provider',
+  onClose,
+  onNavigate,
+  onUnreadChange,
+}) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
@@ -54,7 +62,9 @@ export default function NotificationsTray({ token, userAccountType = 'provider',
     if (!token) return;
     try {
       const data = await request('/notifications', undefined, 'GET', token);
-      setItems(Array.isArray(data) ? data : []);
+      const list = Array.isArray(data) ? data : [];
+      setItems(list);
+      onUnreadChange?.(list.filter((n) => !n.isRead).length);
     } catch {
       // silent
     } finally {
@@ -64,33 +74,39 @@ export default function NotificationsTray({ token, userAccountType = 'provider',
 
   useEffect(() => { load(); }, [load]);
 
-  async function markRead(id) {
-    setItems((prev) => prev.map((n) => n.id === id ? { ...n, isRead: true } : n));
-    try {
-      await request(`/notifications/${id}/read`, undefined, 'PATCH', token);
-    } catch { /* non-fatal */ }
+  function markReadOptimistic(id) {
+    setItems((prev) => {
+      const next = prev.map((n) => n.id === id ? { ...n, isRead: true } : n);
+      onUnreadChange?.(next.filter((n) => !n.isRead).length);
+      return next;
+    });
+    // Fire-and-forget — don't await so navigation is instant
+    request(`/notifications/${id}/read`, undefined, 'PATCH', token).catch(() => {});
   }
 
   async function markAllRead() {
     setMarkingAll(true);
     try {
       await request('/notifications/read-all', undefined, 'PATCH', token);
-      setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      setItems((prev) => {
+        const next = prev.map((n) => ({ ...n, isRead: true }));
+        onUnreadChange?.(0);
+        return next;
+      });
     } catch { /* non-fatal */ } finally {
       setMarkingAll(false);
     }
   }
 
-  async function handleItemClick(item) {
-    // Always mark read on click (read or unread)
+  function handleItemClick(item) {
+    // Mark read immediately (optimistic, no await)
     if (!item.isRead) {
-      await markRead(item.id);
+      markReadOptimistic(item.id);
     }
 
-    // Navigate if there's a destination
     const tab = resolveNavigation(item, userAccountType);
     if (tab && onNavigate) {
-      onNavigate(tab);
+      onNavigate(tab); // closes tray + switches tab
     } else if (onClose) {
       onClose();
     }
@@ -135,16 +151,19 @@ export default function NotificationsTray({ token, userAccountType = 'provider',
 
         {items.map((item) => {
           const tab = resolveNavigation(item, userAccountType);
+          const cta = resolveCtaLabel(item, userAccountType);
+          const accentColor = TYPE_COLOR[item.type] ?? '#6b7280';
+
           return (
             <article
               key={item.id}
               className={`notification-item ${item.isRead ? '' : 'notification-item--unread'} ${tab ? 'notification-item--clickable' : ''}`}
               onClick={() => handleItemClick(item)}
-              role={tab ? 'button' : undefined}
-              tabIndex={tab ? 0 : undefined}
-              onKeyDown={tab ? (e) => e.key === 'Enter' && handleItemClick(item) : undefined}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(e) => e.key === 'Enter' && handleItemClick(item)}
             >
-              <div className="notification-item-icon">
+              <div className="notification-item-icon" style={{ background: `${accentColor}18`, color: accentColor }}>
                 {TYPE_ICON[item.type] ?? '📣'}
               </div>
               <div className="notification-item-body">
@@ -152,9 +171,9 @@ export default function NotificationsTray({ token, userAccountType = 'provider',
                 <p>{item.body}</p>
                 <div className="notification-item-footer">
                   <time>{timeAgo(item.createdAt)}</time>
-                  {tab && (
-                    <span className="notification-item-cta">
-                      {item.type === 'job_update' && userAccountType === 'provider' ? 'View jobs →' : 'View →'}
+                  {cta && (
+                    <span className="notification-item-cta" style={{ color: accentColor }}>
+                      {cta}
                     </span>
                   )}
                 </div>

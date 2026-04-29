@@ -525,6 +525,7 @@ export default function CustomerDashboard() {
               setShowNotifications(false);
               setDashboardTab(tab);
             }}
+            onUnreadChange={(count) => setUnreadCount(count)}
           />
         ) : null}
 

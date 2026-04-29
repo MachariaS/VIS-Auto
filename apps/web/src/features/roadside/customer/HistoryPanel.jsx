@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { formatCurrency } from '../../../shared/helpers';
 import useRequestTracking from './hooks/useRequestTracking';
+
+const LiveMap = lazy(() => import('./tracking/LiveMap'));
 
 const STATUS_LABELS = {
   searching: 'Searching',
@@ -193,11 +195,15 @@ export default function HistoryPanel({ requests, token }) {
                 )}
               </div>
 
-              <StaticMapEmbed
-                lat={selected.latitude}
-                lng={selected.longitude}
-                label={selected.address || 'Request location'}
-              />
+              <Suspense fallback={<div className="map-loading">Loading map…</div>}>
+                <LiveMap
+                  customerLat={Number(selected.latitude)}
+                  customerLng={Number(selected.longitude)}
+                  providerLat={selected.providerBaseLat ? Number(selected.providerBaseLat) : null}
+                  providerLng={selected.providerBaseLng ? Number(selected.providerBaseLng) : null}
+                  isLiveLocation={false}
+                />
+              </Suspense>
             </div>
           )}
         </>

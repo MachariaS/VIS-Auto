@@ -1,4 +1,7 @@
+import { lazy, Suspense } from 'react';
 import { formatCurrency } from '../../../shared/helpers';
+
+const NearbyMap = lazy(() => import('./NearbyMap'));
 
 const STATUS_COLORS = {
   searching: '#f59e0b',
@@ -25,7 +28,7 @@ function StatCard({ value, label, color }) {
   );
 }
 
-export default function CustomerOverview({ requests, vehicles, onNewRequest, onViewHistory }) {
+export default function CustomerOverview({ requests, vehicles, providerCatalog, onNewRequest, onViewHistory, onStartRequest }) {
   const active = requests.filter((r) => ['searching', 'provider_assigned', 'in_progress'].includes(r.status));
   const completed = requests.filter((r) => r.status === 'completed');
   const totalSpend = completed.reduce((sum, r) => sum + (r.estimatedPriceKsh || 0), 0);
@@ -57,6 +60,20 @@ export default function CustomerOverview({ requests, vehicles, onNewRequest, onV
             You have {active.length} active request{active.length > 1 ? 's' : ''} right now
           </span>
           <button className="link-button" type="button" onClick={onViewHistory}>View</button>
+        </div>
+      )}
+
+      {providerCatalog && providerCatalog.some((p) => p.providerBaseLat) && (
+        <div className="cust-nearby-section">
+          <div className="cust-section-head">
+            <h4>Providers near you</h4>
+            <button className="primary-cta" type="button" onClick={onNewRequest} style={{ padding: '6px 14px', fontSize: 12 }}>
+              Request now
+            </button>
+          </div>
+          <Suspense fallback={<div className="map-loading">Loading map…</div>}>
+            <NearbyMap providers={providerCatalog} onSelectProvider={onStartRequest} />
+          </Suspense>
         </div>
       )}
 

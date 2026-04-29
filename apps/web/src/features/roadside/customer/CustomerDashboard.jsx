@@ -537,8 +537,13 @@ export default function CustomerDashboard() {
               <CustomerOverview
                 requests={requests}
                 vehicles={vehicles}
+                providerCatalog={providerCatalog}
                 onNewRequest={() => setDashboardTab('request')}
                 onViewHistory={() => setDashboardTab('history')}
+                onStartRequest={(svc) => {
+                  if (svc) setRoadsideForm((c) => ({ ...c, providerServiceId: svc.id }));
+                  setDashboardTab('request');
+                }}
               />
             </SectionState>
           </SectionErrorBoundary>

@@ -1,29 +1,30 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { fuelLiterOptions } from '../../../shared/constants';
-import { formatCurrency, getFuelUnitPrice, getSelectedFuelLitres, getServiceImageUrl } from '../../../shared/helpers';
+import { formatCurrency, getFuelUnitPrice, getSelectedFuelLitres, getServiceImageUrl, getApiUrl } from '../../../shared/helpers';
 
-async function suggestLocations(query) {
+async function suggestLocations(query, nearLat, nearLng) {
   if (!query || query.length < 3) return [];
   try {
-    const params = new URLSearchParams({
-      q: query, format: 'jsonv2', addressdetails: '1', limit: '6',
-      countrycodes: 'ke,ug,tz,rw,bi,et',
+    const res = await fetch(getApiUrl('/locations/suggest'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query, nearLat: nearLat || null, nearLng: nearLng || null, countryCode: 'KE' }),
     });
-    const res = await fetch(`https://nominatim.openstreetmap.org/search?${params}`);
+    if (!res.ok) return [];
     const data = await res.json();
     return Array.isArray(data)
       ? data.map((item) => ({
-          display: item.display_name,
-          short: item.display_name.split(',').slice(0, 3).join(', '),
+          display: item.address || item.name,
+          short: [item.name, item.town].filter(Boolean).slice(0, 2).join(', ') || item.address,
           lat: item.lat,
-          lng: item.lon,
-          landmark: item.address?.amenity || item.address?.building || item.address?.shop || item.address?.road || '',
+          lng: item.lng,
+          landmark: item.landmark || item.road || '',
         }))
       : [];
   } catch { return []; }
 }
 
-function AddressSearch({ value, onChange, onSelect }) {
+function AddressSearch({ value, onChange, onSelect, nearLat, nearLng }) {
   const [suggestions, setSuggestions] = useState([]);
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -44,7 +45,7 @@ function AddressSearch({ value, onChange, onSelect }) {
     if (val.length < 3) { setSuggestions([]); setOpen(false); return; }
     setBusy(true);
     timerRef.current = setTimeout(async () => {
-      const results = await suggestLocations(val);
+      const results = await suggestLocations(val, nearLat, nearLng);
       setSuggestions(results);
       setOpen(results.length > 0);
       setBusy(false);
@@ -95,15 +96,38 @@ function haversineKm(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.asin(Math.sqrt(a));
 }
 
-const SERVICE_CARDS = [
-  { code: 'towing',               label: 'Towing',          icon: '🚛', desc: 'Vehicle tow to garage or destination' },
-  { code: 'battery_jump_start',   label: 'Battery jump',    icon: '⚡', desc: 'Jump start a flat battery on site' },
-  { code: 'tyre_change',          label: 'Tyre change',     icon: '🛞', desc: 'Swap flat tyre with vehicle spare' },
-  { code: 'lockout_assistance',   label: 'Lockout',         icon: '🔓', desc: 'Unlock when keys are inside' },
-  { code: 'fuel_delivery',        label: 'Fuel delivery',   icon: '⛽', desc: 'Fuel delivered to your location' },
-  { code: 'on_site_diagnosis',    label: 'Diagnosis',       icon: '🔍', desc: 'OBD scan and fault code reading' },
-  { code: 'winching',             label: 'Winching',        icon: '⛓️', desc: 'Pull from ditch, mud or off-road' },
-];
+// Fallback icons for catalog codes not in the icon map
+const CATALOG_ICONS = {
+  towing:'🚛', battery_jump_start:'⚡', tyre_change:'🛞', lockout_assistance:'🔓',
+  fuel_delivery:'⛽', winching:'⛓️', on_site_diagnosis:'🔍', oil_change:'🛢️',
+  minor_repairs:'🔧', tyre_fitting:'🛞', brake_pad_replacement:'🛑',
+  full_engine_service:'🔩', ecu_remap:'💻', turbo_service:'🌀',
+  electrical_diagnosis:'⚡', battery_replacement:'🔋', car_audio_install:'🎵',
+  dent_repair:'🔨', scratch_repair:'🎨', full_respray:'🎨', panel_beating:'🔨',
+  wheel_alignment:'🎯', wheel_balancing:'⚖️', suspension_service:'🔧',
+  ac_regas:'❄️', ac_repair:'❄️', car_wash_exterior:'🚿', car_wash_full:'🚿',
+  detailing:'✨', ceramic_coating:'💎', pre_purchase_inspection:'🔍',
+  roadworthy_inspection:'✅',
+};
+
+function buildServiceCards(catalog) {
+  const seen = new Set();
+  return catalog
+    .filter((p) => p.isAcceptingJobs && p.visibility === 'public')
+    .filter((p) => {
+      const code = p.catalogCode || p.serviceCode;
+      if (!code || seen.has(code)) return false;
+      seen.add(code);
+      return true;
+    })
+    .map((p) => ({
+      code: p.catalogCode || p.serviceCode,
+      label: p.serviceName,
+      icon: CATALOG_ICONS[p.catalogCode || p.serviceCode] || '🔧',
+      desc: p.serviceCategory || '',
+      category: p.serviceCategory || 'Other',
+    }));
+}
 
 function Stars({ rating, count }) {
   const n = typeof rating === 'number' ? rating : 0;
@@ -225,6 +249,9 @@ export default function RequestPanel({
 }) {
   const [step, setStep] = useState(1);
 
+  const serviceCards = buildServiceCards(providerCatalog);
+  const activeCard = serviceCards.find((s) => s.code === serviceFilter);
+
   if (!Array.isArray(vehicles) || !Array.isArray(providerCatalog)) return null;
 
   if (vehicles.length === 0) {
@@ -284,7 +311,7 @@ export default function RequestPanel({
           <h3>What do you need?</h3>
           <p className="step-hint">Select the type of roadside service</p>
           <div className="service-card-grid">
-            {SERVICE_CARDS.map((svc) => (
+            {serviceCards.map((svc) => (
               <button
                 key={svc.code}
                 type="button"
@@ -322,6 +349,8 @@ export default function RequestPanel({
                   longitude: s.lng,
                 })
               }
+              nearLat={roadsideForm.latitude || null}
+              nearLng={roadsideForm.longitude || null}
             />
           </label>
           <label>
@@ -359,7 +388,7 @@ export default function RequestPanel({
           <h3>Available providers</h3>
           <p className="step-hint">
             {filteredProviders.length} provider{filteredProviders.length !== 1 ? 's' : ''} for{' '}
-            {SERVICE_CARDS.find((s) => s.code === serviceFilter)?.label}
+            {activeCard?.label || serviceFilter}
           </p>
           {filteredProviders.length === 0 ? (
             <div className="cust-empty">
@@ -400,7 +429,7 @@ export default function RequestPanel({
           <div className="confirm-summary">
             <div className="confirm-row">
               <span>Service</span>
-              <strong>{SERVICE_CARDS.find((s) => s.code === serviceFilter)?.label}</strong>
+              <strong>{activeCard?.label || serviceFilter}</strong>
             </div>
             <div className="confirm-row">
               <span>Provider</span>

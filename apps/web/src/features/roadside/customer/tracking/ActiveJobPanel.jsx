@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatCurrency, request } from '../../../../shared/helpers';
 import useRequestTracking from '../hooks/useRequestTracking';
 import TrackingMapCard from './TrackingMapCard';
@@ -31,9 +31,23 @@ export default function ActiveJobPanel({ requestItem, token, onDone }) {
   const { tracking, trackingLoading } = useRequestTracking({ token, selectedRequest: requestItem });
   const [cancelling, setCancelling] = useState(false);
   const [etaDisplay, setEtaDisplay] = useState(null);
+  const [acceptedBanner, setAcceptedBanner] = useState(false);
+  const prevStatusRef = useRef(requestItem?.status);
 
   const currentStatus = tracking?.status ?? requestItem?.status;
   const canCancel = currentStatus === 'searching' || currentStatus === 'provider_assigned';
+
+  // Detect transition to provider_assigned and show celebratory banner
+  useEffect(() => {
+    if (
+      prevStatusRef.current === 'searching' &&
+      currentStatus === 'provider_assigned'
+    ) {
+      setAcceptedBanner(true);
+      setTimeout(() => setAcceptedBanner(false), 5000);
+    }
+    prevStatusRef.current = currentStatus;
+  }, [currentStatus]);
 
   useEffect(() => {
     if (currentStatus === 'completed' || currentStatus === 'cancelled') {
@@ -73,6 +87,19 @@ export default function ActiveJobPanel({ requestItem, token, onDone }) {
 
   return (
     <div className="active-job-panel">
+      {acceptedBanner && (
+        <div className="accepted-banner">
+          <span className="accepted-banner-icon">🎉</span>
+          <div>
+            <strong>Provider accepted your request!</strong>
+            <p>
+              {tracking?.providerName || requestItem.providerName} is on the way
+              {etaDisplay ? ` — ETA ${etaDisplay} min` : ''}.
+            </p>
+          </div>
+        </div>
+      )}
+
       <div className="active-job-header">
         <div>
           <p className="eyebrow">Active request</p>

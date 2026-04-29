@@ -666,7 +666,12 @@ export default function ProviderDashboard() {
           {showNotifications ? (
             <NotificationsTray
               token={token}
+              userAccountType="provider"
               onClose={() => setShowNotifications(false)}
+              onNavigate={(tab) => {
+                setShowNotifications(false);
+                setDashboardTab(tab);
+              }}
             />
           ) : null}
 

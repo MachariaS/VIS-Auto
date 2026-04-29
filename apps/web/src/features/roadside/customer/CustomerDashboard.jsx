@@ -517,7 +517,12 @@ export default function CustomerDashboard() {
         {showNotifications ? (
           <NotificationsTray
             token={token}
+            userAccountType="car_owner"
             onClose={() => setShowNotifications(false)}
+            onNavigate={(tab) => {
+              setShowNotifications(false);
+              setDashboardTab(tab);
+            }}
           />
         ) : null}
 

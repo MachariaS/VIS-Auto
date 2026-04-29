@@ -8,6 +8,33 @@ const TYPE_ICON = {
   system: '📣',
 };
 
+// Map notification type → dashboard tab for provider and customer
+function resolveNavigation(item, userAccountType) {
+  const type = item.type;
+  const title = (item.title || '').toLowerCase();
+  const body = (item.body || '').toLowerCase();
+
+  if (type === 'job_update') {
+    if (title.includes('new job') || body.includes('requested')) {
+      // Provider: new incoming job
+      return userAccountType === 'provider' ? 'jobs' : 'history';
+    }
+    if (title.includes('accepted') || title.includes('assigned') || title.includes('en route') || title.includes('in progress')) {
+      return userAccountType === 'provider' ? 'jobs' : 'history';
+    }
+    if (title.includes('complete') || title.includes('cancelled')) {
+      return 'history';
+    }
+    return userAccountType === 'provider' ? 'jobs' : 'history';
+  }
+
+  if (type === 'vendor') {
+    return 'vendors';
+  }
+
+  return null; // auth / system — no navigation
+}
+
 function timeAgo(dateStr) {
   const diff = Date.now() - new Date(dateStr).getTime();
   const mins = Math.floor(diff / 60000);
@@ -18,7 +45,7 @@ function timeAgo(dateStr) {
   return `${Math.floor(hrs / 24)}d ago`;
 }
 
-export default function NotificationsTray({ token, onClose }) {
+export default function NotificationsTray({ token, userAccountType = 'provider', onClose, onNavigate }) {
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [markingAll, setMarkingAll] = useState(false);
@@ -29,7 +56,7 @@ export default function NotificationsTray({ token, onClose }) {
       const data = await request('/notifications', undefined, 'GET', token);
       setItems(Array.isArray(data) ? data : []);
     } catch {
-      // silent — tray just stays empty
+      // silent
     } finally {
       setLoading(false);
     }
@@ -51,6 +78,21 @@ export default function NotificationsTray({ token, onClose }) {
       setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
     } catch { /* non-fatal */ } finally {
       setMarkingAll(false);
+    }
+  }
+
+  async function handleItemClick(item) {
+    // Always mark read on click (read or unread)
+    if (!item.isRead) {
+      await markRead(item.id);
+    }
+
+    // Navigate if there's a destination
+    const tab = resolveNavigation(item, userAccountType);
+    if (tab && onNavigate) {
+      onNavigate(tab);
+    } else if (onClose) {
+      onClose();
     }
   }
 
@@ -79,35 +121,48 @@ export default function NotificationsTray({ token, onClose }) {
       </div>
 
       <div className="notifications-list">
-        {loading && (
-          <p className="notifications-empty">Loading…</p>
-        )}
+        {loading && <p className="notifications-empty">Loading…</p>}
 
         {!loading && items.length === 0 && (
           <div className="notifications-empty">
             <span style={{ fontSize: 32 }}>🔔</span>
             <p>No notifications yet</p>
-            <p style={{ fontSize: 12, opacity: 0.6 }}>Job updates, vendor activity, and system messages will appear here.</p>
+            <p style={{ fontSize: 12, opacity: 0.6 }}>
+              Job updates, vendor activity, and system messages will appear here.
+            </p>
           </div>
         )}
 
-        {items.map((item) => (
-          <article
-            key={item.id}
-            className={`notification-item ${item.isRead ? '' : 'notification-item--unread'}`}
-            onClick={() => !item.isRead && markRead(item.id)}
-          >
-            <div className="notification-item-icon">
-              {TYPE_ICON[item.type] ?? '📣'}
-            </div>
-            <div className="notification-item-body">
-              <strong>{item.title}</strong>
-              <p>{item.body}</p>
-              <time>{timeAgo(item.createdAt)}</time>
-            </div>
-            {!item.isRead && <span className="notification-dot" />}
-          </article>
-        ))}
+        {items.map((item) => {
+          const tab = resolveNavigation(item, userAccountType);
+          return (
+            <article
+              key={item.id}
+              className={`notification-item ${item.isRead ? '' : 'notification-item--unread'} ${tab ? 'notification-item--clickable' : ''}`}
+              onClick={() => handleItemClick(item)}
+              role={tab ? 'button' : undefined}
+              tabIndex={tab ? 0 : undefined}
+              onKeyDown={tab ? (e) => e.key === 'Enter' && handleItemClick(item) : undefined}
+            >
+              <div className="notification-item-icon">
+                {TYPE_ICON[item.type] ?? '📣'}
+              </div>
+              <div className="notification-item-body">
+                <strong>{item.title}</strong>
+                <p>{item.body}</p>
+                <div className="notification-item-footer">
+                  <time>{timeAgo(item.createdAt)}</time>
+                  {tab && (
+                    <span className="notification-item-cta">
+                      {item.type === 'job_update' && userAccountType === 'provider' ? 'View jobs →' : 'View →'}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {!item.isRead && <span className="notification-dot" />}
+            </article>
+          );
+        })}
       </div>
     </section>
   );

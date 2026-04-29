@@ -228,6 +228,24 @@ export default function ProviderOverview({
         </div>
       )}
 
+      {providerServices.length > 0 && !user?.baseLat && (
+        <div className="provider-setup-prompt" style={{ '--setup-color': '#f59e0b' }}>
+          <div className="provider-setup-icon">📍</div>
+          <div className="provider-setup-copy">
+            <strong>Set your garage location for accurate distances</strong>
+            <p>
+              Without a base location, customers see "8 km" as a placeholder.
+              Add your garage coordinates in Settings → Profile → Locations.
+            </p>
+          </div>
+          <div className="provider-setup-actions">
+            <button className="ghost-button" type="button" onClick={onManageServices}>
+              Go to Profile
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="provider-stat-strip-v2">
         {dashboardStatCards.map((card) => (
           <article className={`provider-stat-card-v2 ${card.tone}`} key={card.label}>

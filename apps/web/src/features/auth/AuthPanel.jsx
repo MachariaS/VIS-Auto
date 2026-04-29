@@ -4,6 +4,7 @@ import { request } from '../../shared/helpers';
 import { initialRegister, initialLogin, initialVerify } from '../../shared/constants';
 import RegisterForm from './RegisterForm';
 import ServiceSelectionPanel from './ServiceSelectionPanel';
+import GarageLocationStep from './GarageLocationStep';
 import VehicleAddStep from './VehicleAddStep';
 
 export default function AuthPanel() {
@@ -177,7 +178,18 @@ export default function AuthPanel() {
       <ServiceSelectionPanel
         token={pendingToken}
         user={pendingUser}
+        onComplete={() => setStep('garage-location')}
+      />
+    );
+  }
+
+  if (step === 'garage-location') {
+    return (
+      <GarageLocationStep
+        token={pendingToken}
+        user={pendingUser}
         onComplete={() => completeDashboard(pendingUser, pendingToken)}
+        onSkip={() => completeDashboard(pendingUser, pendingToken)}
       />
     );
   }

@@ -400,6 +400,20 @@ export default function ProfilePanel({ vendorStats }) {
             </button>
           </div>
 
+          {!user?.baseLat && (
+            <div className="base-location-alert">
+              <span>⚠️</span>
+              <div>
+                <strong>Base location not set</strong>
+                <p>
+                  Add your latitude &amp; longitude below so customers get accurate distance estimates
+                  and you appear in proximity-based searches.
+                  You can get coordinates by right-clicking your garage on Google Maps.
+                </p>
+              </div>
+            </div>
+          )}
+
           <div className="location-grid-v2">
             {(profileSettings.business.locations || []).map((location, index) => (
               <article className="location-card-v2" key={`${location.branchName}-${index}`}>

@@ -5372,6 +5372,28 @@ button:disabled {
   white-space: nowrap; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
 }
 
+/* ══ Garage location step ════════════════════════════════════════════════════ */
+.garage-location-preview {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg-elevated));
+  border: 1.5px solid color-mix(in srgb, var(--accent) 30%, transparent);
+  border-radius: 12px; padding: 12px 14px;
+}
+.garage-location-preview span { font-size: 20px; flex-shrink: 0; }
+.garage-location-preview strong { display: block; font-size: 13px; font-weight: 600; color: var(--text-main); }
+.garage-location-preview p { margin: 2px 0 0; font-size: 12px; color: var(--text-soft); }
+
+/* ══ Base location alert (ProfilePanel) ══════════════════════════════════════ */
+.base-location-alert {
+  display: flex; align-items: flex-start; gap: 10px;
+  background: color-mix(in srgb, #f59e0b 8%, transparent);
+  border: 1px solid color-mix(in srgb, #f59e0b 30%, transparent);
+  border-radius: 10px; padding: 12px 14px; margin-bottom: 8px;
+}
+.base-location-alert span { font-size: 18px; flex-shrink: 0; }
+.base-location-alert strong { display: block; font-size: 13px; font-weight: 600; color: var(--text-main); }
+.base-location-alert p { margin: 2px 0 0; font-size: 12px; color: var(--text-soft); line-height: 1.5; }
+
 /* ══ Provider setup prompt ═══════════════════════════════════════════════════ */
 .provider-setup-prompt {
   display: flex; align-items: flex-start; gap: 16px;

@@ -4,6 +4,20 @@ import { countryOptions } from '../../../shared/constants';
 import PhoneField from '../../../shared/PhoneField';
 import DeleteAccountModal from '../../../shared/DeleteAccountModal';
 
+const SERVICE_MODULES = [
+  { key: 'Roadside emergency',     icon: '🚨', desc: 'Towing, battery jump, tyre change, lockout, fuel delivery' },
+  { key: 'Mechanical & repairs',   icon: '🔧', desc: 'Oil change, brakes, clutch, timing belt, radiator' },
+  { key: 'Engine & tuning',        icon: '⚙️', desc: 'ECU remap, turbo service, exhaust, intake' },
+  { key: 'Electrical & electronics', icon: '⚡', desc: 'Diagnostics, battery, audio, camera, lighting' },
+  { key: 'Body & paint',           icon: '🎨', desc: 'Dent repair, scratch, panel beating, respray, windscreen' },
+  { key: 'Suspension & alignment', icon: '🎯', desc: 'Alignment, balancing, shock absorbers, rim repair' },
+  { key: 'Air conditioning',       icon: '❄️', desc: 'AC regas, repair, cabin filter replacement' },
+  { key: 'Cleaning & detailing',   icon: '✨', desc: 'Car wash, detailing, ceramic coating, PPF' },
+  { key: 'Fuel & fluids',          icon: '⛽', desc: 'Petrol, diesel, fluid top-up' },
+  { key: 'Vehicle inspection',     icon: '🔍', desc: 'Pre-purchase, roadworthy, insurance inspection' },
+  { key: 'Vehicle specialisation', icon: '🏆', desc: 'Brand specialists — Toyota, BMW, Subaru, EV, etc.' },
+];
+
 const THEMES = [
   { value: 'dark',  label: '🌙 Dark',  desc: 'Easy on the eyes at night' },
   { value: 'light', label: '☀️ Light', desc: 'Clean and bright' },
@@ -96,6 +110,39 @@ export default function CustomerProfilePanel({ providerCatalog = [] }) {
                   ))}
                 </select>
               </label>
+            </div>
+          </div>
+
+          {/* ── Service modules ── */}
+          <div className="cust-profile-section">
+            <h4 className="cust-profile-section-title">Service modules</h4>
+            <p className="cust-profile-section-hint">
+              Choose which categories appear in the request flow. Disabling a category hides it — toggle it back any time.
+            </p>
+            <div className="cust-modules-grid">
+              {SERVICE_MODULES.map(({ key, icon, desc }) => {
+                const enabled = prefs.serviceModules?.[key] !== false;
+                return (
+                  <label key={key} className={`cust-module-card ${enabled ? 'cust-module-card--on' : ''}`}>
+                    <div className="cust-module-icon">{icon}</div>
+                    <div className="cust-module-copy">
+                      <strong>{key}</strong>
+                      <span>{desc}</span>
+                    </div>
+                    <div className="cust-toggle-wrap">
+                      <input
+                        type="checkbox"
+                        className="cust-toggle"
+                        checked={enabled}
+                        onChange={(e) => {
+                          const next = { ...(prefs.serviceModules ?? {}), [key]: e.target.checked };
+                          handleProfileFieldChange('preferences', 'serviceModules', next);
+                        }}
+                      />
+                    </div>
+                  </label>
+                );
+              })}
             </div>
           </div>
 

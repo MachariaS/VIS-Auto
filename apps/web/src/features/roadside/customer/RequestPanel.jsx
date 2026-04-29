@@ -187,6 +187,26 @@ function ProviderMatchCard({ svc, selected, onSelect }) {
   );
 }
 
+function ServicePickCard({ svc, selected, isFav, onSelect, onToggleFav }) {
+  return (
+    <div className={`service-pick-card-wrap ${selected ? 'service-pick-card-wrap--selected' : ''}`}>
+      <button type="button" className={`service-pick-card ${selected ? 'service-pick-card--active' : ''}`} onClick={onSelect}>
+        <span className="service-pick-icon">{svc.icon}</span>
+        <strong>{svc.label}</strong>
+        <p>{svc.desc || svc.category}</p>
+      </button>
+      <button
+        type="button"
+        className={`service-fav-btn ${isFav ? 'service-fav-btn--active' : ''}`}
+        onClick={(e) => { e.stopPropagation(); onToggleFav(); }}
+        title={isFav ? 'Remove from favourites' : 'Add to favourites'}
+      >
+        {isFav ? '★' : '☆'}
+      </button>
+    </div>
+  );
+}
+
 function SortedProviderList({ providers, roadsideForm, setRoadsideForm }) {
   const cLat = Number(roadsideForm.latitude) || 0;
   const cLng = Number(roadsideForm.longitude) || 0;
@@ -239,6 +259,9 @@ function SortedProviderList({ providers, roadsideForm, setRoadsideForm }) {
 export default function RequestPanel({
   vehicles,
   providerCatalog,
+  requests = [],
+  profileSettings = {},
+  handleProfileFieldChange,
   serviceFilter,
   setServiceFilter,
   roadsideForm,
@@ -248,9 +271,60 @@ export default function RequestPanel({
   loading,
 }) {
   const [step, setStep] = useState(1);
+  const [serviceSearch, setServiceSearch] = useState('');
+  const [providerSearch, setProviderSearch] = useState('');
 
-  const serviceCards = buildServiceCards(providerCatalog);
-  const activeCard = serviceCards.find((s) => s.code === serviceFilter);
+  const prefs = profileSettings?.preferences ?? {};
+  const enabledModules = prefs.serviceModules ?? null; // null = all enabled
+  const favServiceCodes = prefs.favouriteServices ?? [];
+
+  // Derive recent codes from completed requests (deduped, most recent first)
+  const recentCodes = [...new Set(
+    [...requests]
+      .filter((r) => r.issueType)
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .map((r) => r.catalogCode || r.serviceCode)
+      .filter(Boolean)
+  )].slice(0, 6);
+
+  // All available service cards from live catalog, filtered by enabled modules
+  const allServiceCards = buildServiceCards(providerCatalog).filter((s) => {
+    if (!enabledModules) return true;
+    return enabledModules[s.category] !== false;
+  });
+
+  // Favourites: cards the user has starred, available in catalog
+  const favCards = favServiceCodes
+    .map((code) => allServiceCards.find((s) => s.code === code))
+    .filter(Boolean);
+
+  // Recents: recently used codes, no duplicates with favs
+  const recentCards = recentCodes
+    .map((code) => allServiceCards.find((s) => s.code === code))
+    .filter((s) => s && !favServiceCodes.includes(s.code));
+
+  // Quick access = fav + recent, capped at 8 total
+  const quickAccess = [...favCards, ...recentCards].slice(0, 8);
+
+  // Search results across all cards
+  const searchResults = serviceSearch.length >= 2
+    ? allServiceCards.filter((s) =>
+        s.label.toLowerCase().includes(serviceSearch.toLowerCase()) ||
+        s.desc.toLowerCase().includes(serviceSearch.toLowerCase()) ||
+        s.category.toLowerCase().includes(serviceSearch.toLowerCase())
+      )
+    : [];
+
+  const activeCard = allServiceCards.find((s) => s.code === serviceFilter);
+
+  function toggleFav(code) {
+    const next = favServiceCodes.includes(code)
+      ? favServiceCodes.filter((c) => c !== code)
+      : [...favServiceCodes, code];
+    if (handleProfileFieldChange) {
+      handleProfileFieldChange('preferences', 'favouriteServices', next);
+    }
+  }
 
   if (!Array.isArray(vehicles) || !Array.isArray(providerCatalog)) return null;
 
@@ -309,22 +383,81 @@ export default function RequestPanel({
       {step === 1 && (
         <div className="request-step-panel">
           <h3>What do you need?</h3>
-          <p className="step-hint">Select the type of roadside service</p>
-          <div className="service-card-grid">
-            {serviceCards.map((svc) => (
-              <button
-                key={svc.code}
-                type="button"
-                className={`service-pick-card ${serviceFilter === svc.code ? 'service-pick-card--active' : ''}`}
-                onClick={() => setServiceFilter(svc.code)}
-              >
-                <span className="service-pick-icon">{svc.icon}</span>
-                <strong>{svc.label}</strong>
-                <p>{svc.desc}</p>
-              </button>
-            ))}
+
+          {/* Search bar */}
+          <div className="service-search-wrap">
+            <span className="service-search-icon">🔍</span>
+            <input
+              className="service-search-input"
+              placeholder="Search services…"
+              value={serviceSearch}
+              onChange={(e) => setServiceSearch(e.target.value)}
+              autoComplete="off"
+            />
+            {serviceSearch && (
+              <button type="button" className="service-search-clear" onClick={() => setServiceSearch('')}>✕</button>
+            )}
           </div>
-          <button className="primary-cta" type="button" onClick={() => setStep(2)}>
+
+          {/* Search results */}
+          {serviceSearch.length >= 2 ? (
+            <>
+              <p className="step-hint">{searchResults.length} result{searchResults.length !== 1 ? 's' : ''} for "{serviceSearch}"</p>
+              {searchResults.length === 0 ? (
+                <div className="cust-empty" style={{ padding: '20px 0' }}>
+                  <p>No services found. Try a different keyword.</p>
+                </div>
+              ) : (
+                <div className="service-card-grid">
+                  {searchResults.map((svc) => (
+                    <ServicePickCard key={svc.code} svc={svc} selected={serviceFilter === svc.code}
+                      isFav={favServiceCodes.includes(svc.code)}
+                      onSelect={() => { setServiceFilter(svc.code); setServiceSearch(''); }}
+                      onToggleFav={() => toggleFav(svc.code)} />
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              {/* Quick access: favourites + recents */}
+              {quickAccess.length > 0 ? (
+                <>
+                  <p className="step-hint">
+                    {favCards.length > 0 && <span>⭐ Favourites &amp; </span>}Recent services
+                  </p>
+                  <div className="service-card-grid">
+                    {quickAccess.map((svc) => (
+                      <ServicePickCard key={svc.code} svc={svc} selected={serviceFilter === svc.code}
+                        isFav={favServiceCodes.includes(svc.code)}
+                        onSelect={() => setServiceFilter(svc.code)}
+                        onToggleFav={() => toggleFav(svc.code)} />
+                    ))}
+                  </div>
+                  <p className="step-hint" style={{ marginTop: 4 }}>
+                    ↑ Search above to find any other service
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="step-hint">Available services</p>
+                  <div className="service-card-grid">
+                    {allServiceCards.slice(0, 8).map((svc) => (
+                      <ServicePickCard key={svc.code} svc={svc} selected={serviceFilter === svc.code}
+                        isFav={favServiceCodes.includes(svc.code)}
+                        onSelect={() => setServiceFilter(svc.code)}
+                        onToggleFav={() => toggleFav(svc.code)} />
+                    ))}
+                  </div>
+                  {allServiceCards.length > 8 && (
+                    <p className="step-hint">Search above to see all {allServiceCards.length} services</p>
+                  )}
+                </>
+              )}
+            </>
+          )}
+
+          <button className="primary-cta" type="button" disabled={!serviceFilter} onClick={() => setStep(2)}>
             Next — Set location
           </button>
         </div>
@@ -390,6 +523,23 @@ export default function RequestPanel({
             {filteredProviders.length} provider{filteredProviders.length !== 1 ? 's' : ''} for{' '}
             {activeCard?.label || serviceFilter}
           </p>
+
+          {/* Provider search */}
+          {filteredProviders.length > 1 && (
+            <div className="service-search-wrap">
+              <span className="service-search-icon">🔍</span>
+              <input
+                className="service-search-input"
+                placeholder="Search by provider name…"
+                value={providerSearch}
+                onChange={(e) => setProviderSearch(e.target.value)}
+              />
+              {providerSearch && (
+                <button type="button" className="service-search-clear" onClick={() => setProviderSearch('')}>✕</button>
+              )}
+            </div>
+          )}
+
           {filteredProviders.length === 0 ? (
             <div className="cust-empty">
               <span style={{ fontSize: 32 }}>😴</span>
@@ -401,7 +551,9 @@ export default function RequestPanel({
             </div>
           ) : (
             <SortedProviderList
-              providers={filteredProviders}
+              providers={filteredProviders.filter((p) =>
+                !providerSearch || p.providerName.toLowerCase().includes(providerSearch.toLowerCase())
+              )}
               roadsideForm={roadsideForm}
               setRoadsideForm={setRoadsideForm}
             />

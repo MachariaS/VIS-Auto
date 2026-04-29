@@ -35,6 +35,8 @@ export default function CustomerDashboard() {
     signOut,
     toggleTheme,
     openDashboard,
+    profileSettings,
+    handleProfileFieldChange,
   } = useApp();
 
   const {
@@ -569,6 +571,9 @@ export default function CustomerDashboard() {
               <RequestPanel
                 vehicles={vehicles}
                 providerCatalog={providerCatalog}
+                requests={requests}
+                profileSettings={profileSettings}
+                handleProfileFieldChange={handleProfileFieldChange}
                 serviceFilter={serviceFilter}
                 setServiceFilter={setServiceFilter}
                 roadsideForm={roadsideForm}

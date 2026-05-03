@@ -39,6 +39,7 @@ export default function ProviderDashboard() {
     profileSettings,
     setProfileSettings,
     signOut,
+    setUser,
   } = useApp();
 
   const {
@@ -472,6 +473,13 @@ export default function ProviderDashboard() {
     { id: 'settings', label: 'Settings' },
   ];
 
+  async function handleToggleAvailability() {
+    try {
+      const updated = await request('/users/me/availability', undefined, 'PATCH', token);
+      setUser((prev) => ({ ...prev, isOnline: updated.isOnline }));
+    } catch { /* non-fatal */ }
+  }
+
   return (
     <section className="provider-shell-v2" data-theme={theme}>
       {showMobileSidebar ? (
@@ -602,10 +610,15 @@ export default function ProviderDashboard() {
           </div>
 
           <div className="provider-topbar-actions-v2">
-            <div className={`provider-online-badge ${user?.isOnline ? 'provider-online-badge--on' : 'provider-online-badge--off'}`}>
+            <button
+              type="button"
+              className={`provider-online-badge ${user?.isOnline ? 'provider-online-badge--on' : 'provider-online-badge--off'}`}
+              onClick={handleToggleAvailability}
+              title={user?.isOnline ? 'Click to go offline' : 'Click to go online'}
+            >
               <span className="provider-online-dot" />
               {user?.isOnline ? 'Online' : 'Offline'}
-            </div>
+            </button>
             <button
               className="icon-button"
               type="button"

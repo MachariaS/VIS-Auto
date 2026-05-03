@@ -106,16 +106,15 @@ export default function NotificationsTray({
 
     const tab = resolveNavigation(item, userAccountType);
     if (tab && onNavigate) {
-      onNavigate(tab); // closes tray + switches tab
-    } else if (onClose) {
-      onClose();
+      onNavigate(tab); // closes tray + switches tab only when there's a destination
     }
+    // No else — auth/system notifications stay open so user can keep reading
   }
 
   const unread = items.filter((n) => !n.isRead).length;
 
   return (
-    <section className="notifications-tray">
+    <section className="notifications-tray floating-panel">
       <div className="notifications-tray-head">
         <div>
           <p className="eyebrow">Notifications</p>

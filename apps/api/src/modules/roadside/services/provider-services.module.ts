@@ -7,9 +7,10 @@ import { ProviderServicesController } from './provider-services.controller';
 import { ProviderServiceEntity } from './provider-service.entity';
 import { ProviderServicesService } from './provider-services.service';
 import { UserEntity } from '../../../shared/users/user.entity';
+import { RatingEntity } from '../../ratings/rating.entity';
 
 @Module({
-  imports: [AuthModule, UsersModule, ServiceCatalogModule, TypeOrmModule.forFeature([ProviderServiceEntity, UserEntity])],
+  imports: [AuthModule, UsersModule, ServiceCatalogModule, TypeOrmModule.forFeature([ProviderServiceEntity, UserEntity, RatingEntity])],
   controllers: [ProviderServicesController],
   providers: [ProviderServicesService],
   exports: [ProviderServicesService],

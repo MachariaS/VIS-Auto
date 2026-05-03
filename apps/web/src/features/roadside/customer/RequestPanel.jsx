@@ -142,24 +142,10 @@ function Stars({ rating, count }) {
   );
 }
 
-const ratingCache = {};
-
-function useProviderRating(providerId) {
-  const [data, setData] = useState(ratingCache[providerId] ?? null);
-  useEffect(() => {
-    if (!providerId || ratingCache[providerId] !== undefined) return;
-    fetch(`/providers/${providerId}/ratings`)
-      .then((r) => r.json())
-      .then((d) => { ratingCache[providerId] = d; setData(d); })
-      .catch(() => { ratingCache[providerId] = null; });
-  }, [providerId]);
-  return data;
-}
-
 function ProviderMatchCard({ svc, selected, onSelect }) {
-  const ratings = useProviderRating(svc.providerId);
-  const avg = ratings?.average ?? null;
-  const count = ratings?.count ?? 0;
+  // avgRating and ratingCount come directly from the catalog response (no extra fetch)
+  const avg = svc.avgRating ?? null;
+  const count = svc.ratingCount ?? 0;
   return (
     <button
       type="button"
@@ -211,11 +197,14 @@ function SortedProviderList({ providers, roadsideForm, setRoadsideForm }) {
   const cLat = Number(roadsideForm.latitude) || 0;
   const cLng = Number(roadsideForm.longitude) || 0;
 
-  // Fetch ratings for all providers (cached in module-level object)
-  // Score = rating (0-5, weighted ×2) + inverse distance bonus
+  // Score = real avg rating (×2) + proximity bonus + price score
   const scored = providers.map((svc) => {
-    const dist = cLat && cLng ? haversineKm(cLat, cLng, -1.2921, 36.8219) : 5;
-    const ratingScore = (ratingCache[svc.providerId]?.average ?? 0) * 2;
+    const pLat = svc.providerBaseLat;
+    const pLng = svc.providerBaseLng;
+    const dist = cLat && cLng && pLat && pLng
+      ? haversineKm(cLat, cLng, Number(pLat), Number(pLng))
+      : 5;
+    const ratingScore = (svc.avgRating ?? 0) * 2;
     const distScore = Math.max(0, 10 - dist);
     const priceScore = svc.basePriceKsh > 0 ? Math.max(0, 5 - svc.basePriceKsh / 1000) : 0;
     return { svc, score: ratingScore + distScore + priceScore, dist };

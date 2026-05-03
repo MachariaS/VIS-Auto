@@ -1,13 +1,15 @@
-import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { RatingEntity } from './rating.entity';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class RatingsService {
   constructor(
     @InjectRepository(RatingEntity)
     private readonly repo: Repository<RatingEntity>,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   async submit(
@@ -36,6 +38,16 @@ export class RatingsService {
 
     const rating = this.repo.create({ roadsideRequestId, customerId, providerId, score, comment });
     const saved = await this.repo.save(rating);
+
+    // Notify the provider they received a new review
+    void this.notificationsService.create({
+      userId: providerId,
+      title: 'New review received',
+      body: `You received a ${score}-star rating${comment ? ': "' + comment.slice(0, 60) + '"' : '.'}`,
+      type: 'job_update',
+      refId: roadsideRequestId,
+    });
+
     return { ...saved, createdAt: saved.createdAt.toISOString() };
   }
 

@@ -5110,6 +5110,8 @@ button:disabled {
 .history-detail-header h4 { margin: 0 0 4px; display: flex; align-items: center; gap: 8px; }
 .history-detail-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 6px; }
 .history-detail-amount { font-size: 20px; font-weight: 700; color: var(--text-main); white-space: nowrap; }
+.history-rate-btn { margin-top: 4px; }
+.history-rated-note { margin: 8px 0 0; font-size: 13px; color: #10b981; font-weight: 600; }
 .history-detail-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));

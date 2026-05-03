@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
-import { formatCurrency } from '../../../shared/helpers';
+import { formatCurrency, request } from '../../../shared/helpers';
 import useRequestTracking from './hooks/useRequestTracking';
+import RatingPrompt from './RatingPrompt';
 
 const LiveMap = lazy(() => import('./tracking/LiveMap'));
 
@@ -58,6 +59,8 @@ function statusGroup(status) {
 export default function HistoryPanel({ requests, token }) {
   const [tab, setTab] = useState('All');
   const [selectedId, setSelectedId] = useState(null);
+  const [ratingCheckCache, setRatingCheckCache] = useState({});
+  const [showRatingFor, setShowRatingFor] = useState(null);
 
   const filtered = tab === 'All' ? requests : requests.filter((r) => statusGroup(r.status) === tab);
   const selected = requests.find((r) => r.id === selectedId);
@@ -67,6 +70,15 @@ export default function HistoryPanel({ requests, token }) {
   useEffect(() => {
     if (!selectedId && filtered.length > 0) setSelectedId(filtered[0].id);
   }, [filtered.length]);
+
+  // Check if a completed job has already been rated (cached to avoid repeat fetches)
+  useEffect(() => {
+    if (!selected || selected.status !== 'completed' || !token) return;
+    if (ratingCheckCache[selected.id] !== undefined) return;
+    request(`/ratings/${selected.id}/check`, undefined, 'GET', token)
+      .then((d) => setRatingCheckCache((c) => ({ ...c, [selected.id]: d?.rated ?? false })))
+      .catch(() => setRatingCheckCache((c) => ({ ...c, [selected.id]: false })));
+  }, [selected?.id, token]);
 
   const tabCounts = {
     All: requests.length,
@@ -204,6 +216,30 @@ export default function HistoryPanel({ requests, token }) {
                   isLiveLocation={false}
                 />
               </Suspense>
+
+              {/* Rate this job — shown for completed, unrated jobs */}
+              {selected.status === 'completed' && (
+                showRatingFor === selected.id ? (
+                  <RatingPrompt
+                    completedRequest={selected}
+                    token={token}
+                    onDone={() => {
+                      setShowRatingFor(null);
+                      setRatingCheckCache((c) => ({ ...c, [selected.id]: true }));
+                    }}
+                  />
+                ) : ratingCheckCache[selected.id] === false ? (
+                  <button
+                    type="button"
+                    className="primary-cta history-rate-btn"
+                    onClick={() => setShowRatingFor(selected.id)}
+                  >
+                    ⭐ Rate this job
+                  </button>
+                ) : ratingCheckCache[selected.id] === true ? (
+                  <p className="history-rated-note">✓ You rated this job</p>
+                ) : null
+              )}
             </div>
           )}
         </>

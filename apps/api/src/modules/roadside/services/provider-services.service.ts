@@ -6,6 +6,7 @@ import { UsersService } from '../../../shared/users/users.service';
 import { CreateProviderServiceDto } from './dto/create-provider-service.dto';
 import { ProviderServiceEntity, ServiceVisibility } from './provider-service.entity';
 import { UserEntity } from '../../../shared/users/user.entity';
+import { RatingEntity } from '../../ratings/rating.entity';
 
 export interface ProviderService {
   id: string;
@@ -16,6 +17,8 @@ export interface ProviderService {
   serviceCode?: string;
   providerBaseLat?: number | null;
   providerBaseLng?: number | null;
+  avgRating?: number | null;
+  ratingCount?: number;
   serviceName: string;
   serviceCategory?: string;
   serviceImageUrl?: string;
@@ -37,6 +40,8 @@ export class ProviderServicesService {
     private readonly catalogService: ServiceCatalogService,
     @InjectRepository(ProviderServiceEntity)
     private readonly repo: Repository<ProviderServiceEntity>,
+    @InjectRepository(RatingEntity)
+    private readonly ratingsRepo: Repository<RatingEntity>,
   ) {}
 
   async listByProvider(providerId: string) {
@@ -57,14 +62,36 @@ export class ProviderServicesService {
         .orderBy('ps."createdAt"', 'DESC')
         .getMany();
 
-      // Batch-load provider base locations for radius filtering
       const providerIds = [...new Set(services.map((s) => s.providerId))];
-      const providers = await this.usersService.findByIds(providerIds);
+
+      // Batch-load provider base locations + aggregate ratings in parallel
+      const [providers, ratingRows] = await Promise.all([
+        this.usersService.findByIds(providerIds),
+        providerIds.length > 0
+          ? this.ratingsRepo
+              .createQueryBuilder('r')
+              .select('r."providerId"', 'providerId')
+              .addSelect('AVG(r.score)', 'avgRating')
+              .addSelect('COUNT(r.id)', 'ratingCount')
+              .where('r."providerId" IN (:...ids)', { ids: providerIds })
+              .groupBy('r."providerId"')
+              .getRawMany()
+          : [],
+      ]);
+
       const providerMap = new Map(providers.map((p) => [p.id, p as unknown as { baseLat?: number; baseLng?: number }]));
+      const ratingMap = new Map<string, { avgRating: number | null; ratingCount: number }>();
+      for (const r of ratingRows as { providerId: string; avgRating: string; ratingCount: string }[]) {
+        ratingMap.set(r.providerId, {
+          avgRating: r.avgRating ? Math.round(Number(r.avgRating) * 10) / 10 : null,
+          ratingCount: Number(r.ratingCount),
+        });
+      }
 
       const dtos = services.map((s) => {
         const prov = providerMap.get(s.providerId);
-        return this.toDto(s, prov?.baseLat ?? null, prov?.baseLng ?? null);
+        const rating = ratingMap.get(s.providerId);
+        return this.toDto(s, prov?.baseLat ?? null, prov?.baseLng ?? null, rating?.avgRating ?? null, rating?.ratingCount ?? 0);
       });
 
       // Radius filter: only exclude if provider has a base location AND customer is outside maxRadius
@@ -220,12 +247,20 @@ export class ProviderServicesService {
     if (prices.some((v) => Number(v) < 0)) throw new BadRequestException('Fuel prices must be zero or higher.');
   }
 
-  private toDto(service: ProviderServiceEntity, baseLat: number | null = null, baseLng: number | null = null): ProviderService {
+  private toDto(
+    service: ProviderServiceEntity,
+    baseLat: number | null = null,
+    baseLng: number | null = null,
+    avgRating: number | null = null,
+    ratingCount = 0,
+  ): ProviderService {
     return {
       ...service,
       serviceCode: service.catalogCode,
       providerBaseLat: baseLat,
       providerBaseLng: baseLng,
+      avgRating,
+      ratingCount,
       serviceImageUrl: service.serviceImageUrl || '/assets/other_services.jpeg',
       createdAt: service.createdAt.toISOString(),
     };

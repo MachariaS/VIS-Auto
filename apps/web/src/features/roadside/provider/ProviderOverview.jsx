@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { futureProviderModules, serviceTypeOptions } from '../../../shared/constants';
+import { futureProviderModules, serviceTypeOptions, vehicleBrandConfig } from '../../../shared/constants';
 import { formatCurrency, getServiceImageUrl, request } from '../../../shared/helpers';
 import { useApp } from '../../../context/AppContext';
 
@@ -144,6 +144,7 @@ export default function ProviderOverview({
           id: service.id,
           title: service.serviceName,
           provider: user?.name || 'Your Team',
+          catalogCode: service.catalogCode || service.serviceCode,
           serviceCode: service.serviceCode,
           serviceImageUrl: service.serviceImageUrl,
           rating: (4.1 + index * 0.2).toFixed(1),
@@ -292,12 +293,24 @@ export default function ProviderOverview({
             <div className="provider-service-grid-v2">
               {showcaseServices.map((service) => (
                 <article className={`provider-service-card-v2 ${service.tone}`} key={service.id}>
-                  <div
-                    className="provider-service-art-v2"
-                    style={{
-                      backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.06), rgba(15, 23, 42, 0.46)), url(${getServiceImageUrl(service)})`,
-                    }}
-                  />
+                  {vehicleBrandConfig[service.catalogCode] ? (
+                    <div
+                      className="provider-service-art-v2 provider-service-art-brand"
+                      style={{
+                        background: vehicleBrandConfig[service.catalogCode].bg,
+                        color: vehicleBrandConfig[service.catalogCode].text,
+                      }}
+                    >
+                      {vehicleBrandConfig[service.catalogCode].label}
+                    </div>
+                  ) : (
+                    <div
+                      className="provider-service-art-v2"
+                      style={{
+                        backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.06), rgba(15, 23, 42, 0.46)), url(${getServiceImageUrl(service)})`,
+                      }}
+                    />
+                  )}
                   <strong>{service.title}</strong>
                   <p>{service.provider}</p>
                   <div className="provider-service-meta-v2">

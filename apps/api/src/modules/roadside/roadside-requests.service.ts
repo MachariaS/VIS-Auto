@@ -189,6 +189,10 @@ export class RoadsideRequestsService {
     request.status = status;
 
     const saved = await this.roadsideRequestsRepository.save(request);
+    const result = await this.toRoadsideRequest(saved, true);
+
+    // Push status change instantly to customer via WebSocket (no poll wait)
+    this.gateway?.pushStatusUpdate(request.id, this.toTrackingStatus(saved));
 
     const copy = JOB_STATUS_COPY[status];
     if (copy) {
@@ -204,6 +208,34 @@ export class RoadsideRequestsService {
         emailHtml: buildJobStatusEmail(copy.title, copy.body, request.issueType),
       });
     }
+
+    return result;
+  }
+
+  async cancelByCustomer(userId: string, requestId: string, reason?: string) {
+    const request = await this.roadsideRequestsRepository.findOneBy({ id: requestId });
+    if (!request) throw new NotFoundException('Roadside request not found.');
+    if (request.userId !== userId) throw new NotFoundException('Roadside request not found.');
+    if (request.status === 'completed' || request.status === 'cancelled') {
+      throw new BadRequestException(`Cannot cancel a ${request.status} request.`);
+    }
+
+    request.status = 'cancelled';
+    const saved = await this.roadsideRequestsRepository.save(request);
+
+    this.gateway?.pushStatusUpdate(request.id, this.toTrackingStatus(saved));
+
+    const customer = await this.usersService.findById(userId);
+    void this.notificationsService.create({
+      userId: request.providerId,
+      title: 'Request cancelled by customer',
+      body: `${request.issueType}${reason ? ` — ${reason}` : ''}`,
+      type: 'job_update',
+      refId: request.id,
+      email: customer?.email,
+      emailSubject: 'VIS Auto — Request cancelled',
+      emailHtml: buildJobStatusEmail('Request cancelled', `The customer cancelled the request.${reason ? ` Reason: ${reason}` : ''}`, request.issueType),
+    });
 
     return this.toRoadsideRequest(saved, true);
   }

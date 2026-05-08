@@ -93,7 +93,7 @@ export default function ActiveJobPanel({ requestItem, token, onDone }) {
   async function handleCancel() {
     setCancelling(true);
     try {
-      await request(`/roadside-requests/${requestItem.id}/status`, { status: 'cancelled' }, 'PATCH', token);
+      await request(`/roadside-requests/${requestItem.id}/cancel`, {}, 'POST', token);
       onDone();
     } catch {
       setCancelling(false);

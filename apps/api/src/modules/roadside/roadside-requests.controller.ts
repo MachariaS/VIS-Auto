@@ -51,6 +51,15 @@ export class RoadsideRequestsController {
     return this.roadsideRequestsService.declineByProvider(req.user.sub, requestId);
   }
 
+  @Post(':id/cancel')
+  cancelJob(
+    @Request() req: AuthenticatedRequest,
+    @Param('id') requestId: string,
+    @Body() body: { reason?: string },
+  ) {
+    return this.roadsideRequestsService.cancelByCustomer(req.user.sub, requestId, body?.reason);
+  }
+
   @Patch(':id/provider-location')
   updateProviderLocation(
     @Request() req: AuthenticatedRequest,

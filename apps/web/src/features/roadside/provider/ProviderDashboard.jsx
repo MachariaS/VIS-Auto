@@ -14,6 +14,7 @@ import useProviderOrders from './hooks/useProviderOrders';
 import useVendorNetwork from './hooks/useVendorNetwork';
 import OrdersPanel from './OrdersPanel';
 import ProviderJobCard from './ProviderJobCard';
+import IncomingJobAlert from './IncomingJobAlert';
 import ProviderOverview from './ProviderOverview';
 import RatingsPanel from './RatingsPanel';
 import ServicesPanel from './ServicesPanel';
@@ -733,29 +734,59 @@ export default function ProviderDashboard() {
           ) : null}
 
           {dashboardTab === 'jobs' ? (
-            <div className="dashboard-panel">
-              <div className="panel-head">
+            <div className="dashboard-panel stack">
+              {/* ── Incoming requests ── */}
+              {incomingJobs.length > 0 && (
+                <div className="incoming-jobs-section">
+                  <div className="panel-head compact">
+                    <div>
+                      <p className="eyebrow">New requests</p>
+                      <h3 className="incoming-jobs-heading">
+                        <span className="incoming-count-dot" />
+                        {incomingJobs.length} job{incomingJobs.length !== 1 ? 's' : ''} waiting for you
+                      </h3>
+                    </div>
+                  </div>
+                  <div className="incoming-jobs-list">
+                    {incomingJobs.map((job) => (
+                      <IncomingJobAlert
+                        key={job.id}
+                        job={job}
+                        token={token}
+                        providerBaseLat={user?.baseLat}
+                        providerBaseLng={user?.baseLng}
+                        onStatusChange={async () => {
+                          const refreshed = await request('/roadside-requests/provider', undefined, 'GET', token);
+                          setRequests(Array.isArray(refreshed) ? refreshed : []);
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Active jobs ── */}
+              {activeJobs.length > 0 && (
                 <div>
-                  <p className="eyebrow">Incoming & active</p>
-                  <h3>Jobs</h3>
+                  <p className="eyebrow" style={{ marginBottom: 10 }}>Active jobs</p>
+                  <div className="provider-jobs-list">
+                    {activeJobs.map((job) => (
+                      <ProviderJobCard
+                        key={job.id}
+                        job={job}
+                        token={token}
+                        onStatusChange={async () => {
+                          const refreshed = await request('/roadside-requests/provider', undefined, 'GET', token);
+                          setRequests(Array.isArray(refreshed) ? refreshed : []);
+                        }}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-              {incomingJobs.length === 0 && activeJobs.length === 0 ? (
+              )}
+
+              {incomingJobs.length === 0 && activeJobs.length === 0 && (
                 <p className="empty-state">No incoming or active jobs right now.</p>
-              ) : (
-                <div className="provider-jobs-list">
-                  {[...incomingJobs, ...activeJobs].map((job) => (
-                    <ProviderJobCard
-                      key={job.id}
-                      job={job}
-                      token={token}
-                      onStatusChange={async () => {
-                        const refreshed = await request('/roadside-requests/provider', undefined, 'GET', token);
-                        setRequests(Array.isArray(refreshed) ? refreshed : []);
-                      }}
-                    />
-                  ))}
-                </div>
               )}
             </div>
           ) : null}

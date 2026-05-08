@@ -4673,6 +4673,84 @@ button:disabled {
 
 /* ── Provider Job Card ── */
 .provider-jobs-list { display: grid; gap: 16px; }
+
+/* ── Incoming job alerts ─────────────────────────────────────────────────── */
+.incoming-jobs-section {
+  background: color-mix(in srgb, #f59e0b 6%, var(--bg-elevated));
+  border: 1.5px solid color-mix(in srgb, #f59e0b 30%, transparent);
+  border-radius: 16px; padding: 16px; display: grid; gap: 14px;
+}
+
+.incoming-jobs-heading {
+  margin: 0; display: flex; align-items: center; gap: 10px;
+}
+
+.incoming-count-dot {
+  width: 10px; height: 10px; border-radius: 50%; background: #f59e0b; flex-shrink: 0;
+  box-shadow: 0 0 0 0 rgba(245,158,11,0.5);
+  animation: gps-ping 1.4s ease-out infinite;
+}
+
+.incoming-jobs-list { display: grid; gap: 12px; }
+
+.incoming-job-alert {
+  background: var(--bg-elevated);
+  border: 1.5px solid color-mix(in srgb, #f59e0b 35%, transparent);
+  border-radius: 14px; padding: 16px; display: grid; gap: 12px;
+  position: relative; overflow: hidden;
+}
+
+.incoming-job-alert-pulse {
+  position: absolute; top: 0; left: 0; right: 0; height: 3px;
+  background: linear-gradient(90deg, #f59e0b, #fbbf24, #f59e0b);
+  background-size: 200% 100%;
+  animation: shimmer-badge 2s linear infinite;
+}
+@keyframes shimmer-badge {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.incoming-job-alert-header {
+  display: flex; justify-content: space-between; align-items: flex-start; gap: 12px;
+}
+
+.incoming-job-alert-title { display: grid; gap: 4px; }
+
+.incoming-job-new-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  background: color-mix(in srgb, #f59e0b 15%, transparent);
+  color: #92400e; border: 1px solid color-mix(in srgb, #f59e0b 40%, transparent);
+  padding: 2px 8px; border-radius: 999px; width: fit-content;
+}
+
+.incoming-job-alert-title h4 { margin: 0; font-size: 16px; font-weight: 700; color: var(--text-main); }
+
+.incoming-job-alert-earn { text-align: right; }
+.incoming-job-alert-earn strong { display: block; font-size: 20px; font-weight: 800; color: var(--text-main); }
+.incoming-job-alert-earn span { font-size: 11px; color: var(--text-soft); }
+
+.incoming-job-alert-details { display: grid; gap: 6px; }
+.incoming-detail-row {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 13px; color: var(--text-soft);
+}
+.incoming-detail-icon { flex-shrink: 0; font-size: 14px; }
+
+.incoming-eta-badge {
+  margin-left: auto; font-size: 11px; font-weight: 600;
+  background: color-mix(in srgb, #10b981 12%, transparent);
+  color: #10b981; padding: 2px 8px; border-radius: 999px;
+  white-space: nowrap;
+}
+
+.incoming-job-alert-actions {
+  display: flex; gap: 10px; padding-top: 4px;
+  border-top: 1px solid var(--border-soft);
+}
+
+.incoming-accept-btn { flex: 1; font-size: 14px; padding: 10px; }
 .provider-job-card { background: var(--bg-elevated); border-radius: 16px; border: 1px solid var(--border-soft); padding: 20px; display: grid; gap: 14px; }
 .provider-job-card-head { display: flex; justify-content: space-between; align-items: flex-start; }
 .provider-job-card-head h4 { margin: 4px 0 0; font-size: 16px; }

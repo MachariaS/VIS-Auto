@@ -4,6 +4,7 @@ import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './shared/filters/all-exceptions.filter';
+import { SocketIOAdapter } from './shared/socket-io.adapter';
 
 function validateProductionSecrets() {
   const logger = new Logger('Bootstrap');
@@ -62,6 +63,9 @@ async function bootstrap() {
     origin: allowedOrigins,
     credentials: true,
   });
+
+  // Socket.IO adapter — uses the same allowedOrigins so WS CORS matches HTTP CORS
+  app.useWebSocketAdapter(new SocketIOAdapter(app, allowedOrigins));
 
   app.useGlobalFilters(new AllExceptionsFilter());
 

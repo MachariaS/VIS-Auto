@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { fuelLiterOptions } from '../../../shared/constants';
 import { formatCurrency, getFuelUnitPrice, getSelectedFuelLitres, getServiceImageUrl, getApiUrl } from '../../../shared/helpers';
+import ProviderProfileCard from '../shared/ProviderProfileCard';
 
 async function suggestLocations(query, nearLat, nearLng) {
   if (!query || query.length < 3) return [];
@@ -194,6 +195,7 @@ function ServicePickCard({ svc, selected, isFav, onSelect, onToggleFav }) {
 }
 
 function SortedProviderList({ providers, roadsideForm, setRoadsideForm }) {
+  const [viewingProfile, setViewingProfile] = useState(null);
   const cLat = Number(roadsideForm.latitude) || 0;
   const cLng = Number(roadsideForm.longitude) || 0;
 
@@ -228,20 +230,33 @@ function SortedProviderList({ providers, roadsideForm, setRoadsideForm }) {
   }
 
   return (
-    <div className="provider-match-list">
-      {scored.map(({ svc, score, dist }, idx) => (
-        <div key={svc.id} style={{ position: 'relative' }}>
-          {idx === 0 && (
-            <span className="provider-recommended-badge">⭐ Recommended</span>
-          )}
-          <ProviderMatchCard
-            svc={svc}
-            selected={roadsideForm.providerServiceId === svc.id}
-            onSelect={() => handleSelect(svc, dist)}
-          />
-        </div>
-      ))}
-    </div>
+    <>
+      {viewingProfile && (
+        <ProviderProfileCard
+          providerId={viewingProfile}
+          onClose={() => setViewingProfile(null)}
+        />
+      )}
+      <div className="provider-match-list">
+        {scored.map(({ svc, score, dist }, idx) => (
+          <div key={svc.id} style={{ position: 'relative' }}>
+            {idx === 0 && <span className="provider-recommended-badge">⭐ Recommended</span>}
+            <ProviderMatchCard
+              svc={svc}
+              selected={roadsideForm.providerServiceId === svc.id}
+              onSelect={() => handleSelect(svc, dist)}
+            />
+            <button
+              type="button"
+              className="provider-view-profile-btn"
+              onClick={() => setViewingProfile(svc.providerId)}
+            >
+              View profile
+            </button>
+          </div>
+        ))}
+      </div>
+    </>
   );
 }
 

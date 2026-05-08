@@ -27,6 +27,7 @@ import { ServiceCatalogEntity } from './modules/service-catalog/service-catalog.
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { NotificationEntity } from './modules/notifications/notification.entity';
 import { RatingsModule } from './modules/ratings/ratings.module';
+import { ProvidersModule } from './modules/providers/providers.module';
 import { RatingEntity } from './modules/ratings/rating.entity';
 
 @Module({
@@ -79,6 +80,7 @@ import { RatingEntity } from './modules/ratings/rating.entity';
     ServiceCatalogModule,
     NotificationsModule,
     RatingsModule,
+    ProvidersModule,
   ],
   controllers: [AppController],
   providers: [

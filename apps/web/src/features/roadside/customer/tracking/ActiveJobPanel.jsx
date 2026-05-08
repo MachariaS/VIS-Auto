@@ -44,9 +44,19 @@ function StatusTimeline({ status }) {
   );
 }
 
+const CUSTOMER_CANCEL_REASONS = [
+  'Changed my mind',
+  'Taking too long to find a provider',
+  'Found help elsewhere',
+  'Entered wrong location',
+  'Other',
+];
+
 export default function ActiveJobPanel({ requestItem, token, onDone }) {
   const { tracking, trackingLoading } = useRequestTracking({ token, selectedRequest: requestItem });
   const [cancelling, setCancelling] = useState(false);
+  const [showCancelReasons, setShowCancelReasons] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
   const [etaDisplay, setEtaDisplay] = useState(null);
   const [acceptedBanner, setAcceptedBanner] = useState(false);
   const prevStatusRef = useRef(requestItem?.status);
@@ -91,9 +101,10 @@ export default function ActiveJobPanel({ requestItem, token, onDone }) {
   }, [tracking?.etaMinutes]);
 
   async function handleCancel() {
+    if (!showCancelReasons) { setShowCancelReasons(true); return; }
     setCancelling(true);
     try {
-      await request(`/roadside-requests/${requestItem.id}/cancel`, {}, 'POST', token);
+      await request(`/roadside-requests/${requestItem.id}/cancel`, { reason: cancelReason }, 'POST', token);
       onDone();
     } catch {
       setCancelling(false);
@@ -165,10 +176,41 @@ export default function ActiveJobPanel({ requestItem, token, onDone }) {
         </div>
       )}
 
-      {canCancel && (
-        <button className="ghost-button danger" type="button" onClick={handleCancel} disabled={cancelling}>
-          {cancelling ? 'Cancelling...' : 'Cancel request'}
+      {canCancel && !showCancelReasons && (
+        <button className="ghost-button danger" type="button" onClick={handleCancel}>
+          Cancel request
         </button>
+      )}
+
+      {canCancel && showCancelReasons && (
+        <div className="cancel-reason-picker">
+          <p className="cancel-reason-label">Why are you cancelling?</p>
+          <div className="cancel-reason-options">
+            {CUSTOMER_CANCEL_REASONS.map((r) => (
+              <button
+                key={r}
+                type="button"
+                className={`cancel-reason-chip ${cancelReason === r ? 'cancel-reason-chip--active' : ''}`}
+                onClick={() => setCancelReason(r)}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+          <div className="cancel-reason-actions">
+            <button type="button" className="ghost-button" onClick={() => setShowCancelReasons(false)}>
+              Keep request
+            </button>
+            <button
+              type="button"
+              className="ghost-button danger"
+              onClick={handleCancel}
+              disabled={cancelling}
+            >
+              {cancelling ? 'Cancelling…' : 'Confirm cancel'}
+            </button>
+          </div>
+        </div>
       )}
 
       {trackingLoading && <p className="active-job-loading">Updating…</p>}

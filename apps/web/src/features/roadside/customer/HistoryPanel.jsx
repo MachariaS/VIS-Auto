@@ -205,6 +205,14 @@ export default function HistoryPanel({ requests, token }) {
                     <strong>{selected.notes}</strong>
                   </article>
                 )}
+                {selected.status === 'cancelled' && selected.cancellationReason && (
+                  <article style={{ gridColumn: '1 / -1' }}>
+                    <label>Cancellation reason</label>
+                    <strong style={{ color: 'var(--danger, #ef4444)' }}>
+                      {selected.cancelledBy === 'provider' ? 'Provider: ' : ''}{selected.cancellationReason}
+                    </strong>
+                  </article>
+                )}
               </div>
 
               <Suspense fallback={<div className="map-loading">Loading map…</div>}>

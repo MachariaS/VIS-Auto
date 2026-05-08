@@ -77,6 +77,16 @@ export class RoadsideRequestEntity {
   @Column({ type: 'timestamp', nullable: true })
   providerLocationUpdatedAt?: Date;
 
+  // Cancellation
+  @Column({ nullable: true })
+  cancelledBy?: 'customer' | 'provider';
+
+  @Column({ type: 'text', nullable: true })
+  cancellationReason?: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  cancelledAt?: Date;
+
   // Auto-dispatch fields
   @Column({ nullable: true })
   catalogCode?: string;

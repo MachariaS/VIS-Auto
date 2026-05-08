@@ -23,8 +23,19 @@ const NEXT_LABEL = {
   in_progress: 'Mark complete',
 };
 
+const PROVIDER_CANCEL_REASONS = [
+  'Out of fuel / supplies',
+  'Too far from my location',
+  'Personal emergency',
+  'Vehicle breakdown',
+  'Customer unresponsive',
+  'Other',
+];
+
 export default function ProviderJobCard({ job, token, onStatusChange }) {
   const [updating, setUpdating] = useState(false);
+  const [showCancelReasons, setShowCancelReasons] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
   const watchIdRef = useRef(null);
   const broadcastIntervalRef = useRef(null);
   const socketRef = useSocket(token);
@@ -107,9 +118,10 @@ export default function ProviderJobCard({ job, token, onStatusChange }) {
   }
 
   async function handleDecline() {
+    if (!showCancelReasons) { setShowCancelReasons(true); return; }
     setUpdating(true);
     try {
-      await request(`/roadside-requests/${job.id}/status`, { status: 'cancelled' }, 'PATCH', token);
+      await request(`/roadside-requests/${job.id}/status`, { status: 'cancelled', cancellationReason: cancelReason }, 'PATCH', token);
       await onStatusChange();
     } catch {
       // fall through
@@ -177,8 +189,34 @@ export default function ProviderJobCard({ job, token, onStatusChange }) {
         </Suspense>
       )}
 
+      {showCancelReasons && (
+        <div className="cancel-reason-picker">
+          <p className="cancel-reason-label">Reason for cancelling?</p>
+          <div className="cancel-reason-options">
+            {PROVIDER_CANCEL_REASONS.map((r) => (
+              <button
+                key={r}
+                type="button"
+                className={`cancel-reason-chip ${cancelReason === r ? 'cancel-reason-chip--active' : ''}`}
+                onClick={() => setCancelReason(r)}
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+          <div className="cancel-reason-actions">
+            <button type="button" className="ghost-button" onClick={() => setShowCancelReasons(false)}>
+              Back
+            </button>
+            <button type="button" className="ghost-button danger" onClick={handleDecline} disabled={updating}>
+              {updating ? 'Cancelling…' : 'Confirm cancel'}
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="provider-job-card-actions">
-        {job.status === 'searching' && (
+        {job.status === 'searching' && !showCancelReasons && (
           <>
             <button type="button" className="primary-cta" onClick={handleAccept} disabled={updating}>
               {updating ? 'Accepting…' : 'Accept job'}
@@ -188,10 +226,15 @@ export default function ProviderJobCard({ job, token, onStatusChange }) {
             </button>
           </>
         )}
-        {(job.status === 'provider_assigned' || job.status === 'in_progress') && NEXT_STATUS[job.status] && (
-          <button type="button" className="primary-cta" onClick={handleNext} disabled={updating}>
-            {updating ? 'Updating…' : NEXT_LABEL[job.status]}
-          </button>
+        {(job.status === 'provider_assigned' || job.status === 'in_progress') && NEXT_STATUS[job.status] && !showCancelReasons && (
+          <>
+            <button type="button" className="primary-cta" onClick={handleNext} disabled={updating}>
+              {updating ? 'Updating…' : NEXT_LABEL[job.status]}
+            </button>
+            <button type="button" className="ghost-button danger" style={{ fontSize: 13 }} onClick={handleDecline} disabled={updating}>
+              Cancel job
+            </button>
+          </>
         )}
         {isActive && (
           <span className="gps-indicator"><span className="gps-pulse" />GPS broadcasting</span>

@@ -43,6 +43,7 @@ export class RoadsideRequestsController {
       req.user.sub,
       requestId,
       dto.status,
+      dto.cancellationReason,
     );
   }
 

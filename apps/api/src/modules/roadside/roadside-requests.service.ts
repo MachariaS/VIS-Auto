@@ -157,6 +157,7 @@ export class RoadsideRequestsService {
     providerId: string,
     requestId: string,
     status: ProviderManagedStatus,
+    cancellationReason?: string,
   ) {
     const request = await this.roadsideRequestsRepository.findOneBy({ id: requestId });
 
@@ -187,6 +188,11 @@ export class RoadsideRequestsService {
     }
 
     request.status = status;
+    if (status === 'cancelled') {
+      request.cancelledBy = 'provider';
+      request.cancelledAt = new Date();
+      request.cancellationReason = cancellationReason?.trim() || undefined;
+    }
 
     const saved = await this.roadsideRequestsRepository.save(request);
     const result = await this.toRoadsideRequest(saved, true);
@@ -221,6 +227,9 @@ export class RoadsideRequestsService {
     }
 
     request.status = 'cancelled';
+    request.cancelledBy = 'customer';
+    request.cancellationReason = reason?.trim() || undefined;
+    request.cancelledAt = new Date();
     const saved = await this.roadsideRequestsRepository.save(request);
 
     this.gateway?.pushStatusUpdate(request.id, this.toTrackingStatus(saved));

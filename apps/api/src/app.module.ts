@@ -17,6 +17,7 @@ import { RoadsideRequestsModule } from './modules/roadside/roadside-requests.mod
 import { LocationsModule } from './shared/locations/locations.module';
 import { UsersModule } from './shared/users/users.module';
 import { UserEntity } from './shared/users/user.entity';
+import { UserModuleConfigEntity } from './shared/users/user-module-config.entity';
 import { VehicleEntity } from './shared/vehicles/vehicle.entity';
 import { VendorIntegrationEntity } from './modules/vendors/vendor-integration.entity';
 import { VendorsModule } from './modules/vendors/vendors.module';
@@ -45,7 +46,7 @@ import { RatingEntity } from './modules/ratings/rating.entity';
             ssl: { rejectUnauthorized: false },
             extra: { max: 5, idleTimeoutMillis: 30000, connectionTimeoutMillis: 5000 },
             entities: [
-              UserEntity, VehicleEntity, ProviderServiceEntity,
+              UserEntity, UserModuleConfigEntity, VehicleEntity, ProviderServiceEntity,
               RoadsideRequestEntity, OtpChallengeEntity, PasswordResetEntity,
               ServiceCatalogEntity, VendorIntegrationEntity, NotificationEntity, RatingEntity,
             ],
@@ -60,7 +61,7 @@ import { RatingEntity } from './modules/ratings/rating.entity';
             database: process.env.DB_NAME || 'vis_assist',
             extra: { max: 10 },
             entities: [
-              UserEntity, VehicleEntity, ProviderServiceEntity,
+              UserEntity, UserModuleConfigEntity, VehicleEntity, ProviderServiceEntity,
               RoadsideRequestEntity, OtpChallengeEntity, PasswordResetEntity,
               ServiceCatalogEntity, VendorIntegrationEntity, NotificationEntity, RatingEntity,
             ],

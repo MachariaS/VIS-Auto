@@ -10,6 +10,7 @@ import { compare, hash } from 'bcrypt';
 import { DataSource, In, Repository } from 'typeorm';
 import { UpdateMyPasswordDto } from './dto/update-my-password.dto';
 import { UpdateMyProfileDto } from './dto/update-my-profile.dto';
+import { UserModuleConfigEntity } from './user-module-config.entity';
 import { UserEntity } from './user.entity';
 import { User } from './user.types';
 
@@ -27,6 +28,8 @@ export class UsersService {
   constructor(
     @InjectRepository(UserEntity)
     private readonly usersRepository: Repository<UserEntity>,
+    @InjectRepository(UserModuleConfigEntity)
+    private readonly moduleConfigRepo: Repository<UserModuleConfigEntity>,
     private readonly dataSource: DataSource,
   ) {}
 
@@ -87,10 +90,13 @@ export class UsersService {
 
   async getProfile(userId: string) {
     const user = await this.findRequiredUser(userId);
+    const moduleConfig = await this.moduleConfigRepo.findOneBy({ userId });
+    // Fall back to legacy user.profile for users who haven't saved via the new entity yet
+    const profile = moduleConfig?.config ?? user.profile ?? {};
 
     return {
       user: this.toSafeUser(user),
-      profile: user.profile || {},
+      profile,
     };
   }
 
@@ -113,12 +119,11 @@ export class UsersService {
     user.name = name;
     user.email = email;
     user.phone = phone;
-    user.profile = profile;
 
     // Extract provider base location from first branch address
     if (user.accountType === 'provider') {
-      const locations = (profile as Record<string, unknown>)?.business as Record<string, unknown>;
-      const firstLoc = Array.isArray(locations?.locations) ? (locations.locations as Record<string, unknown>[])[0] : null;
+      const business = (profile as Record<string, unknown>)?.business as Record<string, unknown>;
+      const firstLoc = Array.isArray(business?.locations) ? (business.locations as Record<string, unknown>[])[0] : null;
       const lat = firstLoc?.latitude ? Number(firstLoc.latitude) : null;
       const lng = firstLoc?.longitude ? Number(firstLoc.longitude) : null;
       if (lat && lng && !isNaN(lat) && !isNaN(lng)) {
@@ -129,9 +134,18 @@ export class UsersService {
 
     const saved = await this.usersRepository.save(user);
 
+    // Upsert into user_module_configs — this is now the authoritative store for profile settings
+    const existing_config = await this.moduleConfigRepo.findOneBy({ userId });
+    if (existing_config) {
+      existing_config.config = profile;
+      await this.moduleConfigRepo.save(existing_config);
+    } else {
+      await this.moduleConfigRepo.save(this.moduleConfigRepo.create({ userId, config: profile }));
+    }
+
     return {
       user: this.toSafeUser(saved),
-      profile: saved.profile || {},
+      profile,
     };
   }
 

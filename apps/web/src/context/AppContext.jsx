@@ -2,7 +2,6 @@ import { createContext, useContext, useEffect, useRef, useState } from 'react';
 import {
   SESSION_STORAGE_KEY,
   THEME_STORAGE_KEY,
-  PROFILE_STORAGE_KEY,
 } from '../shared/constants';
 import { getApiUrl, getDefaultProfile, mergeProfileSettings, request } from '../shared/helpers';
 
@@ -59,20 +58,10 @@ export function AppProvider({ children }) {
     }
 
     const storedTheme = window.localStorage.getItem(THEME_STORAGE_KEY);
-    const storedProfile = window.localStorage.getItem(PROFILE_STORAGE_KEY);
     const storedSession = window.localStorage.getItem(SESSION_STORAGE_KEY);
 
     if (storedTheme === 'light' || storedTheme === 'dark') {
       setTheme(storedTheme);
-    }
-
-    if (storedProfile) {
-      try {
-        const parsedProfile = JSON.parse(storedProfile);
-        setProfileSettings((current) => mergeProfileSettings(null, current, parsedProfile));
-      } catch {
-        window.localStorage.removeItem(PROFILE_STORAGE_KEY);
-      }
     }
 
     if (storedSession) {
@@ -144,11 +133,6 @@ export function AppProvider({ children }) {
   }, [dashboardTab, sessionReady, step, user]);
 
   useEffect(() => {
-    if (!sessionReady) return;
-    window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(profileSettings));
-  }, [profileSettings, sessionReady]);
-
-  useEffect(() => {
     if (!user) return;
     setProfileSettings((current) => mergeProfileSettings(user, current, { preferences: { theme } }));
   }, [theme, user]);
@@ -168,7 +152,6 @@ export function AppProvider({ children }) {
     setMessage('');
     setStep('entry');
     window.localStorage.removeItem(SESSION_STORAGE_KEY);
-    window.localStorage.removeItem(PROFILE_STORAGE_KEY);
     // Clear the httpOnly refresh token cookie on the server
     fetch(getApiUrl('/auth/logout'), { method: 'POST', credentials: 'include' }).catch(
       () => {},

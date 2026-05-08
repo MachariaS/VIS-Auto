@@ -1,7 +1,6 @@
 export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 export const SESSION_STORAGE_KEY = 'vis-assist-session';
 export const THEME_STORAGE_KEY = 'vis-assist-theme';
-export const PROFILE_STORAGE_KEY = 'vis-assist-profile';
 
 export const serviceTypeOptions = [
   { code: 'battery_jump', label: 'Battery Jump', short: 'Power restart' },

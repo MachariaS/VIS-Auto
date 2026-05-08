@@ -110,9 +110,12 @@ export class RoadsideRequestsService {
     private readonly roadsideRequestsRepository: Repository<RoadsideRequestEntity>,
   ) {}
 
-  async listByUser(userId: string) {
+  async listByUser(userId: string, vehicleId?: string) {
+    const where: Record<string, unknown> = { userId };
+    if (vehicleId) where.vehicleId = vehicleId;
+
     const requests = await this.roadsideRequestsRepository.find({
-      where: { userId },
+      where: where as never,
       order: { createdAt: 'DESC' },
       take: 100,
     });

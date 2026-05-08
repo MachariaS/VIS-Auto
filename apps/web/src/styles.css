@@ -5261,6 +5261,25 @@ button:disabled {
 
 .vd-history-list { display: grid; gap: 10px; }
 .vd-history-card { background: var(--bg-soft); border-radius: 12px; padding: 14px; display: grid; gap: 8px; }
+
+/* VIS job history table */
+.vd-job-history { display: grid; gap: 12px; }
+.vd-job-history-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.vd-job-table { border-radius: 10px; border: 1px solid var(--border-soft); overflow: hidden; }
+.vd-job-table-head {
+  display: grid; grid-template-columns: 80px 1fr 1fr 90px;
+  gap: 8px; padding: 8px 12px;
+  background: var(--bg-soft); font-size: 11px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-soft);
+}
+.vd-job-table-row {
+  display: grid; grid-template-columns: 80px 1fr 1fr 90px;
+  gap: 8px; padding: 10px 12px;
+  border-top: 1px solid var(--border-soft); font-size: 13px;
+}
+.vd-job-service { font-weight: 600; color: var(--text-main); }
+.vd-job-cost { font-weight: 600; color: var(--text-main); text-align: right; }
+.vd-job-table-row span:not(.vd-job-service):not(.vd-job-cost) { color: var(--text-soft); }
 .vd-history-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .vd-history-head strong { font-size: 14px; font-weight: 700; color: var(--text-main); display: block; }
 .vd-history-head span { font-size: 12px; color: var(--text-soft); }

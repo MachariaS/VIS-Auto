@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { formatCurrency, request } from '../../../shared/helpers';
 
 const SERVICE_TYPES = [
@@ -59,6 +59,19 @@ export default function VehicleDetailView({ vehicle, token, onBack }) {
   const [saved, setSaved] = useState(false);
   const [addingService, setAddingService] = useState(false);
   const [newRecord, setNewRecord] = useState(newServiceRecord());
+  const [jobHistory, setJobHistory] = useState([]);
+  const [jobHistoryLoading, setJobHistoryLoading] = useState(true);
+
+  // Fetch completed roadside jobs for this vehicle from the API
+  useEffect(() => {
+    if (!token || !vehicle.id) return;
+    request(`/roadside-requests?vehicleId=${vehicle.id}`, undefined, 'GET', token)
+      .then((data) => setJobHistory(
+        (Array.isArray(data) ? data : []).filter((r) => r.status === 'completed'),
+      ))
+      .catch(() => {})
+      .finally(() => setJobHistoryLoading(false));
+  }, [vehicle.id, token]);
 
   function update(section, field, value) {
     setProfile((prev) => ({ ...prev, [section]: { ...prev[section], [field]: value } }));
@@ -139,6 +152,14 @@ export default function VehicleDetailView({ vehicle, token, onBack }) {
           </strong>
         </div>
         <div className="vd-kpi">
+          <span>VIS jobs done</span>
+          <strong>{jobHistoryLoading ? '…' : jobHistory.length}</strong>
+        </div>
+        <div className="vd-kpi">
+          <span>Total spend</span>
+          <strong>{formatCurrency(jobHistory.reduce((s, r) => s + (r.estimatedPriceKsh || 0), 0))}</strong>
+        </div>
+        <div className="vd-kpi">
           <span>Insurance</span>
           <strong style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             {profile.insurance.insurer || '—'}
@@ -193,8 +214,49 @@ export default function VehicleDetailView({ vehicle, token, onBack }) {
           )}
         </Section>
 
-        {/* ── Service history ── */}
-        <Section title="Service history" icon="📋">
+        {/* ── Jobs via VIS Auto (from API) ── */}
+        <Section title="VIS Auto job history" icon="🔩">
+          {jobHistoryLoading ? (
+            <p style={{ color: 'var(--text-soft)', fontSize: 13 }}>Loading job history…</p>
+          ) : jobHistory.length === 0 ? (
+            <p style={{ color: 'var(--text-soft)', fontSize: 13 }}>
+              No completed VIS Auto jobs for this vehicle yet.
+            </p>
+          ) : (
+            <div className="vd-job-history">
+              <div className="vd-job-history-summary">
+                <div className="vd-kpi" style={{ background: 'var(--bg-soft)', borderRadius: 10, padding: '10px 14px' }}>
+                  <span>Jobs completed</span>
+                  <strong>{jobHistory.length}</strong>
+                </div>
+                <div className="vd-kpi" style={{ background: 'var(--bg-soft)', borderRadius: 10, padding: '10px 14px' }}>
+                  <span>Total spend</span>
+                  <strong>{formatCurrency(jobHistory.reduce((s, r) => s + (r.estimatedPriceKsh || 0), 0))}</strong>
+                </div>
+                <div className="vd-kpi" style={{ background: 'var(--bg-soft)', borderRadius: 10, padding: '10px 14px' }}>
+                  <span>Last serviced</span>
+                  <strong>{new Date(jobHistory[0].createdAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: 'numeric' })}</strong>
+                </div>
+              </div>
+              <div className="vd-job-table">
+                <div className="vd-job-table-head">
+                  <span>Date</span><span>Service</span><span>Provider</span><span>Cost</span>
+                </div>
+                {jobHistory.map((job) => (
+                  <div key={job.id} className="vd-job-table-row">
+                    <span>{new Date(job.createdAt).toLocaleDateString('en-KE', { day: 'numeric', month: 'short', year: '2-digit' })}</span>
+                    <span className="vd-job-service">{job.issueType}</span>
+                    <span>{job.providerName || '—'}</span>
+                    <span className="vd-job-cost">{formatCurrency(job.estimatedPriceKsh)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </Section>
+
+        {/* ── Manual service history ── */}
+        <Section title="Manual service records" icon="📋">
           {profile.serviceHistory.length > 0 && (
             <div className="vd-history-list">
               {profile.serviceHistory.map((r) => (

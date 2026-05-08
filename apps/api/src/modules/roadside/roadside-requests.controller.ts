@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Query, Request, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard, type AuthenticatedRequest } from '../../shared/auth/jwt-auth.guard';
 import { CreateRoadsideRequestDto } from './dto/create-roadside-request.dto';
 import { UpdateProviderLocationDto } from './dto/update-provider-location.dto';
@@ -11,8 +11,11 @@ export class RoadsideRequestsController {
   constructor(private readonly roadsideRequestsService: RoadsideRequestsService) {}
 
   @Get()
-  list(@Request() req: AuthenticatedRequest) {
-    return this.roadsideRequestsService.listByUser(req.user.sub);
+  list(
+    @Request() req: AuthenticatedRequest,
+    @Query('vehicleId') vehicleId?: string,
+  ) {
+    return this.roadsideRequestsService.listByUser(req.user.sub, vehicleId);
   }
 
   @Get('provider')

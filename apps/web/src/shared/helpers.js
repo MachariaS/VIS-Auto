@@ -1,4 +1,4 @@
-import { API_BASE, serviceImageByCode } from './constants';
+import { API_BASE, serviceImageByCode, vehicleBrandLogoByCode } from './constants';
 
 export function getApiUrl(path) {
   return `${API_BASE}${path}`;
@@ -71,7 +71,13 @@ export function getServiceImageUrl(service) {
     return '/assets/other_services.jpeg';
   }
 
-  return service.serviceImageUrl || serviceImageByCode[service.serviceCode] || '/assets/other_services.jpeg';
+  const code = service.catalogCode || service.serviceCode;
+  return (
+    service.serviceImageUrl ||
+    vehicleBrandLogoByCode[code] ||
+    serviceImageByCode[code] ||
+    '/assets/other_services.jpeg'
+  );
 }
 
 export function mergeUniqueList(list = [], additions = []) {

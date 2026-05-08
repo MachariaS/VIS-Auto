@@ -147,6 +147,20 @@ export const serviceImageByCode = {
   lockout: '/assets/lockout.jpeg',
 };
 
+// Vehicle brand logo thumbnails (Wikimedia Commons — stable CDN URLs)
+export const vehicleBrandLogoByCode = {
+  spec_toyota:    'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Toyota_carlogo.svg/200px-Toyota_carlogo.svg.png',
+  spec_nissan:    'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Nissan_logo.svg/200px-Nissan_logo.svg.png',
+  spec_subaru:    'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Subaru_2019_logo.svg/200px-Subaru_2019_logo.svg.png',
+  spec_bmw:       'https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/BMW.svg/200px-BMW.svg.png',
+  spec_mercedes:  'https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Mercedes-Logo.svg/200px-Mercedes-Logo.svg.png',
+  spec_land_rover:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Land_Rover_logo.svg/200px-Land_Rover_logo.svg.png',
+  spec_vw_group:  'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Volkswagen_logo_2019.svg/200px-Volkswagen_logo_2019.svg.png',
+  spec_japanese:  'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Toyota_carlogo.svg/200px-Toyota_carlogo.svg.png',
+  spec_european:  'https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Mercedes-Logo.svg/200px-Mercedes-Logo.svg.png',
+  spec_ev:        'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Tesla_logo.png/200px-Tesla_logo.png',
+};
+
 export const futureCustomerModules = [
   { title: 'Diagnostics', meta: 'Coming next', detail: 'Fault alerts and probable causes.' },
   { title: 'Live Fuel', meta: 'Planned', detail: 'Consumption trends and refill history.' },

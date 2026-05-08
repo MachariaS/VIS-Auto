@@ -5138,6 +5138,16 @@ button:disabled {
   background: var(--bg-soft);
 }
 
+.provider-manage-card-brand-logo {
+  width: 100%; min-height: 120px;
+  display: flex; align-items: center; justify-content: center;
+  background: #fff; padding: 16px;
+}
+.provider-manage-card-brand-logo img {
+  max-width: 100%; max-height: 80px;
+  object-fit: contain; display: block;
+}
+
 /* ══ Vehicle card enhancements ═══════════════════════════════════════════════ */
 .vehicle-card-alert { margin-left: 8px; font-size: 14px; }
 .vehicle-card-arrow { font-size: 20px; color: var(--text-soft); padding: 14px 14px 14px 0; display: flex; align-items: center; }

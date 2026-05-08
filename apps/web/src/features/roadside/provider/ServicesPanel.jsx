@@ -1,4 +1,4 @@
-import { CATEGORY_BY_CODE, initialProviderService, SERVICE_CATEGORY_ORDER, serviceTypeOptions } from '../../../shared/constants';
+import { CATEGORY_BY_CODE, initialProviderService, SERVICE_CATEGORY_ORDER, serviceTypeOptions, vehicleBrandLogoByCode } from '../../../shared/constants';
 import { formatCurrency, getServiceImageUrl } from '../../../shared/helpers';
 
 const SERVICE_ICON = {
@@ -223,11 +223,20 @@ function ServiceCard({ service, setEditingProviderServiceId, setProviderServiceF
   return (
     <article className="provider-manage-card">
       <div className="provider-manage-card-thumb">
-        {SERVICE_ICON[service.serviceCode] ? (
-          <div className="provider-manage-card-icon">{SERVICE_ICON[service.serviceCode]}</div>
-        ) : (
-          <img src={getServiceImageUrl(service)} alt={service.serviceName} className="provider-manage-card-img" />
-        )}
+        {(() => {
+          const code = service.catalogCode || service.serviceCode;
+          if (vehicleBrandLogoByCode[code]) {
+            return (
+              <div className="provider-manage-card-brand-logo">
+                <img src={vehicleBrandLogoByCode[code]} alt={service.serviceName} />
+              </div>
+            );
+          }
+          if (SERVICE_ICON[code]) {
+            return <div className="provider-manage-card-icon">{SERVICE_ICON[code]}</div>;
+          }
+          return <img src={getServiceImageUrl(service)} alt={service.serviceName} className="provider-manage-card-img" />;
+        })()}
       </div>
       <div className="provider-manage-card-body">
         <div className="provider-manage-card-head">

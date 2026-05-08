@@ -518,6 +518,7 @@ export default function CustomerDashboard() {
 
         {showNotifications ? (
           <NotificationsTray
+            key={`notif-${Date.now()}`}
             token={token}
             userAccountType="car_owner"
             onClose={() => setShowNotifications(false)}

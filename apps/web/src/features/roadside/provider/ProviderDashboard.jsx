@@ -117,6 +117,18 @@ export default function ProviderDashboard() {
     void loadProviderDashboard(token);
   }, [sessionReady, token]);
 
+  // Auto-clear notifications when visiting the tab they relate to.
+  // If a provider accepts all jobs without opening the tray, the count drops to 0
+  // the moment they navigate to that tab — because they're now aware of the activity.
+  useEffect(() => {
+    if (!token || unreadCount === 0) return;
+    const tabNotifType = dashboardTab === 'jobs' ? 'job_update' : dashboardTab === 'vendors' ? 'vendor' : null;
+    if (!tabNotifType) return;
+    request('/notifications/read-all', undefined, 'PATCH', token)
+      .then(() => setUnreadCount(0))
+      .catch(() => {});
+  }, [dashboardTab, token]);
+
   useEffect(() => {
     void requestNotificationPermission();
   }, []);
@@ -678,6 +690,7 @@ export default function ProviderDashboard() {
         <div className="provider-content-v2">
           {showNotifications ? (
             <NotificationsTray
+              key={`notif-${Date.now()}`}
               token={token}
               userAccountType="provider"
               onClose={() => setShowNotifications(false)}

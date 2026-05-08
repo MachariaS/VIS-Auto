@@ -262,6 +262,17 @@ export default function RequestPanel({
   const [step, setStep] = useState(1);
   const [serviceSearch, setServiceSearch] = useState('');
   const [providerSearch, setProviderSearch] = useState('');
+  // 'auto' = system dispatches to nearest; 'manual' = customer picks a provider
+  const [dispatchMode, setDispatchMode] = useState('auto');
+
+  // Keep roadsideForm in sync with dispatch mode
+  useEffect(() => {
+    if (dispatchMode === 'auto') {
+      setRoadsideForm((f) => ({ ...f, catalogCode: serviceFilter, providerServiceId: '' }));
+    } else {
+      setRoadsideForm((f) => ({ ...f, catalogCode: '' }));
+    }
+  }, [dispatchMode, serviceFilter]);
 
   const prefs = profileSettings?.preferences ?? {};
   const enabledModules = prefs.serviceModules ?? null; // null = all enabled
@@ -507,54 +518,85 @@ export default function RequestPanel({
       {/* ── Step 3: Provider ── */}
       {step === 3 && (
         <div className="request-step-panel">
-          <h3>Available providers</h3>
-          <p className="step-hint">
-            {filteredProviders.length} provider{filteredProviders.length !== 1 ? 's' : ''} for{' '}
-            {activeCard?.label || serviceFilter}
-          </p>
-
-          {/* Provider search */}
-          {filteredProviders.length > 1 && (
-            <div className="service-search-wrap">
-              <span className="service-search-icon">🔍</span>
-              <input
-                className="service-search-input"
-                placeholder="Search by provider name…"
-                value={providerSearch}
-                onChange={(e) => setProviderSearch(e.target.value)}
-              />
-              {providerSearch && (
-                <button type="button" className="service-search-clear" onClick={() => setProviderSearch('')}>✕</button>
-              )}
-            </div>
-          )}
+          <h3>How to assign a provider?</h3>
 
           {filteredProviders.length === 0 ? (
             <div className="cust-empty">
               <span style={{ fontSize: 32 }}>😴</span>
               <p><strong>No providers currently online</strong></p>
-              <p style={{ fontSize: 13 }}>All providers for this service are offline right now. Try a different service or check back shortly.</p>
-              <button className="ghost-button" type="button" onClick={() => setStep(1)}>
-                ← Change service
-              </button>
+              <p style={{ fontSize: 13 }}>All providers for this service are offline. Try a different service or check back shortly.</p>
+              <button className="ghost-button" type="button" onClick={() => setStep(1)}>← Change service</button>
             </div>
           ) : (
-            <SortedProviderList
-              providers={filteredProviders.filter((p) =>
-                !providerSearch || p.providerName.toLowerCase().includes(providerSearch.toLowerCase())
+            <>
+              {/* Auto-dispatch card */}
+              <button
+                type="button"
+                className={`dispatch-mode-card ${dispatchMode === 'auto' ? 'dispatch-mode-card--active' : ''}`}
+                onClick={() => setDispatchMode('auto')}
+              >
+                <div className="dispatch-mode-card-head">
+                  <span className="dispatch-mode-icon">⚡</span>
+                  <div>
+                    <strong>Auto-dispatch</strong>
+                    <span className="dispatch-recommended-badge">Recommended</span>
+                  </div>
+                  {dispatchMode === 'auto' && <span className="dispatch-check">✓</span>}
+                </div>
+                <p className="dispatch-mode-desc">
+                  We match you with the nearest available provider. {filteredProviders.length} provider{filteredProviders.length !== 1 ? 's' : ''} ready — typical response under 2 minutes.
+                </p>
+              </button>
+
+              {/* Manual pick card */}
+              <button
+                type="button"
+                className={`dispatch-mode-card ${dispatchMode === 'manual' ? 'dispatch-mode-card--active' : ''}`}
+                onClick={() => setDispatchMode('manual')}
+              >
+                <div className="dispatch-mode-card-head">
+                  <span className="dispatch-mode-icon">🔍</span>
+                  <div><strong>Choose manually</strong></div>
+                  {dispatchMode === 'manual' && <span className="dispatch-check">✓</span>}
+                </div>
+                <p className="dispatch-mode-desc">Browse and pick a specific provider from the list.</p>
+              </button>
+
+              {/* Provider list — only in manual mode */}
+              {dispatchMode === 'manual' && (
+                <>
+                  {filteredProviders.length > 1 && (
+                    <div className="service-search-wrap">
+                      <span className="service-search-icon">🔍</span>
+                      <input
+                        className="service-search-input"
+                        placeholder="Search by provider name…"
+                        value={providerSearch}
+                        onChange={(e) => setProviderSearch(e.target.value)}
+                      />
+                      {providerSearch && (
+                        <button type="button" className="service-search-clear" onClick={() => setProviderSearch('')}>✕</button>
+                      )}
+                    </div>
+                  )}
+                  <SortedProviderList
+                    providers={filteredProviders.filter((p) =>
+                      !providerSearch || p.providerName.toLowerCase().includes(providerSearch.toLowerCase())
+                    )}
+                    roadsideForm={roadsideForm}
+                    setRoadsideForm={setRoadsideForm}
+                  />
+                </>
               )}
-              roadsideForm={roadsideForm}
-              setRoadsideForm={setRoadsideForm}
-            />
+            </>
           )}
+
           <div className="step-nav">
-            <button className="ghost-button" type="button" onClick={() => setStep(2)}>
-              ← Back
-            </button>
+            <button className="ghost-button" type="button" onClick={() => setStep(2)}>← Back</button>
             <button
               className="primary-cta"
               type="button"
-              disabled={!roadsideForm.providerServiceId}
+              disabled={filteredProviders.length === 0 || (dispatchMode === 'manual' && !roadsideForm.providerServiceId)}
               onClick={() => setStep(4)}
             >
               Next — Confirm
@@ -574,7 +616,11 @@ export default function RequestPanel({
             </div>
             <div className="confirm-row">
               <span>Provider</span>
-              <strong>{selectedProviderService?.providerName || '—'}</strong>
+              <strong>
+                {dispatchMode === 'auto'
+                  ? `Auto-match — nearest of ${filteredProviders.length} available`
+                  : selectedProviderService?.providerName || '—'}
+              </strong>
             </div>
             <div className="confirm-row">
               <span>Location</span>
@@ -599,19 +645,21 @@ export default function RequestPanel({
             </select>
           </label>
 
-          <label>
-            <span>Distance to provider (km) — auto-estimated, tap to correct</span>
-            <input
-              type="number"
-              min="0.1"
-              step="0.1"
-              value={roadsideForm.distanceKm || ''}
-              onChange={(e) =>
-                setRoadsideForm({ ...roadsideForm, distanceKm: e.target.value })
-              }
-              required
-            />
-          </label>
+          {dispatchMode === 'manual' && (
+            <label>
+              <span>Distance to provider (km) — auto-estimated, tap to correct</span>
+              <input
+                type="number"
+                min="0.1"
+                step="0.1"
+                value={roadsideForm.distanceKm || ''}
+                onChange={(e) =>
+                  setRoadsideForm({ ...roadsideForm, distanceKm: e.target.value })
+                }
+                required
+              />
+            </label>
+          )}
 
           {isFuelDelivery && (
             <div className="soft-block">
@@ -681,10 +729,12 @@ export default function RequestPanel({
             />
           </label>
 
-          <div className="estimate-band">
-            <span>Estimated total</span>
-            <strong>{formatCurrency(totalEstimate)}</strong>
-          </div>
+          {dispatchMode === 'manual' && totalEstimate > 0 && (
+            <div className="estimate-band">
+              <span>Estimated total</span>
+              <strong>{formatCurrency(totalEstimate)}</strong>
+            </div>
+          )}
 
           <div className="step-nav">
             <button className="ghost-button" type="button" onClick={() => setStep(3)}>

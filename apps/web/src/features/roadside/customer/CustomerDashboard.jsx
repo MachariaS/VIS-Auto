@@ -113,6 +113,9 @@ export default function CustomerDashboard() {
   }, [vehicles]);
 
   useEffect(() => {
+    // Auto mode — system picks the provider; don't interfere with providerServiceId
+    if (roadsideForm.catalogCode) return;
+
     const filtered = providerCatalog.filter((item) => (item.catalogCode || item.serviceCode) === serviceFilter);
     if (filtered.length === 0) {
       if (roadsideForm.providerServiceId) {
@@ -124,7 +127,7 @@ export default function CustomerDashboard() {
     if (!current) {
       setRoadsideForm((existing) => ({ ...existing, providerServiceId: filtered[0].id }));
     }
-  }, [providerCatalog, roadsideForm.providerServiceId, serviceFilter]);
+  }, [providerCatalog, roadsideForm.catalogCode, roadsideForm.providerServiceId, serviceFilter]);
 
   useEffect(() => {
     function handlePointerDown(event) {
@@ -257,35 +260,36 @@ export default function CustomerDashboard() {
     event.preventDefault();
     setLoading(true);
 
-    const selectedProviderService = providerCatalog.find(
-      (item) => item.id === roadsideForm.providerServiceId,
-    );
+    const isAutoDispatch = !!roadsideForm.catalogCode;
+    const selectedProviderService = isAutoDispatch
+      ? null
+      : providerCatalog.find((item) => item.id === roadsideForm.providerServiceId);
     const selectedFuelLitres =
       roadsideForm.fuelLitres === 'custom'
         ? Number(roadsideForm.customFuelLitres || 0)
         : Number(roadsideForm.fuelLitres || 0);
 
+    const effectiveCode = isAutoDispatch
+      ? roadsideForm.catalogCode
+      : (selectedProviderService?.catalogCode || selectedProviderService?.serviceCode);
+    const isFuelDelivery = effectiveCode === 'fuel_delivery';
+
     try {
       const payload = {
         vehicleId: roadsideForm.vehicleId,
-        providerServiceId: roadsideForm.providerServiceId,
-        distanceKm: Number(roadsideForm.distanceKm),
+        ...(isAutoDispatch
+          ? { catalogCode: roadsideForm.catalogCode, distanceKm: 8 }
+          : { providerServiceId: roadsideForm.providerServiceId, distanceKm: Number(roadsideForm.distanceKm) }),
         latitude: Number(roadsideForm.latitude),
         longitude: Number(roadsideForm.longitude),
         address: roadsideForm.address,
         landmark: roadsideForm.landmark,
         notes: roadsideForm.notes,
-        fuelLitres:
-          (selectedProviderService?.catalogCode || selectedProviderService?.serviceCode) === 'fuel_delivery' ? selectedFuelLitres : undefined,
-        fuelType:
-          (selectedProviderService?.catalogCode || selectedProviderService?.serviceCode) === 'fuel_delivery'
-            ? roadsideForm.fuelType
-            : undefined,
-        gasolineGrade:
-          (selectedProviderService?.catalogCode || selectedProviderService?.serviceCode) === 'fuel_delivery' &&
-          roadsideForm.fuelType === 'gasoline'
-            ? roadsideForm.gasolineGrade
-            : undefined,
+        fuelLitres: isFuelDelivery ? selectedFuelLitres : undefined,
+        fuelType: isFuelDelivery ? roadsideForm.fuelType : undefined,
+        gasolineGrade: isFuelDelivery && roadsideForm.fuelType === 'gasoline'
+          ? roadsideForm.gasolineGrade
+          : undefined,
       };
 
       const newRequest = await request('/roadside-requests', payload, 'POST', token);
@@ -296,7 +300,9 @@ export default function CustomerDashboard() {
       addToast({
         type: 'success',
         title: 'Request created',
-        message: `Estimated total ${formatCurrency(newRequest.estimatedPriceKsh)}.`,
+        message: isAutoDispatch
+          ? 'Finding you the nearest provider…'
+          : `Estimated total ${formatCurrency(newRequest.estimatedPriceKsh)}.`,
       });
     } catch (error) {
       addToast({

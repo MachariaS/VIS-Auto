@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { CreateVehicleDto } from './dto/create-vehicle.dto';
@@ -67,7 +67,7 @@ export class VehiclesService {
 
   async updateProfile(userId: string, vehicleId: string, profile: Record<string, unknown>) {
     const vehicle = await this.vehiclesRepository.findOneBy({ id: vehicleId, userId });
-    if (!vehicle) throw new Error('Vehicle not found.');
+    if (!vehicle) throw new NotFoundException('Vehicle not found.');
     vehicle.profile = profile;
     const saved = await this.vehiclesRepository.save(vehicle);
     return { ...saved, createdAt: saved.createdAt.toISOString() };

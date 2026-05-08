@@ -1,4 +1,5 @@
 import { lazy, Suspense, useEffect, useState } from 'react';
+import { getApiUrl } from '../../../../shared/helpers';
 
 const LiveMap = lazy(() => import('./LiveMap'));
 
@@ -11,6 +12,7 @@ function haversineKm(lat1, lon1, lat2, lon2) {
   return R * 2 * Math.asin(Math.sqrt(a));
 }
 
+// Route reverse geocode through the API backend (respects User-Agent policy + caches)
 const addrCache = {};
 function useAddress(lat, lng) {
   const [label, setLabel] = useState('');
@@ -18,13 +20,14 @@ function useAddress(lat, lng) {
     if (!lat || !lng) return;
     const key = `${Number(lat).toFixed(3)},${Number(lng).toFixed(3)}`;
     if (addrCache[key]) { setLabel(addrCache[key]); return; }
-    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`)
+    fetch(getApiUrl('/locations/reverse'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lat: Number(lat), lng: Number(lng) }),
+    })
       .then((r) => r.json())
       .then((d) => {
-        const a = d?.address;
-        const result = [a?.road || a?.amenity, a?.suburb || a?.city || a?.town].filter(Boolean).join(', ')
-          || d?.display_name?.split(',').slice(0, 2).join(',').trim()
-          || `${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}`;
+        const result = d?.address || `${Number(lat).toFixed(4)}, ${Number(lng).toFixed(4)}`;
         addrCache[key] = result;
         setLabel(result);
       })

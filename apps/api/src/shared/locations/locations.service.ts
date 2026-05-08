@@ -115,6 +115,29 @@ export class LocationsService {
     }
   }
 
+  async reverseGeocode(lat: number, lng: number): Promise<{ address: string; road: string; town: string }> {
+    try {
+      const res = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&addressdetails=1`,
+        { headers: { 'User-Agent': 'VIS-Auto/1.0 (macharias@techihub.io)' } },
+      );
+      const data = await res.json() as Record<string, unknown>;
+      const addr = (data.address ?? {}) as Record<string, string>;
+      const parts = [
+        addr.amenity || addr.building || addr.shop || addr.road,
+        addr.suburb || addr.neighbourhood,
+        addr.city || addr.town || addr.village,
+      ].filter(Boolean).slice(0, 3).join(', ');
+      return {
+        address: parts || (data.display_name as string)?.split(',').slice(0, 3).join(',').trim() || `${lat.toFixed(4)}, ${lng.toFixed(4)}`,
+        road: addr.road || addr.pedestrian || '',
+        town: addr.city || addr.town || addr.village || addr.suburb || '',
+      };
+    } catch {
+      return { address: `${lat.toFixed(4)}, ${lng.toFixed(4)}`, road: '', town: '' };
+    }
+  }
+
   async resolve(dto: LocationResolveDto) {
     const googleApiKey = this.configService.get<string>('GOOGLE_MAPS_API_KEY');
     const expandedMapUrl = dto.mapUrl

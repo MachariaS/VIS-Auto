@@ -13,9 +13,13 @@ const blueIcon = new L.Icon({
   iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41],
 });
 
+// VITE_OSRM_URL lets you self-host OSRM or point at a paid instance.
+// Falls back to the public demo server (no SLA — acceptable for dev/early prod).
+const OSRM_BASE = import.meta.env.VITE_OSRM_URL ?? 'https://router.project-osrm.org';
+
 async function fetchRoute(fromLat, fromLng, toLat, toLng) {
   try {
-    const url = `https://router.project-osrm.org/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`;
+    const url = `${OSRM_BASE}/route/v1/driving/${fromLng},${fromLat};${toLng},${toLat}?overview=full&geometries=geojson`;
     const res = await fetch(url);
     const data = await res.json();
     if (data.routes?.[0]) {

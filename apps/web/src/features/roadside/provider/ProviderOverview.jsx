@@ -45,6 +45,14 @@ function AvailabilityToggle({ user, token }) {
   );
 }
 
+const TAB_STATUSES = {
+  All: null,
+  Ongoing: ['provider_assigned', 'in_progress'],
+  Pending: ['searching'],
+  Completed: ['completed'],
+  Cancelled: ['cancelled'],
+};
+
 export default function ProviderOverview({
   user,
   token,
@@ -54,6 +62,7 @@ export default function ProviderOverview({
   onManageServices,
 }) {
   const [stats, setStats] = useState(null);
+  const [orderTab, setOrderTab] = useState('All');
 
   useEffect(() => {
     if (!token) return;
@@ -127,18 +136,21 @@ export default function ProviderOverview({
     },
   ];
 
-  const orderRows = requests.slice(0, 5).map((item, index) => ({
+  const allOrderRows = requests.map((item, index) => ({
     code: `#${String(index + 2632)}`,
     title: item.issueType || 'Roadside service',
     meta: item.providerName || user?.name || 'Provider',
     date: new Date(item.createdAt).toLocaleDateString('en-KE'),
     amount: formatCurrency(Number(item.estimatedPriceKsh || 0)),
+    rawStatus: item.status,
     status:
       item.status === 'completed'
         ? 'Completed'
         : item.status === 'cancelled'
           ? 'Cancelled'
-          : 'Ongoing',
+          : item.status === 'searching'
+            ? 'Pending'
+            : 'Ongoing',
     tone:
       item.status === 'completed'
         ? 'completed'
@@ -146,6 +158,11 @@ export default function ProviderOverview({
           ? 'pending'
           : 'ongoing',
   }));
+
+  const tabStatuses = TAB_STATUSES[orderTab];
+  const filteredRows = (
+    tabStatuses ? allOrderRows.filter((r) => tabStatuses.includes(r.rawStatus)) : allOrderRows
+  ).slice(0, 5);
 
   const showcaseServices =
     providerServices.length > 0
@@ -384,11 +401,12 @@ export default function ProviderOverview({
             <h4>Orders</h4>
           </div>
           <div className="provider-order-tabs-v2">
-            {['All', 'Ongoing', 'Pending', 'Completed', 'Cancelled'].map((tab, index) => (
+            {['All', 'Ongoing', 'Pending', 'Completed', 'Cancelled'].map((tab) => (
               <button
                 key={tab}
-                className={index === 0 ? 'provider-order-tab-active-v2' : 'provider-order-tab-v2'}
+                className={tab === orderTab ? 'provider-order-tab-active-v2' : 'provider-order-tab-v2'}
                 type="button"
+                onClick={() => setOrderTab(tab)}
               >
                 {tab}
               </button>
@@ -396,13 +414,13 @@ export default function ProviderOverview({
           </div>
 
           <div className="provider-order-list-v2">
-            {orderRows.length === 0 ? (
+            {filteredRows.length === 0 ? (
               <article className="provider-note-v2">
                 <strong>No orders yet.</strong>
                 <p>Orders from customers will appear here as soon as they are created.</p>
               </article>
             ) : (
-              orderRows.map((order) => (
+              filteredRows.map((order) => (
                 <article className="provider-order-card-v2" key={order.code}>
                   <div className="provider-order-thumb-v2" />
                   <div className="provider-order-content-v2">

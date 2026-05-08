@@ -230,6 +230,30 @@ export class ProviderServicesService {
     return service ? this.toDto(service) : null;
   }
 
+  async findByCatalogCode(catalogCode: string, excludeProviderIds: string[] = []): Promise<ProviderService[]> {
+    const services = await this.repo
+      .createQueryBuilder('ps')
+      .innerJoin(UserEntity, 'u', 'u.id::text = ps."providerId"')
+      .where('ps."catalogCode" = :code', { code: catalogCode })
+      .andWhere('u."isOnline" = true')
+      .andWhere('ps."isAcceptingJobs" = true')
+      .andWhere('ps.visibility = :v', { v: 'public' })
+      .getMany();
+
+    const filtered = excludeProviderIds.length
+      ? services.filter((s) => !excludeProviderIds.includes(s.providerId))
+      : services;
+
+    const providerIds = [...new Set(filtered.map((s) => s.providerId))];
+    const providers = await this.usersService.findByIds(providerIds);
+    const providerMap = new Map(providers.map((p) => [p.id, p as unknown as { baseLat?: number; baseLng?: number }]));
+
+    return filtered.map((s) => {
+      const prov = providerMap.get(s.providerId);
+      return this.toDto(s, prov?.baseLat ?? null, prov?.baseLng ?? null);
+    });
+  }
+
   private async validateProviderAccount(providerId: string) {
     const provider = await this.usersService.findById(providerId);
     if (!provider) throw new NotFoundException('Provider account not found.');

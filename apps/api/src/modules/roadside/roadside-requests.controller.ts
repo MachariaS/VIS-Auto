@@ -46,6 +46,11 @@ export class RoadsideRequestsController {
     );
   }
 
+  @Post(':id/decline')
+  declineJob(@Request() req: AuthenticatedRequest, @Param('id') requestId: string) {
+    return this.roadsideRequestsService.declineByProvider(req.user.sub, requestId);
+  }
+
   @Patch(':id/provider-location')
   updateProviderLocation(
     @Request() req: AuthenticatedRequest,

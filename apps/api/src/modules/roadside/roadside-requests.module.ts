@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AuthModule } from '../../shared/auth/auth.module';
 import { ProviderServicesModule } from './services/provider-services.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -7,10 +8,12 @@ import { VehiclesModule } from '../../shared/vehicles/vehicles.module';
 import { RoadsideRequestsController } from './roadside-requests.controller';
 import { RoadsideRequestEntity } from './roadside-request.entity';
 import { RoadsideRequestsService } from './roadside-requests.service';
+import { RoadsideGateway } from './roadside.gateway';
 import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
   imports: [
+    ScheduleModule.forRoot(),
     AuthModule,
     UsersModule,
     VehiclesModule,
@@ -19,7 +22,7 @@ import { NotificationsModule } from '../notifications/notifications.module';
     TypeOrmModule.forFeature([RoadsideRequestEntity]),
   ],
   controllers: [RoadsideRequestsController],
-  providers: [RoadsideRequestsService],
-  exports: [RoadsideRequestsService],
+  providers: [RoadsideRequestsService, RoadsideGateway],
+  exports: [RoadsideRequestsService, RoadsideGateway],
 })
 export class RoadsideRequestsModule {}

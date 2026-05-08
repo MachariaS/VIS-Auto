@@ -1,5 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { formatCurrency, request } from '../../../shared/helpers';
+
+const WINDOW_SECS = 120;
 
 function haversineKm(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -12,9 +14,41 @@ function haversineKm(lat1, lon1, lat2, lon2) {
 
 function EtaBadge({ distKm }) {
   if (!distKm) return null;
-  const mins = Math.max(1, Math.ceil(distKm * 2)); // ~30 km/h city
+  const mins = Math.max(1, Math.ceil(distKm * 2));
+  return <span className="incoming-eta-badge">~{mins} min away</span>;
+}
+
+function CountdownBar({ dispatchedAt }) {
+  const [secsLeft, setSecsLeft] = useState(() => {
+    if (!dispatchedAt) return WINDOW_SECS;
+    const elapsed = Math.floor((Date.now() - new Date(dispatchedAt).getTime()) / 1000);
+    return Math.max(0, WINDOW_SECS - elapsed);
+  });
+
+  const intervalRef = useRef(null);
+
+  useEffect(() => {
+    intervalRef.current = window.setInterval(() => {
+      setSecsLeft((s) => Math.max(0, s - 1));
+    }, 1000);
+    return () => window.clearInterval(intervalRef.current);
+  }, []);
+
+  const pct = Math.round((secsLeft / WINDOW_SECS) * 100);
+  const urgent = secsLeft <= 30;
+
   return (
-    <span className="incoming-eta-badge">~{mins} min away</span>
+    <div className="incoming-countdown">
+      <div className="incoming-countdown-track">
+        <div
+          className={`incoming-countdown-fill ${urgent ? 'incoming-countdown-fill--urgent' : ''}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className={`incoming-countdown-label ${urgent ? 'incoming-countdown-label--urgent' : ''}`}>
+        {secsLeft}s to respond
+      </span>
+    </div>
   );
 }
 
@@ -39,7 +73,8 @@ export default function IncomingJobAlert({ job, token, providerBaseLat, provider
   async function handleDecline() {
     setDeclining(true);
     try {
-      await request(`/roadside-requests/${job.id}/status`, { status: 'cancelled' }, 'PATCH', token);
+      // Decline triggers re-dispatch to next provider (does NOT cancel the job)
+      await request(`/roadside-requests/${job.id}/decline`, undefined, 'POST', token);
       await onStatusChange();
     } catch {
       setDeclining(false);
@@ -60,6 +95,8 @@ export default function IncomingJobAlert({ job, token, providerBaseLat, provider
           <span>Estimated</span>
         </div>
       </div>
+
+      <CountdownBar dispatchedAt={job.dispatchedAt} />
 
       <div className="incoming-job-alert-details">
         {job.address && (

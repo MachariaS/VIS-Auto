@@ -1,5 +1,6 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import { formatCurrency, request } from '../../../shared/helpers';
+import { useSocket } from '../shared/useSocket';
 
 const LiveMap = lazy(() => import('../customer/tracking/LiveMap'));
 
@@ -26,7 +27,15 @@ export default function ProviderJobCard({ job, token, onStatusChange }) {
   const [updating, setUpdating] = useState(false);
   const watchIdRef = useRef(null);
   const broadcastIntervalRef = useRef(null);
+  const socketRef = useSocket(token);
   const isActive = job.status === 'provider_assigned' || job.status === 'in_progress';
+
+  // Join the request room so this provider card receives WS status pushes
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket || !job.id) return;
+    socket.emit('join-request', job.id);
+  }, [job.id, socketRef]);
 
   useEffect(() => {
     if (!isActive) return stopGps;
@@ -62,6 +71,17 @@ export default function ProviderJobCard({ job, token, onStatusChange }) {
   }
 
   async function broadcastLocation(latitude, longitude) {
+    // Send via WebSocket for real-time (customer map updates instantly)
+    const socket = socketRef.current;
+    if (socket?.connected) {
+      socket.emit('provider-location', {
+        requestId: job.id,
+        providerId: job.providerId,
+        latitude,
+        longitude,
+      });
+    }
+    // Always persist via REST so polling fallback and ETA recalc stay current
     try {
       await request(
         `/roadside-requests/${job.id}/provider-location`,
@@ -70,7 +90,7 @@ export default function ProviderJobCard({ job, token, onStatusChange }) {
         token,
       );
     } catch {
-      // location update failures are non-fatal
+      // non-fatal
     }
   }
 

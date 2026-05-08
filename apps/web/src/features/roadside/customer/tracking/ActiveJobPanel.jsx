@@ -3,6 +3,23 @@ import { formatCurrency, request } from '../../../../shared/helpers';
 import useRequestTracking from '../hooks/useRequestTracking';
 import TrackingMapCard from './TrackingMapCard';
 
+function SearchingDots() {
+  const [dots, setDots] = useState('.');
+  useEffect(() => {
+    const id = setInterval(() => setDots((d) => d.length >= 3 ? '.' : d + '.'), 500);
+    return () => clearInterval(id);
+  }, []);
+  return (
+    <div className="active-job-searching">
+      <div className="active-job-searching-pulse" />
+      <div>
+        <strong>Finding you a provider{dots}</strong>
+        <p>We're matching you with the nearest available provider. This usually takes under 2 minutes.</p>
+      </div>
+    </div>
+  );
+}
+
 const STATUS_STEPS = [
   { key: 'searching', label: 'Searching' },
   { key: 'provider_assigned', label: 'Provider assigned' },
@@ -113,7 +130,9 @@ export default function ActiveJobPanel({ requestItem, token, onDone }) {
 
       <StatusTimeline status={currentStatus} />
 
-      {etaDisplay !== null && currentStatus !== 'completed' && currentStatus !== 'cancelled' && (
+      {currentStatus === 'searching' && <SearchingDots />}
+
+      {etaDisplay !== null && currentStatus !== 'completed' && currentStatus !== 'cancelled' && currentStatus !== 'searching' && (
         <div className="active-job-eta">
           <span className="eta-value">{etaDisplay}</span>
           <span className="eta-label">min ETA</span>

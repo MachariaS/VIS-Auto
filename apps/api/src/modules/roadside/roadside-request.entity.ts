@@ -77,6 +77,22 @@ export class RoadsideRequestEntity {
   @Column({ type: 'timestamp', nullable: true })
   providerLocationUpdatedAt?: Date;
 
+  // Auto-dispatch fields
+  @Column({ nullable: true })
+  catalogCode?: string;
+
+  @Column({ nullable: true })
+  dispatchedProviderId?: string;
+
+  @Column({ type: 'timestamp', nullable: true })
+  dispatchedAt?: Date;
+
+  @Column({ type: 'int', default: 0 })
+  dispatchAttempts!: number;
+
+  @Column({ type: 'jsonb', default: '[]' })
+  triedProviderIds!: string[];
+
   @CreateDateColumn()
   createdAt!: Date;
 }

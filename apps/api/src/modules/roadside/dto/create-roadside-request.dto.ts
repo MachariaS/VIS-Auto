@@ -14,8 +14,13 @@ export class CreateRoadsideRequestDto {
   @IsUUID()
   vehicleId!: string;
 
+  @IsOptional()
   @IsUUID()
-  providerServiceId!: string;
+  providerServiceId?: string;
+
+  @IsOptional()
+  @IsString()
+  catalogCode?: string;
 
   @IsNumber()
   @Min(0.1)

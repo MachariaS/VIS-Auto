@@ -1,5 +1,6 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { Cron } from '@nestjs/schedule';
 import { Repository } from 'typeorm';
 import { ProviderServicesService } from './services/provider-services.service';
 import { UsersService } from '../../shared/users/users.service';
@@ -8,6 +9,7 @@ import { CreateRoadsideRequestDto } from './dto/create-roadside-request.dto';
 import { RoadsideRequestEntity } from './roadside-request.entity';
 import { UpdateProviderLocationDto } from './dto/update-provider-location.dto';
 import { NotificationsService } from '../notifications/notifications.service';
+import { RoadsideGateway } from './roadside.gateway';
 
 const JOB_STATUS_COPY: Record<string, { title: string; body: string }> = {
   provider_assigned: {
@@ -99,8 +101,12 @@ type ProviderManagedStatus =
   | 'completed'
   | 'cancelled';
 
+const DISPATCH_WINDOW_MS = 120_000; // 2 minutes
+
 @Injectable()
 export class RoadsideRequestsService {
+  private readonly logger = new Logger(RoadsideRequestsService.name);
+
   constructor(
     private readonly usersService: UsersService,
     private readonly vehiclesService: VehiclesService,
@@ -108,6 +114,7 @@ export class RoadsideRequestsService {
     private readonly notificationsService: NotificationsService,
     @InjectRepository(RoadsideRequestEntity)
     private readonly roadsideRequestsRepository: Repository<RoadsideRequestEntity>,
+    @Optional() private readonly gateway: RoadsideGateway,
   ) {}
 
   async listByUser(userId: string, vehicleId?: string) {
@@ -201,7 +208,96 @@ export class RoadsideRequestsService {
     return this.toRoadsideRequest(saved, true);
   }
 
+  async declineByProvider(providerId: string, requestId: string) {
+    const request = await this.roadsideRequestsRepository.findOneBy({ id: requestId });
+    if (!request) throw new NotFoundException('Roadside request not found.');
+    if (request.dispatchedProviderId !== providerId) throw new NotFoundException('Job not assigned to this provider.');
+
+    request.dispatchedProviderId = undefined;
+    request.dispatchedAt = undefined;
+    request.triedProviderIds = [...(request.triedProviderIds ?? []), providerId];
+    await this.roadsideRequestsRepository.save(request);
+
+    // Re-dispatch immediately to next closest provider
+    void this.dispatchToNearest(request);
+    return { declined: true };
+  }
+
+  // Cron: every 30 seconds — expire offers that timed out and re-dispatch
+  @Cron('*/30 * * * * *')
+  async redispatchTimedOutJobs() {
+    const cutoff = new Date(Date.now() - DISPATCH_WINDOW_MS);
+    const stalled = await this.roadsideRequestsRepository
+      .createQueryBuilder('r')
+      .where('r.status = :status', { status: 'searching' })
+      .andWhere('r."dispatchedProviderId" IS NOT NULL')
+      .andWhere('r."dispatchedAt" < :cutoff', { cutoff })
+      .getMany();
+
+    for (const req of stalled) {
+      req.triedProviderIds = [...(req.triedProviderIds ?? []), req.dispatchedProviderId!];
+      req.dispatchedProviderId = undefined;
+      req.dispatchedAt = undefined;
+      await this.roadsideRequestsRepository.save(req);
+      void this.dispatchToNearest(req);
+    }
+  }
+
+  private async dispatchToNearest(request: RoadsideRequestEntity) {
+    if (!request.catalogCode) return; // manual pick — no auto-dispatch
+
+    const candidates = await this.providerServicesService.findByCatalogCode(
+      request.catalogCode,
+      request.triedProviderIds ?? [],
+    );
+
+    if (!candidates.length) {
+      this.logger.log(`No available providers for request ${request.id} (${request.catalogCode})`);
+      return;
+    }
+
+    // Sort by Haversine distance from customer — prefer providers with known base location
+    const lat = Number(request.latitude);
+    const lng = Number(request.longitude);
+    const sorted = candidates
+      .filter((c) => c.providerBaseLat && c.providerBaseLng)
+      .sort((a, b) =>
+        this.haversineKm(lat, lng, a.providerBaseLat!, a.providerBaseLng!) -
+        this.haversineKm(lat, lng, b.providerBaseLat!, b.providerBaseLng!),
+      );
+
+    const chosen = sorted[0] ?? candidates[0];
+
+    request.dispatchedProviderId = chosen.providerId;
+    request.dispatchedAt = new Date();
+    request.dispatchAttempts = (request.dispatchAttempts ?? 0) + 1;
+    request.providerId = chosen.providerId;
+    request.providerName = chosen.providerName;
+    request.providerServiceId = chosen.id;
+
+    const saved = await this.roadsideRequestsRepository.save(request);
+    const jobPayload = await this.toRoadsideRequest(saved, true);
+
+    // Push via WebSocket (real-time) + notification (email/bell)
+    this.gateway?.pushJobOffer(chosen.providerId, jobPayload);
+    const provider = await this.usersService.findById(chosen.providerId);
+    void this.notificationsService.create({
+      userId: chosen.providerId,
+      title: 'New job offer',
+      body: `${request.issueType} — ${request.address}. You have 2 minutes to respond.`,
+      type: 'job_update',
+      refId: request.id,
+      email: provider?.email,
+      emailSubject: 'VIS Auto — New job offer',
+      emailHtml: buildJobStatusEmail('New job offer', `A customer needs ${request.issueType} at ${request.address}. You have 2 minutes to accept.`, request.issueType),
+    });
+  }
+
   async create(userId: string, dto: CreateRoadsideRequestDto) {
+    if (!dto.providerServiceId && !dto.catalogCode) {
+      throw new BadRequestException('Either providerServiceId or catalogCode is required.');
+    }
+
     const userVehicles = await this.vehiclesService.listByUser(userId);
     const vehicle = userVehicles.find((item) => item.id === dto.vehicleId);
 
@@ -209,7 +305,12 @@ export class RoadsideRequestsService {
       throw new NotFoundException('Vehicle not found for this user.');
     }
 
-    const providerService = await this.providerServicesService.findById(dto.providerServiceId);
+    // Auto-dispatch mode: catalogCode provided, system picks provider
+    if (dto.catalogCode && !dto.providerServiceId) {
+      return this.createWithAutoDispatch(userId, dto, vehicle);
+    }
+
+    const providerService = await this.providerServicesService.findById(dto.providerServiceId!);
 
     if (!providerService) {
       throw new NotFoundException('Provider service not found.');
@@ -267,6 +368,37 @@ export class RoadsideRequestsService {
       }),
     );
 
+    return this.toRoadsideRequest(saved);
+  }
+
+  private async createWithAutoDispatch(
+    userId: string,
+    dto: CreateRoadsideRequestDto,
+    vehicle: { id: string },
+  ) {
+    const request = this.roadsideRequestsRepository.create({
+      userId,
+      vehicleId: vehicle.id,
+      providerServiceId: 'pending',  // filled in when dispatched
+      providerId: 'pending',
+      providerName: 'Finding provider…',
+      issueType: dto.catalogCode!,
+      catalogCode: dto.catalogCode,
+      distanceKm: dto.distanceKm,
+      latitude: dto.latitude,
+      longitude: dto.longitude,
+      address: dto.address.trim(),
+      landmark: dto.landmark?.trim() || undefined,
+      notes: dto.notes?.trim() || undefined,
+      status: 'searching',
+      etaMinutes: this.estimateEta(dto.catalogCode!, dto.distanceKm),
+      estimatedPriceKsh: 0, // updated after provider assigned
+      dispatchAttempts: 0,
+      triedProviderIds: [],
+    });
+
+    const saved = await this.roadsideRequestsRepository.save(request);
+    void this.dispatchToNearest(saved);
     return this.toRoadsideRequest(saved);
   }
 

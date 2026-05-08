@@ -164,61 +164,18 @@ export default function ProviderOverview({
     tabStatuses ? allOrderRows.filter((r) => tabStatuses.includes(r.rawStatus)) : allOrderRows
   ).slice(0, 5);
 
-  const showcaseServices =
-    providerServices.length > 0
-      ? providerServices.slice(0, 4).map((service, index) => ({
-          id: service.id,
-          title: service.serviceName,
-          provider: user?.name || 'Your Team',
-          catalogCode: service.catalogCode || service.serviceCode,
-          serviceCode: service.serviceCode,
-          serviceImageUrl: service.serviceImageUrl,
-          rating: (4.1 + index * 0.2).toFixed(1),
-          price: formatCurrency(service.basePriceKsh),
-          tone: ['peach', 'mint', 'sky', 'sand'][index % 4],
-        }))
-      : [
-          {
-            id: 'demo-1',
-            title: 'Beauty',
-            provider: 'George & Albert Pvt. Ltd',
-            serviceCode: 'battery_jump',
-            serviceImageUrl: '/assets/other_services.jpeg',
-            rating: '4.5',
-            price: '$36.00',
-            tone: 'peach',
-          },
-          {
-            id: 'demo-2',
-            title: 'Painter',
-            provider: 'Sebastian & Co workers',
-            serviceCode: 'tire_change',
-            serviceImageUrl: '/assets/other_services.jpeg',
-            rating: '4.4',
-            price: '$44.00',
-            tone: 'mint',
-          },
-          {
-            id: 'demo-3',
-            title: 'Car Wash',
-            provider: 'Shift Car Studio',
-            serviceCode: 'towing',
-            serviceImageUrl: '/assets/other_services.jpeg',
-            rating: '4.7',
-            price: '$18.00',
-            tone: 'sky',
-          },
-          {
-            id: 'demo-4',
-            title: 'Drain Cleaning',
-            provider: 'Swift Fix Team',
-            serviceCode: 'lockout',
-            serviceImageUrl: '/assets/other_services.jpeg',
-            rating: '4.3',
-            price: '$24.00',
-            tone: 'sand',
-          },
-        ];
+  const serviceRating = stats?.avgRating ?? 'New';
+  const showcaseServices = providerServices.slice(0, 4).map((service) => ({
+    id: service.id,
+    title: service.serviceName,
+    provider: user?.name || 'Your Team',
+    catalogCode: service.catalogCode || service.serviceCode,
+    serviceCode: service.serviceCode,
+    serviceImageUrl: service.serviceImageUrl,
+    rating: serviceRating,
+    price: formatCurrency(service.basePriceKsh),
+    tone: ['peach', 'mint', 'sky', 'sand'][providerServices.indexOf(service) % 4],
+  }));
 
   return (
     <section className="provider-home-v2">
@@ -363,36 +320,47 @@ export default function ProviderOverview({
               </button>
             </div>
 
-            <div className="provider-service-grid-v2">
-              {showcaseServices.map((service) => (
-                <article className={`provider-service-card-v2 ${service.tone}`} key={service.id}>
-                  {vehicleBrandConfig[service.catalogCode] ? (
-                    <div
-                      className="provider-service-art-v2 provider-service-art-brand"
-                      style={{
-                        background: vehicleBrandConfig[service.catalogCode].bg,
-                        color: vehicleBrandConfig[service.catalogCode].text,
-                      }}
-                    >
-                      {vehicleBrandConfig[service.catalogCode].label}
+            {showcaseServices.length === 0 ? (
+              <article className="provider-note-v2">
+                <strong>No services published yet.</strong>
+                <p>Add your first service to start appearing in customer searches.</p>
+                <div style={{ marginTop: '0.75rem', display: 'flex', gap: '0.5rem' }}>
+                  <button className="primary-cta" type="button" onClick={onAddService}>+ Custom service</button>
+                  <button className="ghost-button" type="button" onClick={onManageServices}>Browse catalog</button>
+                </div>
+              </article>
+            ) : (
+              <div className="provider-service-grid-v2">
+                {showcaseServices.map((service) => (
+                  <article className={`provider-service-card-v2 ${service.tone}`} key={service.id}>
+                    {vehicleBrandConfig[service.catalogCode] ? (
+                      <div
+                        className="provider-service-art-v2 provider-service-art-brand"
+                        style={{
+                          background: vehicleBrandConfig[service.catalogCode].bg,
+                          color: vehicleBrandConfig[service.catalogCode].text,
+                        }}
+                      >
+                        {vehicleBrandConfig[service.catalogCode].label}
+                      </div>
+                    ) : (
+                      <div
+                        className="provider-service-art-v2"
+                        style={{
+                          backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.06), rgba(15, 23, 42, 0.46)), url(${getServiceImageUrl(service)})`,
+                        }}
+                      />
+                    )}
+                    <strong>{service.title}</strong>
+                    <p>{service.provider}</p>
+                    <div className="provider-service-meta-v2">
+                      <span>★ {service.rating}</span>
+                      <strong>{service.price}</strong>
                     </div>
-                  ) : (
-                    <div
-                      className="provider-service-art-v2"
-                      style={{
-                        backgroundImage: `linear-gradient(180deg, rgba(15, 23, 42, 0.06), rgba(15, 23, 42, 0.46)), url(${getServiceImageUrl(service)})`,
-                      }}
-                    />
-                  )}
-                  <strong>{service.title}</strong>
-                  <p>{service.provider}</p>
-                  <div className="provider-service-meta-v2">
-                    <span>★ {service.rating} Reviews</span>
-                    <strong>{service.price}</strong>
-                  </div>
-                </article>
-              ))}
-            </div>
+                  </article>
+                ))}
+              </div>
+            )}
           </div>
         </section>
 
@@ -441,15 +409,6 @@ export default function ProviderOverview({
           </div>
         </section>
       </div>
-
-      {providerServices.length === 0 ? (
-        <article className="provider-note-v2">
-          <strong>No services published yet.</strong>
-          <p>
-            Use Add Service to publish your first offering and start appearing in customer requests.
-          </p>
-        </article>
-      ) : null}
 
       <div className="module-grid">
         {futureProviderModules.map((module) => (

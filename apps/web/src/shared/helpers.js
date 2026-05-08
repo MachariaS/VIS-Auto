@@ -1,4 +1,4 @@
-import { API_BASE, serviceImageByCode, vehicleBrandLogoByCode } from './constants';
+import { API_BASE, serviceImageByCode } from './constants';
 
 export function getApiUrl(path) {
   return `${API_BASE}${path}`;
@@ -74,7 +74,6 @@ export function getServiceImageUrl(service) {
   const code = service.catalogCode || service.serviceCode;
   return (
     service.serviceImageUrl ||
-    vehicleBrandLogoByCode[code] ||
     serviceImageByCode[code] ||
     '/assets/other_services.jpeg'
   );

@@ -147,18 +147,20 @@ export const serviceImageByCode = {
   lockout: '/assets/lockout.jpeg',
 };
 
-// Vehicle brand logo thumbnails (Wikimedia Commons — stable CDN URLs)
-export const vehicleBrandLogoByCode = {
-  spec_toyota:    'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Toyota_carlogo.svg/200px-Toyota_carlogo.svg.png',
-  spec_nissan:    'https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Nissan_logo.svg/200px-Nissan_logo.svg.png',
-  spec_subaru:    'https://upload.wikimedia.org/wikipedia/commons/thumb/5/5c/Subaru_2019_logo.svg/200px-Subaru_2019_logo.svg.png',
-  spec_bmw:       'https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/BMW.svg/200px-BMW.svg.png',
-  spec_mercedes:  'https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Mercedes-Logo.svg/200px-Mercedes-Logo.svg.png',
-  spec_land_rover:'https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/Land_Rover_logo.svg/200px-Land_Rover_logo.svg.png',
-  spec_vw_group:  'https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/Volkswagen_logo_2019.svg/200px-Volkswagen_logo_2019.svg.png',
-  spec_japanese:  'https://upload.wikimedia.org/wikipedia/commons/thumb/9/9d/Toyota_carlogo.svg/200px-Toyota_carlogo.svg.png',
-  spec_european:  'https://upload.wikimedia.org/wikipedia/commons/thumb/9/90/Mercedes-Logo.svg/200px-Mercedes-Logo.svg.png',
-  spec_ev:        'https://upload.wikimedia.org/wikipedia/commons/thumb/e/e8/Tesla_logo.png/200px-Tesla_logo.png',
+// Vehicle brand CSS config — no external images, guaranteed to render
+export const vehicleBrandLogoByCode = null; // kept for import compat; actual config below
+
+export const vehicleBrandConfig = {
+  spec_toyota:    { bg: '#EB0A1E', text: '#fff', label: 'TOYOTA' },
+  spec_nissan:    { bg: '#C3002F', text: '#fff', label: 'NISSAN' },
+  spec_subaru:    { bg: '#003399', text: '#fff', label: 'SUBARU' },
+  spec_bmw:       { bg: '#1C69D4', text: '#fff', label: 'BMW' },
+  spec_mercedes:  { bg: '#1A1A1A', text: '#fff', label: 'MERCEDES' },
+  spec_land_rover:{ bg: '#005A2B', text: '#fff', label: 'LAND ROVER' },
+  spec_vw_group:  { bg: '#001E50', text: '#fff', label: 'VW GROUP' },
+  spec_japanese:  { bg: '#BC002D', text: '#fff', label: 'JDM' },
+  spec_european:  { bg: '#003399', text: '#fff', label: 'EU AUTO' },
+  spec_ev:        { bg: '#1F2937', text: '#10b981', label: '⚡ EV' },
 };
 
 export const futureCustomerModules = [

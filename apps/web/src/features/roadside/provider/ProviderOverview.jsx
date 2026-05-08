@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { futureProviderModules, serviceTypeOptions, vehicleBrandConfig } from '../../../shared/constants';
 import { formatCurrency, getServiceImageUrl, request } from '../../../shared/helpers';
 import { useApp } from '../../../context/AppContext';
@@ -53,6 +53,15 @@ export default function ProviderOverview({
   onAddService,
   onManageServices,
 }) {
+  const [stats, setStats] = useState(null);
+
+  useEffect(() => {
+    if (!token) return;
+    request('/users/me/provider-stats', undefined, 'GET', token)
+      .then(setStats)
+      .catch(() => {});
+  }, [token]);
+
   const completedRequests = requests.filter((item) => item.status === 'completed');
   const activeRequests = requests.filter(
     (item) =>
@@ -243,6 +252,53 @@ export default function ProviderOverview({
             <button className="ghost-button" type="button" onClick={onManageServices}>
               Go to Profile
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Earnings dashboard ── */}
+      {stats && (
+        <div className="earnings-dashboard">
+          <div className="earnings-dashboard-head">
+            <h4>Earnings overview</h4>
+            {stats.avgRating !== null && (
+              <span className="earnings-rating-badge">
+                ★ {stats.avgRating} avg · {stats.ratingCount} review{stats.ratingCount !== 1 ? 's' : ''}
+              </span>
+            )}
+          </div>
+
+          <div className="earnings-kpi-strip">
+            <div className="earnings-kpi earnings-kpi--primary">
+              <span>Total earnings</span>
+              <strong>{formatCurrency(stats.totalEarnings)}</strong>
+            </div>
+            <div className="earnings-kpi">
+              <span>This month</span>
+              <strong>{formatCurrency(stats.thisMonthEarnings)}</strong>
+              {stats.lastMonthEarnings > 0 && (
+                <span className={`earnings-trend ${stats.thisMonthEarnings >= stats.lastMonthEarnings ? 'earnings-trend--up' : 'earnings-trend--down'}`}>
+                  {stats.thisMonthEarnings >= stats.lastMonthEarnings ? '▲' : '▼'}{' '}
+                  {Math.abs(Math.round(((stats.thisMonthEarnings - stats.lastMonthEarnings) / stats.lastMonthEarnings) * 100))}% vs last month
+                </span>
+              )}
+            </div>
+            <div className="earnings-kpi">
+              <span>Last month</span>
+              <strong>{formatCurrency(stats.lastMonthEarnings)}</strong>
+            </div>
+            <div className="earnings-kpi">
+              <span>Jobs done</span>
+              <strong>{stats.completedJobs}</strong>
+              <span className="earnings-completion">{stats.completionRate}% completion</span>
+            </div>
+            {stats.topService && (
+              <div className="earnings-kpi">
+                <span>Top service</span>
+                <strong>{stats.topService.name}</strong>
+                <span className="earnings-completion">{formatCurrency(stats.topService.earnings)} · {stats.topService.count} jobs</span>
+              </div>
+            )}
           </div>
         </div>
       )}

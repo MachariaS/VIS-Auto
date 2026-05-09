@@ -76,7 +76,51 @@ export default function ServiceSelectionPanel({ token, user, onComplete }) {
     }
   }
 
+  const regularGroups = catalog.filter((g) => g.category !== 'Vehicle specialisation');
+  const specialisationGroup = catalog.find((g) => g.category === 'Vehicle specialisation');
   const totalServices = catalog.reduce((n, g) => n + g.services.length, 0);
+
+  function renderGroup(group) {
+    const isExpanded = expandedCategories.has(group.category);
+    const groupSelected = group.services.filter((s) => selected.has(s.id)).length;
+    return (
+      <div key={group.category} className="service-select-group">
+        <button
+          type="button"
+          className="service-select-group-head"
+          onClick={() => toggleCategory(group.category)}
+        >
+          <span className="service-select-group-icon">{CATEGORY_ICONS[group.category] ?? '🔧'}</span>
+          <span className="service-select-group-name">{group.category}</span>
+          {groupSelected > 0 && <span className="service-select-group-badge">{groupSelected}</span>}
+          <span className="service-select-group-chevron">{isExpanded ? '▲' : '▼'}</span>
+        </button>
+        {isExpanded && (
+          <div className="service-select-group-body">
+            {group.services.length > 3 && groupSelected < group.services.length && (
+              <button type="button" className="link-button service-select-all" onClick={() => selectAll(group.services)}>
+                Select all in this category
+              </button>
+            )}
+            <div className="service-catalog-grid">
+              {group.services.map((service) => (
+                <button
+                  key={service.id}
+                  type="button"
+                  className={`service-catalog-card ${selected.has(service.id) ? 'service-catalog-card--selected' : ''}`}
+                  onClick={() => toggleService(service.id)}
+                >
+                  {selected.has(service.id) && <span className="service-catalog-check">✓</span>}
+                  <strong>{service.name}</strong>
+                  {service.description && <p>{service.description}</p>}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div className="service-select-shell">
@@ -93,9 +137,7 @@ export default function ServiceSelectionPanel({ token, user, onComplete }) {
         )}
       </div>
 
-      {catalogLoading && (
-        <div className="service-select-loading">Loading service catalog…</div>
-      )}
+      {catalogLoading && <div className="service-select-loading">Loading service catalog…</div>}
 
       {!catalogLoading && catalog.length === 0 && (
         <div className="service-select-empty">
@@ -105,60 +147,35 @@ export default function ServiceSelectionPanel({ token, user, onComplete }) {
       )}
 
       <div className="service-select-catalog">
-        {catalog.map((group) => {
-          const isExpanded = expandedCategories.has(group.category);
-          const groupSelected = group.services.filter((s) => selected.has(s.id)).length;
-
-          return (
-            <div key={group.category} className="service-select-group">
-              <button
-                type="button"
-                className="service-select-group-head"
-                onClick={() => toggleCategory(group.category)}
-              >
-                <span className="service-select-group-icon">
-                  {CATEGORY_ICONS[group.category] ?? '🔧'}
-                </span>
-                <span className="service-select-group-name">{group.category}</span>
-                {groupSelected > 0 && (
-                  <span className="service-select-group-badge">{groupSelected}</span>
-                )}
-                <span className="service-select-group-chevron">{isExpanded ? '▲' : '▼'}</span>
-              </button>
-
-              {isExpanded && (
-                <div className="service-select-group-body">
-                  {group.services.length > 3 && groupSelected < group.services.length && (
-                    <button
-                      type="button"
-                      className="link-button service-select-all"
-                      onClick={() => selectAll(group.services)}
-                    >
-                      Select all in this category
-                    </button>
-                  )}
-                  <div className="service-catalog-grid">
-                    {group.services.map((service) => (
-                      <button
-                        key={service.id}
-                        type="button"
-                        className={`service-catalog-card ${selected.has(service.id) ? 'service-catalog-card--selected' : ''}`}
-                        onClick={() => toggleService(service.id)}
-                      >
-                        {selected.has(service.id) && (
-                          <span className="service-catalog-check">✓</span>
-                        )}
-                        <strong>{service.name}</strong>
-                        {service.description && <p>{service.description}</p>}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
+        {regularGroups.map(renderGroup)}
       </div>
+
+      {/* Vehicle expertise — separate section, not a peer service category */}
+      {specialisationGroup && (
+        <div className="service-select-expertise">
+          <div className="service-select-expertise-head">
+            <strong>🏆 Vehicle expertise</strong>
+            <p>
+              Tell us which vehicle brands you specialise in. This is used to match you with customers
+              who own those vehicles — it doesn't appear as a separate service you offer.
+            </p>
+          </div>
+          <div className="service-catalog-grid">
+            {specialisationGroup.services.map((service) => (
+              <button
+                key={service.id}
+                type="button"
+                className={`service-catalog-card ${selected.has(service.id) ? 'service-catalog-card--selected' : ''}`}
+                onClick={() => toggleService(service.id)}
+              >
+                {selected.has(service.id) && <span className="service-catalog-check">✓</span>}
+                <strong>{service.name.replace('specialist', '').trim()}</strong>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
 
       {message && <div className="status-banner">{message}</div>}
 

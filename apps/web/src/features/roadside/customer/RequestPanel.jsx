@@ -115,6 +115,8 @@ function buildServiceCards(catalog) {
   const seen = new Set();
   return catalog
     .filter((p) => p.isAcceptingJobs && p.visibility === 'public')
+    // Vehicle specialisation codes are provider matching signals — not customer-facing services
+    .filter((p) => p.serviceCategory !== 'Vehicle specialisation')
     .filter((p) => {
       const code = p.catalogCode || p.serviceCode;
       if (!code || seen.has(code)) return false;

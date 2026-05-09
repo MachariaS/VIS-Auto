@@ -1,0 +1,14 @@
+[build]
+builder = "nixpacks"
+buildCommand = "cd apps/api && npm ci --include=dev && npm run build"
+
+[deploy]
+startCommand = "node apps/api/dist/main.js"
+healthcheckPath = "/health"
+healthcheckTimeout = 60
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3
+
+[[services]]
+name = "vis-auto-api"
+source = "."

@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
 import { Cron } from '@nestjs/schedule';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { ProviderServicesService } from './services/provider-services.service';
 import { UsersService } from '../../shared/users/users.service';
 import { VehiclesService } from '../../shared/vehicles/vehicles.service';
@@ -10,6 +10,7 @@ import { RoadsideRequestEntity } from './roadside-request.entity';
 import { UpdateProviderLocationDto } from './dto/update-provider-location.dto';
 import { NotificationsService } from '../notifications/notifications.service';
 import { RoadsideGateway } from './roadside.gateway';
+import { DISPATCH_WEIGHTS, MAKE_TO_SPEC } from './dispatch-score.constants';
 
 const JOB_STATUS_COPY: Record<string, { title: string; body: string }> = {
   provider_assigned: {
@@ -114,6 +115,7 @@ export class RoadsideRequestsService {
     private readonly notificationsService: NotificationsService,
     @InjectRepository(RoadsideRequestEntity)
     private readonly roadsideRequestsRepository: Repository<RoadsideRequestEntity>,
+    @InjectDataSource() private readonly dataSource: DataSource,
     @Optional() private readonly gateway: RoadsideGateway,
   ) {}
 
@@ -284,36 +286,91 @@ export class RoadsideRequestsService {
     }
   }
 
-  private async dispatchToNearest(request: RoadsideRequestEntity) {
-    if (!request.catalogCode) return; // manual pick — no auto-dispatch
+  // Exposed for the preview endpoint
+  async scoreDispatchCandidates(
+    catalogCode: string,
+    excludeProviderIds: string[],
+    customerUserId: string,
+    customerLat: number,
+    customerLng: number,
+    vehicleId?: string,
+  ) {
+    const candidates = await this.providerServicesService.findByCatalogCode(catalogCode, excludeProviderIds);
+    if (!candidates.length) return [];
 
-    const candidates = await this.providerServicesService.findByCatalogCode(
-      request.catalogCode,
-      request.triedProviderIds ?? [],
+    const providerIds = candidates.map((c) => c.providerId);
+
+    // Resolve customer preferences + vehicle spec code in parallel
+    const [customerUser, vehicle] = await Promise.all([
+      this.usersService.findById(customerUserId),
+      vehicleId ? this.vehiclesService.findById(vehicleId) : Promise.resolve(null),
+    ]);
+
+    const dispatchPrefs = ((customerUser?.profile as Record<string, unknown>)?.preferences as Record<string, unknown>)?.dispatch as Record<string, unknown> ?? {};
+    const minRating = Number(dispatchPrefs.minProviderRating ?? 0);
+    const specCode = vehicle?.make ? (MAKE_TO_SPEC[vehicle.make.toLowerCase()] ?? null) : null;
+
+    // Batch: which providers have the customer's vehicle brand spec?
+    const [specRows, historyRows] = await Promise.all([
+      specCode && providerIds.length
+        ? this.dataSource.query(
+            `SELECT "providerId" FROM provider_services WHERE "catalogCode" = $1 AND "isAcceptingJobs" = true AND "providerId" = ANY($2)`,
+            [specCode, providerIds],
+          )
+        : [],
+      providerIds.length
+        ? this.dataSource.query(
+            `SELECT "providerId", MAX(score) AS best_score FROM ratings WHERE "customerId" = $1 AND "providerId" = ANY($2) GROUP BY "providerId"`,
+            [customerUserId, providerIds],
+          )
+        : [],
+    ]);
+
+    const specProviderIds = new Set((specRows as { providerId: string }[]).map((r) => r.providerId));
+    const historyMap = new Map(
+      (historyRows as { providerId: string; best_score: string }[]).map((r) => [r.providerId, Number(r.best_score)]),
     );
 
-    if (!candidates.length) {
+    return candidates.map((c) => {
+      const dist = c.providerBaseLat && c.providerBaseLng
+        ? this.haversineKm(customerLat, customerLng, c.providerBaseLat, c.providerBaseLng)
+        : 10;
+
+      const distScore    = Math.max(0, DISPATCH_WEIGHTS.distance - dist * (DISPATCH_WEIGHTS.distance / 10));
+      const ratingScore  = (c.avgRating ?? 0) * (DISPATCH_WEIGHTS.rating / 5);
+      const brandBonus   = specProviderIds.has(c.providerId) ? DISPATCH_WEIGHTS.brand : 0;
+      const historyBonus = (historyMap.get(c.providerId) ?? 0) >= 4 ? DISPATCH_WEIGHTS.history : 0;
+      const floorBonus   = (minRating === 0 || (c.avgRating ?? 0) >= minRating) ? DISPATCH_WEIGHTS.floor : 0;
+
+      const score = distScore + ratingScore + brandBonus + historyBonus + floorBonus;
+      const matchBadges: string[] = [];
+      if (brandBonus) matchBadges.push('Brand match');
+      if (historyBonus) matchBadges.push('Served you before');
+      if (floorBonus && minRating > 0) matchBadges.push(`Meets your ${minRating}★ floor`);
+
+      return { candidate: c, score, dist, matchBadges };
+    });
+  }
+
+  private async dispatchToNearest(request: RoadsideRequestEntity) {
+    if (!request.catalogCode) return;
+
+    const scored = await this.scoreDispatchCandidates(
+      request.catalogCode,
+      request.triedProviderIds ?? [],
+      request.userId,
+      Number(request.latitude),
+      Number(request.longitude),
+      request.vehicleId,
+    );
+
+    if (!scored.length) {
       this.logger.log(`No available providers for request ${request.id} (${request.catalogCode})`);
       return;
     }
 
-    // Composite score: rating (×2 weight) + proximity bonus + price score
-    // Mirrors the same model used by SortedProviderList on the customer side
-    const lat = Number(request.latitude);
-    const lng = Number(request.longitude);
-
-    const scored = candidates.map((c) => {
-      const dist = c.providerBaseLat && c.providerBaseLng
-        ? this.haversineKm(lat, lng, c.providerBaseLat, c.providerBaseLng)
-        : 10; // penalise providers with no known location
-      const ratingScore = (c.avgRating ?? 0) * 2;
-      const distScore = Math.max(0, 10 - dist);
-      const priceScore = c.basePriceKsh > 0 ? Math.max(0, 5 - c.basePriceKsh / 1000) : 0;
-      return { c, score: ratingScore + distScore + priceScore };
-    });
-
     scored.sort((a, b) => b.score - a.score);
-    const chosen = scored[0]?.c ?? candidates[0];
+    const chosen = scored[0].candidate;
 
     request.dispatchedProviderId = chosen.providerId;
     request.dispatchedAt = new Date();

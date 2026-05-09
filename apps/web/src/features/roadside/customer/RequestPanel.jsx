@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { fuelLiterOptions } from '../../../shared/constants';
-import { formatCurrency, getFuelUnitPrice, getSelectedFuelLitres, getServiceImageUrl, getApiUrl } from '../../../shared/helpers';
+import { formatCurrency, getFuelUnitPrice, getSelectedFuelLitres, getServiceImageUrl, getApiUrl, request } from '../../../shared/helpers';
 import ProviderProfileCard from '../shared/ProviderProfileCard';
+import { useApp } from '../../../context/AppContext';
 
 async function suggestLocations(query, nearLat, nearLng) {
   if (!query || query.length < 3) return [];
@@ -276,11 +277,31 @@ export default function RequestPanel({
   onUseCurrentLocation,
   loading,
 }) {
+  const { token } = useApp();
   const [step, setStep] = useState(1);
   const [serviceSearch, setServiceSearch] = useState('');
   const [providerSearch, setProviderSearch] = useState('');
-  // 'auto' = system dispatches to nearest; 'manual' = customer picks a provider
   const [dispatchMode, setDispatchMode] = useState('auto');
+  const [dispatchPreview, setDispatchPreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+
+  // Fetch dispatch preview when entering Step 4 in auto mode
+  useEffect(() => {
+    if (step !== 4 || dispatchMode !== 'auto' || !token) { setDispatchPreview(null); return; }
+    if (!serviceFilter || !roadsideForm.latitude || !roadsideForm.longitude) return;
+
+    setPreviewLoading(true);
+    const params = new URLSearchParams({
+      catalogCode: serviceFilter,
+      lat: String(roadsideForm.latitude),
+      lng: String(roadsideForm.longitude),
+      ...(roadsideForm.vehicleId ? { vehicleId: roadsideForm.vehicleId } : {}),
+    });
+    request(`/roadside-requests/dispatch-preview?${params}`, undefined, 'GET', token)
+      .then(setDispatchPreview)
+      .catch(() => setDispatchPreview(null))
+      .finally(() => setPreviewLoading(false));
+  }, [step, dispatchMode, token, serviceFilter, roadsideForm.latitude, roadsideForm.longitude, roadsideForm.vehicleId]);
 
   // Keep roadsideForm in sync with dispatch mode
   useEffect(() => {
@@ -678,14 +699,56 @@ export default function RequestPanel({
               <span>Service</span>
               <strong>{activeCard?.label || serviceFilter}</strong>
             </div>
-            <div className="confirm-row">
-              <span>Provider</span>
-              <strong>
-                {dispatchMode === 'auto'
-                  ? `Auto-match — nearest of ${filteredProviders.length} available`
-                  : selectedProviderService?.providerName || '—'}
-              </strong>
-            </div>
+            {dispatchMode === 'auto' ? (
+              <div className="confirm-row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 0 }}>
+                <span style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)', marginBottom: 8 }}>Provider</span>
+                {previewLoading ? (
+                  <p style={{ fontSize: 13, color: 'var(--text-secondary, #94a3b8)' }}>Finding best match…</p>
+                ) : dispatchPreview ? (
+                  <div style={{
+                    display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
+                    borderRadius: 12, background: 'rgba(132,204,22,0.06)',
+                    border: '1px solid rgba(132,204,22,0.18)',
+                  }}>
+                    <div style={{
+                      width: 42, height: 42, borderRadius: '50%', flexShrink: 0,
+                      background: 'rgba(132,204,22,0.15)', display: 'flex',
+                      alignItems: 'center', justifyContent: 'center',
+                      fontSize: 18, fontWeight: 700, color: '#84cc16',
+                    }}>
+                      {dispatchPreview.providerName.charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <strong style={{ fontSize: 14, display: 'block' }}>{dispatchPreview.providerName}</strong>
+                      <div style={{ display: 'flex', gap: 10, fontSize: 12, color: 'var(--text-secondary, #94a3b8)', marginTop: 2 }}>
+                        {dispatchPreview.avgRating && <span>★ {dispatchPreview.avgRating} ({dispatchPreview.ratingCount})</span>}
+                        <span>📍 {dispatchPreview.distanceKm} km away</span>
+                        {dispatchPreview.basePriceKsh > 0 && <span>{formatCurrency(dispatchPreview.basePriceKsh)} base</span>}
+                      </div>
+                      {dispatchPreview.matchBadges?.length > 0 && (
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                          {dispatchPreview.matchBadges.map((badge) => (
+                            <span key={badge} style={{
+                              fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999,
+                              background: 'rgba(132,204,22,0.15)', color: '#84cc16',
+                              letterSpacing: '0.04em', textTransform: 'uppercase',
+                            }}>{badge}</span>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <span style={{ fontSize: 11, color: 'var(--text-secondary, #94a3b8)', flexShrink: 0 }}>Best match</span>
+                  </div>
+                ) : (
+                  <strong style={{ fontSize: 13 }}>Nearest of {filteredProviders.length} available providers</strong>
+                )}
+              </div>
+            ) : (
+              <div className="confirm-row">
+                <span>Provider</span>
+                <strong>{selectedProviderService?.providerName || '—'}</strong>
+              </div>
+            )}
             <div className="confirm-row">
               <span>Location</span>
               <strong>{roadsideForm.address || '—'}</strong>

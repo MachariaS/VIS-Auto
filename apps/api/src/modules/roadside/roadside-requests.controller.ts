@@ -23,6 +23,34 @@ export class RoadsideRequestsController {
     return this.roadsideRequestsService.listByProvider(req.user.sub);
   }
 
+  // Must be declared before :id routes to avoid being captured as an ID
+  @Get('dispatch-preview')
+  async dispatchPreview(
+    @Request() req: AuthenticatedRequest,
+    @Query('catalogCode') catalogCode: string,
+    @Query('lat') lat: string,
+    @Query('lng') lng: string,
+    @Query('vehicleId') vehicleId?: string,
+  ) {
+    if (!catalogCode || !lat || !lng) return null;
+    const scored = await this.roadsideRequestsService.scoreDispatchCandidates(
+      catalogCode, [], req.user.sub, Number(lat), Number(lng), vehicleId,
+    );
+    if (!scored.length) return null;
+    scored.sort((a, b) => b.score - a.score);
+    const top = scored[0];
+    return {
+      providerId: top.candidate.providerId,
+      providerName: top.candidate.providerName,
+      avgRating: top.candidate.avgRating,
+      ratingCount: top.candidate.ratingCount,
+      distanceKm: Math.round(top.dist * 10) / 10,
+      basePriceKsh: top.candidate.basePriceKsh,
+      matchBadges: top.matchBadges,
+      score: Math.round(top.score),
+    };
+  }
+
   @Get(':id/status')
   getTrackingStatus(@Request() req: AuthenticatedRequest, @Param('id') requestId: string) {
     return this.roadsideRequestsService.getTrackingStatus(req.user.sub, requestId);

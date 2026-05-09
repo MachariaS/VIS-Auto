@@ -2,6 +2,7 @@ import { ValidationPipe, Logger } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
 import helmet from 'helmet';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { AllExceptionsFilter } from './shared/filters/all-exceptions.filter';
 import { SocketIOAdapter } from './shared/socket-io.adapter';
@@ -77,9 +78,35 @@ async function bootstrap() {
     }),
   );
 
+  // Swagger UI — available at /api/docs on all environments
+  const swaggerConfig = new DocumentBuilder()
+    .setTitle('VIS Auto API')
+    .setDescription('Roadside assistance platform — full API reference')
+    .setVersion('1.0')
+    .addBearerAuth({ type: 'http', scheme: 'bearer', bearerFormat: 'JWT' }, 'access-token')
+    .addTag('health', 'Service health check')
+    .addTag('auth', 'Registration, login, OTP verification, password reset')
+    .addTag('users', 'User profile, password, availability, account management')
+    .addTag('vehicles', 'Customer vehicle management')
+    .addTag('service-catalog', 'Browse available service types')
+    .addTag('provider-services', 'Provider service listings and availability')
+    .addTag('providers', 'Public provider profiles and ratings')
+    .addTag('roadside-requests', 'Job requests, dispatch, tracking, cancellation')
+    .addTag('ratings', 'Job ratings and reviews')
+    .addTag('notifications', 'In-app notification management')
+    .addTag('locations', 'Address search, geocoding, routing')
+    .addTag('vendors', 'Provider vendor network management')
+    .build();
+
+  const document = SwaggerModule.createDocument(app, swaggerConfig);
+  SwaggerModule.setup('api/docs', app, document, {
+    swaggerOptions: { persistAuthorization: true },
+  });
+
   const port = process.env.PORT ?? 4000;
   await app.listen(port);
   logger.log(`API running on port ${port} [${process.env.NODE_ENV ?? 'development'}]`);
+  logger.log(`Swagger docs at http://localhost:${port}/api/docs`);
 }
 
 bootstrap();

@@ -4,6 +4,7 @@ import { initialProviderService } from '../../../shared/constants';
 import { mergeUniqueList, request } from '../../../shared/helpers';
 import { BellIcon, CloseIcon, MenuIcon, MoonIcon, SunIcon } from '../../../shared/icons';
 import { playJobAlert, requestNotificationPermission, showBrowserNotification } from '../../../shared/notificationSound';
+import { useSocket } from '../shared/useSocket';
 import NotificationsTray from '../../shared/NotificationsTray';
 import ProfilePanel from '../../shared/ProfilePanel';
 import SettingsPanel from '../../shared/SettingsPanel';
@@ -133,6 +134,31 @@ export default function ProviderDashboard() {
   useEffect(() => {
     void requestNotificationPermission();
   }, []);
+
+  // WebSocket: join provider channel + listen for real-time job offers
+  const socketRef = useSocket(token);
+  useEffect(() => {
+    if (!user?.id) return;
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    // Join personal channel so the gateway can push job-offer events directly
+    socket.emit('join-provider', user.id);
+
+    function onJobOffer(job) {
+      setRequests((prev) => {
+        if (prev.find((r) => r.id === job.id)) return prev; // deduplicate
+        return [job, ...prev];
+      });
+      playJobAlert();
+      showBrowserNotification('VIS Auto', `New job: ${job.issueType || 'Roadside request'}`);
+      setBellRinging(true);
+      setTimeout(() => setBellRinging(false), 1200);
+    }
+
+    socket.on('job-offer', onJobOffer);
+    return () => { socket.off('job-offer', onJobOffer); };
+  }, [socketRef, user?.id]);
 
   useEffect(() => {
     if (!token) return;

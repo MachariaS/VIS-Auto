@@ -52,7 +52,7 @@ export interface RoadsideRequest {
     fuelCostKsh: number;
     deliveryCostKsh: number;
   };
-  status: 'searching' | 'provider_assigned' | 'in_progress' | 'completed' | 'cancelled';
+  status: 'searching' | 'provider_assigned' | 'in_progress' | 'completed' | 'cancelled' | 'dispatch_exhausted';
   etaMinutes: number;
   estimatedPriceKsh: number;
   providerLatitude?: number;
@@ -181,6 +181,7 @@ export class RoadsideRequestsService {
       in_progress: ['completed', 'cancelled'],
       completed: [],
       cancelled: [],
+      dispatch_exhausted: ['cancelled'],
     };
 
     if (!allowedTransitions[request.status].includes(status)) {
@@ -227,6 +228,8 @@ export class RoadsideRequestsService {
     if (request.status === 'completed' || request.status === 'cancelled') {
       throw new BadRequestException(`Cannot cancel a ${request.status} request.`);
     }
+    // Allow cancelling exhausted requests (customer wants to give up or retry manually)
+
 
     request.status = 'cancelled';
     request.cancelledBy = 'customer';
@@ -261,7 +264,13 @@ export class RoadsideRequestsService {
     request.triedProviderIds = [...(request.triedProviderIds ?? []), providerId];
     await this.roadsideRequestsRepository.save(request);
 
-    // Re-dispatch immediately to next closest provider
+    // Immediately inform customer so they're not staring at a silent screen
+    this.gateway?.pushRedispatchUpdate(request.id, {
+      attempt: request.dispatchAttempts ?? 0,
+      message: 'Provider unavailable — finding your next match…',
+      exhausted: false,
+    });
+
     void this.dispatchToNearest(request);
     return { declined: true };
   }
@@ -364,8 +373,40 @@ export class RoadsideRequestsService {
       request.vehicleId,
     );
 
+    const attempt = (request.dispatchAttempts ?? 0) + 1;
+    const MAX_ATTEMPTS = 3;
+
     if (!scored.length) {
-      this.logger.log(`No available providers for request ${request.id} (${request.catalogCode})`);
+      this.logger.log(`No available providers for request ${request.id} (${request.catalogCode}) — attempt ${attempt}`);
+
+      if (attempt > MAX_ATTEMPTS) {
+        // Exhaust — customer must choose manually
+        request.status = 'dispatch_exhausted';
+        await this.roadsideRequestsRepository.save(request);
+        this.gateway?.pushRedispatchUpdate(request.id, {
+          attempt,
+          message: 'No providers responded — want to choose manually?',
+          exhausted: true,
+        });
+        const customer = await this.usersService.findById(request.userId);
+        void this.notificationsService.create({
+          userId: request.userId,
+          title: 'No providers available',
+          body: `We couldn't find a provider for ${request.issueType}. Tap to choose one manually.`,
+          type: 'job_update',
+          refId: request.id,
+          email: customer?.email,
+          emailSubject: 'VIS Auto — No providers available',
+          emailHtml: buildJobStatusEmail('No providers available', 'All nearby providers are unavailable. Please try selecting one manually from the map.', request.issueType),
+        });
+      } else {
+        // Inform customer we're still searching
+        this.gateway?.pushRedispatchUpdate(request.id, {
+          attempt,
+          message: 'Provider unavailable — finding your next match…',
+          exhausted: false,
+        });
+      }
       return;
     }
 

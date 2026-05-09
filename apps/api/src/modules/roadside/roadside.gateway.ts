@@ -53,4 +53,9 @@ export class RoadsideGateway implements OnGatewayConnection, OnGatewayDisconnect
   pushStatusUpdate(requestId: string, update: unknown) {
     this.server.to(`request:${requestId}`).emit('status-update', update);
   }
+
+  // Called when a provider declines or times out and the system is trying the next one
+  pushRedispatchUpdate(requestId: string, payload: { attempt: number; message: string; exhausted: boolean }) {
+    this.server.to(`request:${requestId}`).emit('re-dispatch-update', payload);
+  }
 }

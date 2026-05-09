@@ -657,6 +657,10 @@ export default function CustomerDashboard() {
                 setDashboardTab('history');
               }
             }}
+            onChooseManually={() => {
+              setActiveRequest(null);
+              setDashboardTab('request');
+            }}
           />
         ) : null}
         {dashboardTab === 'rate-job' && ratingRequest ? (

@@ -54,7 +54,7 @@ export class RoadsideRequestEntity {
   };
 
   @Column({ type: 'varchar' })
-  status!: 'searching' | 'provider_assigned' | 'in_progress' | 'completed' | 'cancelled';
+  status!: 'searching' | 'provider_assigned' | 'in_progress' | 'completed' | 'cancelled' | 'dispatch_exhausted';
 
   @Column({ type: 'int' })
   etaMinutes!: number;

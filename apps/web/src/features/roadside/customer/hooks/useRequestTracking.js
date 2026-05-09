@@ -6,6 +6,7 @@ export default function useRequestTracking({ token, selectedRequest }) {
   const [tracking, setTracking] = useState(null);
   const [trackingLoading, setTrackingLoading] = useState(false);
   const [trackingError, setTrackingError] = useState('');
+  const [redispatchMsg, setRedispatchMsg] = useState(null);
   const socketRef = useSocket(token);
   const pollingRef = useRef(null);
 
@@ -78,14 +79,24 @@ export default function useRequestTracking({ token, selectedRequest }) {
       setTracking((prev) => prev ? { ...prev, ...data } : data);
     }
 
+    function onRedispatchUpdate(data) {
+      setRedispatchMsg(data);
+      if (!data.exhausted) {
+        // Clear the transient message after 8s (exhausted state stays until user acts)
+        setTimeout(() => setRedispatchMsg((m) => m === data ? null : m), 8000);
+      }
+    }
+
     socket.on('tracking-update', onTrackingUpdate);
     socket.on('status-update', onStatusUpdate);
+    socket.on('re-dispatch-update', onRedispatchUpdate);
 
     return () => {
       socket.off('tracking-update', onTrackingUpdate);
       socket.off('status-update', onStatusUpdate);
+      socket.off('re-dispatch-update', onRedispatchUpdate);
     };
   }, [requestId, isActive, socketRef]);
 
-  return { tracking, trackingError, trackingLoading };
+  return { tracking, trackingError, trackingLoading, redispatchMsg };
 }

@@ -52,8 +52,8 @@ const CUSTOMER_CANCEL_REASONS = [
   'Other',
 ];
 
-export default function ActiveJobPanel({ requestItem, token, onDone }) {
-  const { tracking, trackingLoading } = useRequestTracking({ token, selectedRequest: requestItem });
+export default function ActiveJobPanel({ requestItem, token, onDone, onChooseManually }) {
+  const { tracking, trackingLoading, redispatchMsg } = useRequestTracking({ token, selectedRequest: requestItem });
   const [cancelling, setCancelling] = useState(false);
   const [showCancelReasons, setShowCancelReasons] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
@@ -142,6 +142,36 @@ export default function ActiveJobPanel({ requestItem, token, onDone }) {
       <StatusTimeline status={currentStatus} />
 
       {currentStatus === 'searching' && <SearchingDots />}
+
+      {currentStatus === 'dispatch_exhausted' && (
+        <div style={{
+          padding: '16px', borderRadius: 12, marginBottom: 12,
+          background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)',
+          textAlign: 'center',
+        }}>
+          <p style={{ fontWeight: 600, marginBottom: 6 }}>No providers responded</p>
+          <p style={{ fontSize: 13, color: 'var(--text-secondary, #94a3b8)', marginBottom: 14 }}>
+            All nearby providers for this service are unavailable right now.
+            You can choose one manually or try again later.
+          </p>
+          {onChooseManually && (
+            <button className="primary-cta" type="button" onClick={onChooseManually}>
+              Choose a provider manually
+            </button>
+          )}
+        </div>
+      )}
+
+      {redispatchMsg && !redispatchMsg.exhausted && (
+        <div style={{
+          padding: '10px 14px', borderRadius: 10, marginBottom: 10,
+          background: 'rgba(234,179,8,0.1)', border: '1px solid rgba(234,179,8,0.25)',
+          fontSize: 13, display: 'flex', alignItems: 'center', gap: 8,
+        }}>
+          <span>⟳</span>
+          <span>{redispatchMsg.message}</span>
+        </div>
+      )}
 
       {etaDisplay !== null && currentStatus !== 'completed' && currentStatus !== 'cancelled' && currentStatus !== 'searching' && (
         <div className="active-job-eta">

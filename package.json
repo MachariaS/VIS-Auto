@@ -2,6 +2,10 @@
   "name": "vis-auto",
   "version": "1.0.0",
   "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
   "engines": {
     "node": "20.x",
     "npm": "10.x"

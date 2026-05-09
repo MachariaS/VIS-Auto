@@ -146,10 +146,27 @@ function Stars({ rating, count }) {
   );
 }
 
+const BADGE_COLORS = {
+  'Top rated':        { bg: 'rgba(234,179,8,0.15)',   color: '#ca8a04' },
+  'Served you before':{ bg: 'rgba(59,130,246,0.15)',  color: '#3b82f6' },
+  default:            { bg: 'rgba(132,204,22,0.15)',  color: '#84cc16' },
+};
+
+function MatchBadge({ label }) {
+  const style = BADGE_COLORS[label] ?? BADGE_COLORS.default;
+  return (
+    <span style={{
+      fontSize: 10, fontWeight: 700, padding: '2px 7px', borderRadius: 999,
+      background: style.bg, color: style.color,
+      letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap',
+    }}>{label}</span>
+  );
+}
+
 function ProviderMatchCard({ svc, selected, onSelect }) {
-  // avgRating and ratingCount come directly from the catalog response (no extra fetch)
   const avg = svc.avgRating ?? null;
   const count = svc.ratingCount ?? 0;
+  const badges = svc.matchReasons ?? [];
   return (
     <button
       type="button"
@@ -166,6 +183,11 @@ function ProviderMatchCard({ svc, selected, onSelect }) {
           <Stars rating={avg} count={count} />
         ) : (
           <span className="provider-no-rating">New provider</span>
+        )}
+        {badges.length > 0 && (
+          <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap', marginTop: 5 }}>
+            {badges.map((b) => <MatchBadge key={b} label={b} />)}
+          </div>
         )}
         <div className="provider-match-meta">
           <span>Base {formatCurrency(svc.basePriceKsh)}</span>

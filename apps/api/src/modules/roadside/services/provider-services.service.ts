@@ -1,12 +1,13 @@
 import { BadRequestException, ForbiddenException, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { InjectDataSource, InjectRepository } from '@nestjs/typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { ServiceCatalogService } from '../../service-catalog/service-catalog.service';
 import { UsersService } from '../../../shared/users/users.service';
 import { CreateProviderServiceDto } from './dto/create-provider-service.dto';
 import { ProviderServiceEntity, ServiceVisibility } from './provider-service.entity';
 import { UserEntity } from '../../../shared/users/user.entity';
 import { RatingEntity } from '../../ratings/rating.entity';
+import { MAKE_TO_SPEC } from '../dispatch-score.constants';
 
 export interface ProviderService {
   id: string;
@@ -30,6 +31,7 @@ export interface ProviderService {
   pricePerKmKsh: number;
   description?: string;
   fuelPricing?: { gasoline?: { regular?: number; vpower?: number }; diesel?: { standard?: number } };
+  matchReasons?: string[];
   createdAt: string;
 }
 
@@ -42,6 +44,7 @@ export class ProviderServicesService {
     private readonly repo: Repository<ProviderServiceEntity>,
     @InjectRepository(RatingEntity)
     private readonly ratingsRepo: Repository<RatingEntity>,
+    @InjectDataSource() private readonly dataSource: DataSource,
   ) {}
 
   async listByProvider(providerId: string) {
@@ -51,7 +54,7 @@ export class ProviderServicesService {
 
   private readonly logger = new Logger(ProviderServicesService.name);
 
-  async listAll(customerLat?: number, customerLng?: number) {
+  async listAll(customerLat?: number, customerLng?: number, customerId?: string, vehicleId?: string) {
     try {
       const services = await this.repo
         .createQueryBuilder('ps')
@@ -94,16 +97,56 @@ export class ProviderServicesService {
         return this.toDto(s, prov?.baseLat ?? null, prov?.baseLng ?? null, rating?.avgRating ?? null, rating?.ratingCount ?? 0);
       });
 
-      // Radius filter: only exclude if provider has a base location AND customer is outside maxRadius
-      if (customerLat && customerLng) {
-        return dtos.filter((s) => {
-          if (!s.providerBaseLat || !s.providerBaseLng || !s.maxRadiusKm) return true;
-          const dist = this.haversineKm(customerLat, customerLng, s.providerBaseLat, s.providerBaseLng);
-          return dist <= s.maxRadiusKm;
-        });
-      }
+      // Radius filter
+      const radiusFiltered = (customerLat && customerLng)
+        ? dtos.filter((s) => {
+            if (!s.providerBaseLat || !s.providerBaseLng || !s.maxRadiusKm) return true;
+            return this.haversineKm(customerLat, customerLng, s.providerBaseLat, s.providerBaseLng) <= s.maxRadiusKm;
+          })
+        : dtos;
 
-      return dtos;
+      // Personalised match reasons — only when customer context is provided
+      if (!customerId || !providerIds.length) return radiusFiltered;
+
+      const [vehicleRows, specRows, historyRows] = await Promise.all([
+        vehicleId
+          ? this.dataSource.query(`SELECT make FROM vehicles WHERE id = $1 LIMIT 1`, [vehicleId])
+          : Promise.resolve([]),
+        this.dataSource.query(
+          `SELECT DISTINCT "providerId" FROM provider_services WHERE "isAcceptingJobs" = true AND "providerId" = ANY($1) AND "catalogCode" LIKE 'spec_%'`,
+          [providerIds],
+        ),
+        this.dataSource.query(
+          `SELECT DISTINCT "providerId" FROM ratings WHERE "customerId" = $1 AND "providerId" = ANY($2)`,
+          [customerId, providerIds],
+        ),
+      ]);
+
+      const vehicleMake: string | null = vehicleRows[0]?.make?.toLowerCase() ?? null;
+      const specCode = vehicleMake ? (MAKE_TO_SPEC[vehicleMake] ?? null) : null;
+
+      // Which providers have the customer's vehicle spec?
+      const specProviderIds = specCode
+        ? new Set(
+            ((await this.dataSource.query(
+              `SELECT "providerId" FROM provider_services WHERE "catalogCode" = $1 AND "isAcceptingJobs" = true AND "providerId" = ANY($2)`,
+              [specCode, providerIds],
+            )) as { providerId: string }[]).map((r) => r.providerId),
+          )
+        : new Set<string>();
+
+      const pastProviderIds = new Set((historyRows as { providerId: string }[]).map((r) => r.providerId));
+
+      return radiusFiltered.map((s) => {
+        const reasons: string[] = [];
+        if ((s.avgRating ?? 0) >= 4.5) reasons.push('Top rated');
+        if (specProviderIds.has(s.providerId) && vehicleMake) {
+          const label = vehicleMake.charAt(0).toUpperCase() + vehicleMake.slice(1);
+          reasons.push(`${label} specialist`);
+        }
+        if (pastProviderIds.has(s.providerId)) reasons.push('Served you before');
+        return reasons.length ? { ...s, matchReasons: reasons } : s;
+      });
     } catch (err) {
       this.logger.warn('listAll JOIN failed, using fallback filter', err?.message);
       const services = await this.repo.find({
@@ -298,6 +341,7 @@ export class ProviderServicesService {
     baseLng: number | null = null,
     avgRating: number | null = null,
     ratingCount = 0,
+    matchReasons?: string[],
   ): ProviderService {
     return {
       ...service,
@@ -306,6 +350,7 @@ export class ProviderServicesService {
       providerBaseLng: baseLng,
       avgRating,
       ratingCount,
+      matchReasons,
       serviceImageUrl: service.serviceImageUrl || '/assets/other_services.jpeg',
       createdAt: service.createdAt.toISOString(),
     };

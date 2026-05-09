@@ -174,10 +174,14 @@ export default function CustomerDashboard() {
       request('/vehicles', undefined, 'GET', accessToken),
       request('/roadside-requests', undefined, 'GET', accessToken),
       (() => {
-        const loc = roadsideForm.latitude && roadsideForm.longitude
-          ? `?lat=${roadsideForm.latitude}&lng=${roadsideForm.longitude}`
-          : '';
-        return request(`/provider-services/catalog${loc}`, undefined, 'GET', accessToken);
+        const params = new URLSearchParams();
+        if (roadsideForm.latitude && roadsideForm.longitude) {
+          params.set('lat', String(roadsideForm.latitude));
+          params.set('lng', String(roadsideForm.longitude));
+        }
+        if (roadsideForm.vehicleId) params.set('vehicleId', roadsideForm.vehicleId);
+        const qs = params.toString() ? `?${params}` : '';
+        return request(`/provider-services/catalog${qs}`, undefined, 'GET', accessToken);
       })(),
     ]);
 

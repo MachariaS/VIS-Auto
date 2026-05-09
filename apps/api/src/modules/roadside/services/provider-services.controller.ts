@@ -33,12 +33,17 @@ export class ProviderServicesController {
 
   @Get('catalog')
   listCatalog(
+    @Request() req: AuthenticatedRequest,
     @Query('lat') lat?: string,
     @Query('lng') lng?: string,
+    @Query('vehicleId') vehicleId?: string,
   ) {
-    const customerLat = lat ? Number(lat) : undefined;
-    const customerLng = lng ? Number(lng) : undefined;
-    return this.providerServicesService.listAll(customerLat, customerLng);
+    return this.providerServicesService.listAll(
+      lat ? Number(lat) : undefined,
+      lng ? Number(lng) : undefined,
+      req.user.sub,
+      vehicleId,
+    );
   }
 
   @Post('bulk')

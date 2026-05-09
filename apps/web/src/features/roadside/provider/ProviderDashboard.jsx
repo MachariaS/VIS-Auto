@@ -103,7 +103,7 @@ export default function ProviderDashboard() {
 
   const [unreadCount, setUnreadCount] = useState(0);
   const [bellRinging, setBellRinging] = useState(false);
-  const notificationCount = unreadCount;
+  const notificationCount = Math.min(unreadCount, 99);
   const prevUnreadRef = useRef(null);
   const { filteredProviderOrders, orderCounts, selectedOrder } = useProviderOrders({
     requests,

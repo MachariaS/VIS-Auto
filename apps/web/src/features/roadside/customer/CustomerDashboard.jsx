@@ -81,16 +81,19 @@ export default function CustomerDashboard() {
   );
 
   const [unreadCount, setUnreadCount] = useState(0);
-  const notificationCount = unreadCount;
+  const notificationCount = Math.min(unreadCount, 99);
+
+  const refreshNotifCount = () => {
+    if (!token) return;
+    request('/notifications/unread-count', undefined, 'GET', token)
+      .then((d) => setUnreadCount(d?.count ?? 0))
+      .catch(() => {});
+  };
 
   useEffect(() => {
     if (!token) return;
-    const fetchCount = () =>
-      request('/notifications/unread-count', undefined, 'GET', token)
-        .then((d) => setUnreadCount(d?.count ?? 0))
-        .catch(() => {});
-    fetchCount();
-    const interval = setInterval(fetchCount, 60_000);
+    refreshNotifCount();
+    const interval = setInterval(refreshNotifCount, 20_000);
     return () => clearInterval(interval);
   }, [token]);
 
@@ -475,13 +478,16 @@ export default function CustomerDashboard() {
               className="icon-button notification-button"
               type="button"
               onClick={() => {
-                setShowNotifications((current) => !current);
+                setShowNotifications((current) => {
+                  if (!current) refreshNotifCount(); // sync badge the moment tray opens
+                  return !current;
+                });
                 setShowAccountMenu(false);
               }}
               aria-label="Notifications"
             >
               <BellIcon />
-              <span className="notification-count">{notificationCount}</span>
+              {notificationCount > 0 && <span className="notification-count">{notificationCount}</span>}
             </button>
             <div className="account-menu-wrap">
               <button

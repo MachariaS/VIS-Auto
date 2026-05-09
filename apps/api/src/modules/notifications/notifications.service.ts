@@ -24,6 +24,19 @@ export class NotificationsService {
   ) {}
 
   async create(input: CreateNotificationInput): Promise<NotificationEntity> {
+    // Deduplicate: skip if an identical notification for this user + refId + title
+    // was created within the last 60 seconds (prevents double-dispatch spam)
+    if (input.refId) {
+      const cutoff = new Date(Date.now() - 60_000);
+      const existing = await this.repo.findOne({
+        where: { userId: input.userId, refId: input.refId, title: input.title },
+        order: { createdAt: 'DESC' },
+      });
+      if (existing && existing.createdAt >= cutoff) {
+        return existing;
+      }
+    }
+
     const notification = this.repo.create({
       userId: input.userId,
       title: input.title,

@@ -1,142 +1,12 @@
+// Core constants: serviceTypeOptions, CATEGORY_BY_CODE, SERVICE_CATEGORY_ORDER,
+// providerServiceCatalogOptions, providerVehicleTypeOptions,
+// VEHICLE_MAKES/MODELS/YEARS, all initial form states, utils, types
+export * from '@vis/core';
+
+// ── Web-only ──────────────────────────────────────────────────────────────────
 export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
 export const SESSION_STORAGE_KEY = 'vis-assist-session';
 export const THEME_STORAGE_KEY = 'vis-assist-theme';
-
-export const serviceTypeOptions = [
-  { code: 'battery_jump', label: 'Battery Jump', short: 'Power restart' },
-  { code: 'fuel_delivery', label: 'Fuel Delivery', short: 'Fuel plus delivery' },
-  { code: 'tire_change', label: 'Tire Change', short: 'Wheel support' },
-  { code: 'towing', label: 'Towing', short: 'Recovery move' },
-  { code: 'lockout', label: 'Lockout', short: 'Entry support' },
-];
-
-export const providerServiceCatalogOptions = [
-  'General Service',
-  'Paint and Body Works',
-  'Engine Diagnostics',
-  'Brake Service',
-  'Electrical Repairs',
-  'Suspension and Alignment',
-  'AC and Climate Service',
-  'Car Detailing',
-];
-
-export const SERVICE_CATEGORY_ORDER = [
-  'Roadside emergency',
-  'Mechanical & repairs',
-  'Engine & tuning',
-  'Electrical & electronics',
-  'Suspension & alignment',
-  'Body & paint',
-  'Air conditioning',
-  'Cleaning & detailing',
-  'Fuel & fluids',
-  'Vehicle inspection',
-  'Vehicle specialisation',
-];
-
-export const CATEGORY_BY_CODE = {
-  towing: 'Roadside emergency',
-  battery_jump_start: 'Roadside emergency',
-  tyre_change: 'Roadside emergency',
-  lockout_assistance: 'Roadside emergency',
-  fuel_delivery: 'Roadside emergency',
-  winching: 'Roadside emergency',
-  fuel_petrol_regular: 'Fuel & fluids',
-  fuel_petrol_premium: 'Fuel & fluids',
-  fuel_diesel: 'Fuel & fluids',
-  fluid_top_up: 'Fuel & fluids',
-  on_site_diagnosis: 'Mechanical & repairs',
-  oil_change: 'Mechanical & repairs',
-  minor_repairs: 'Mechanical & repairs',
-  tyre_fitting: 'Mechanical & repairs',
-  brake_pad_replacement: 'Mechanical & repairs',
-  brake_disc_replacement: 'Mechanical & repairs',
-  brake_fluid_flush: 'Mechanical & repairs',
-  clutch_replacement: 'Mechanical & repairs',
-  gearbox_service: 'Mechanical & repairs',
-  cv_joint_replacement: 'Mechanical & repairs',
-  timing_belt_service: 'Mechanical & repairs',
-  radiator_service: 'Mechanical & repairs',
-  full_engine_service: 'Engine & tuning',
-  ecu_remap: 'Engine & tuning',
-  turbo_service: 'Engine & tuning',
-  exhaust_service: 'Engine & tuning',
-  air_intake_service: 'Engine & tuning',
-  engine_rebuild: 'Engine & tuning',
-  electrical_diagnosis: 'Electrical & electronics',
-  battery_replacement: 'Electrical & electronics',
-  alternator_repair: 'Electrical & electronics',
-  car_audio_install: 'Electrical & electronics',
-  camera_alarm_install: 'Electrical & electronics',
-  lighting_upgrade: 'Electrical & electronics',
-  dent_repair: 'Body & paint',
-  scratch_repair: 'Body & paint',
-  panel_beating: 'Body & paint',
-  full_respray: 'Body & paint',
-  windscreen_service: 'Body & paint',
-  rust_treatment: 'Body & paint',
-  wheel_alignment: 'Suspension & alignment',
-  wheel_balancing: 'Suspension & alignment',
-  shock_absorber_service: 'Suspension & alignment',
-  suspension_service: 'Suspension & alignment',
-  rim_repair: 'Suspension & alignment',
-  ac_regas: 'Air conditioning',
-  ac_repair: 'Air conditioning',
-  cabin_filter_replacement: 'Air conditioning',
-  car_wash_exterior: 'Cleaning & detailing',
-  car_wash_full: 'Cleaning & detailing',
-  detailing: 'Cleaning & detailing',
-  engine_bay_clean: 'Cleaning & detailing',
-  ceramic_coating: 'Cleaning & detailing',
-  ppf_wrap: 'Cleaning & detailing',
-  pre_purchase_inspection: 'Vehicle inspection',
-  roadworthy_inspection: 'Vehicle inspection',
-  insurance_inspection: 'Vehicle inspection',
-  spec_toyota: 'Vehicle specialisation',
-  spec_nissan: 'Vehicle specialisation',
-  spec_subaru: 'Vehicle specialisation',
-  spec_bmw: 'Vehicle specialisation',
-  spec_mercedes: 'Vehicle specialisation',
-  spec_land_rover: 'Vehicle specialisation',
-  spec_vw_group: 'Vehicle specialisation',
-  spec_japanese: 'Vehicle specialisation',
-  spec_european: 'Vehicle specialisation',
-  spec_ev: 'Vehicle specialisation',
-};
-
-export const providerVehicleTypeOptions = [
-  'Sedan',
-  'Hatchback',
-  'SUV',
-  'Van',
-  'Pickup',
-  'Truck',
-  'Bus',
-  'Motorcycle',
-  'EV',
-  'Hybrid',
-];
-
-export const countryOptions = [
-  { code: 'KE', label: 'Kenya',        phoneCode: '+254' },
-  { code: 'UG', label: 'Uganda',       phoneCode: '+256' },
-  { code: 'TZ', label: 'Tanzania',     phoneCode: '+255' },
-  { code: 'RW', label: 'Rwanda',       phoneCode: '+250' },
-  { code: 'BI', label: 'Burundi',      phoneCode: '+257' },
-  { code: 'SS', label: 'South Sudan',  phoneCode: '+211' },
-  { code: 'ET', label: 'Ethiopia',     phoneCode: '+251' },
-  { code: 'SO', label: 'Somalia',      phoneCode: '+252' },
-  { code: 'NG', label: 'Nigeria',      phoneCode: '+234' },
-  { code: 'GH', label: 'Ghana',        phoneCode: '+233' },
-  { code: 'ZA', label: 'South Africa', phoneCode: '+27'  },
-  { code: 'GB', label: 'UK',           phoneCode: '+44'  },
-  { code: 'US', label: 'USA',          phoneCode: '+1'   },
-  { code: 'IN', label: 'India',        phoneCode: '+91'  },
-  { code: 'CN', label: 'China',        phoneCode: '+86'  },
-];
-
-export const branchTypeOptions = ['Main Branch', 'Satellite Branch', 'Affiliate Branch'];
 
 export const serviceImageByCode = {
   battery_jump: '/assets/battery_jumpstart.jpeg',
@@ -146,20 +16,19 @@ export const serviceImageByCode = {
   lockout: '/assets/lockout.jpeg',
 };
 
-// Vehicle brand CSS config — no external images, guaranteed to render
-export const vehicleBrandLogoByCode = null; // kept for import compat; actual config below
+export const vehicleBrandLogoByCode = null;
 
 export const vehicleBrandConfig = {
-  spec_toyota:    { bg: '#EB0A1E', text: '#fff', label: 'TOYOTA' },
-  spec_nissan:    { bg: '#C3002F', text: '#fff', label: 'NISSAN' },
-  spec_subaru:    { bg: '#003399', text: '#fff', label: 'SUBARU' },
-  spec_bmw:       { bg: '#1C69D4', text: '#fff', label: 'BMW' },
-  spec_mercedes:  { bg: '#1A1A1A', text: '#fff', label: 'MERCEDES' },
-  spec_land_rover:{ bg: '#005A2B', text: '#fff', label: 'LAND ROVER' },
-  spec_vw_group:  { bg: '#001E50', text: '#fff', label: 'VW GROUP' },
-  spec_japanese:  { bg: '#BC002D', text: '#fff', label: 'JDM' },
-  spec_european:  { bg: '#003399', text: '#fff', label: 'EU AUTO' },
-  spec_ev:        { bg: '#1F2937', text: '#10b981', label: '⚡ EV' },
+  spec_toyota:     { bg: '#EB0A1E', text: '#fff', label: 'TOYOTA' },
+  spec_nissan:     { bg: '#C3002F', text: '#fff', label: 'NISSAN' },
+  spec_subaru:     { bg: '#003399', text: '#fff', label: 'SUBARU' },
+  spec_bmw:        { bg: '#1C69D4', text: '#fff', label: 'BMW' },
+  spec_mercedes:   { bg: '#1A1A1A', text: '#fff', label: 'MERCEDES' },
+  spec_land_rover: { bg: '#005A2B', text: '#fff', label: 'LAND ROVER' },
+  spec_vw_group:   { bg: '#001E50', text: '#fff', label: 'VW GROUP' },
+  spec_japanese:   { bg: '#BC002D', text: '#fff', label: 'JDM' },
+  spec_european:   { bg: '#003399', text: '#fff', label: 'EU AUTO' },
+  spec_ev:         { bg: '#1F2937', text: '#10b981', label: '⚡ EV' },
 };
 
 export const futureCustomerModules = [
@@ -177,7 +46,6 @@ export const futureProviderModules = [
 ];
 
 export const fuelLiterOptions = [5, 10, 20, 30];
-
 
 export const vendorStatusCopy = {
   pending: 'Pending Review',
@@ -199,62 +67,22 @@ export const orderStatusCopy = {
   cancelled: 'Cancelled',
 };
 
-export const initialRegister = {
-  name: '',
-  email: '',
-  phone: '',
-  accountType: 'car_owner',
-  password: '',
-};
+export const countryOptions = [
+  { code: 'KE', label: 'Kenya',        phoneCode: '+254' },
+  { code: 'UG', label: 'Uganda',       phoneCode: '+256' },
+  { code: 'TZ', label: 'Tanzania',     phoneCode: '+255' },
+  { code: 'RW', label: 'Rwanda',       phoneCode: '+250' },
+  { code: 'BI', label: 'Burundi',      phoneCode: '+257' },
+  { code: 'SS', label: 'South Sudan',  phoneCode: '+211' },
+  { code: 'ET', label: 'Ethiopia',     phoneCode: '+251' },
+  { code: 'SO', label: 'Somalia',      phoneCode: '+252' },
+  { code: 'NG', label: 'Nigeria',      phoneCode: '+234' },
+  { code: 'GH', label: 'Ghana',        phoneCode: '+233' },
+  { code: 'ZA', label: 'South Africa', phoneCode: '+27'  },
+  { code: 'GB', label: 'UK',           phoneCode: '+44'  },
+  { code: 'US', label: 'USA',          phoneCode: '+1'   },
+  { code: 'IN', label: 'India',        phoneCode: '+91'  },
+  { code: 'CN', label: 'China',        phoneCode: '+86'  },
+];
 
-export const initialLogin = {
-  email: '',
-  password: '',
-};
-
-export const initialVerify = {
-  email: '',
-  otp: '',
-};
-
-export const initialVehicle = {
-  nickname: '',
-  make: '',
-  model: '',
-  year: new Date().getFullYear(),
-  registrationNumber: '',
-  color: '',
-  notes: '',
-};
-
-export const initialProviderService = {
-  serviceName: '',
-  serviceCode: 'battery_jump',
-  basePriceKsh: '1500',
-  pricePerKmKsh: '150',
-  description: '',
-  gasolineRegularPrice: '',
-  gasolineVPowerPrice: '',
-  dieselPrice: '',
-};
-
-export const initialRoadsideRequest = {
-  vehicleId: '',
-  providerServiceId: '',
-  distanceKm: '8',
-  latitude: '',
-  longitude: '',
-  address: '',
-  landmark: '',
-  notes: '',
-  fuelLitres: '10',
-  customFuelLitres: '',
-  fuelType: 'gasoline',
-  gasolineGrade: 'regular',
-};
-
-export const initialPasswordForm = {
-  currentPassword: '',
-  newPassword: '',
-  confirmPassword: '',
-};
+export const branchTypeOptions = ['Main Branch', 'Satellite Branch', 'Affiliate Branch'];

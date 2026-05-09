@@ -297,17 +297,23 @@ export class RoadsideRequestsService {
       return;
     }
 
-    // Sort by Haversine distance from customer — prefer providers with known base location
+    // Composite score: rating (×2 weight) + proximity bonus + price score
+    // Mirrors the same model used by SortedProviderList on the customer side
     const lat = Number(request.latitude);
     const lng = Number(request.longitude);
-    const sorted = candidates
-      .filter((c) => c.providerBaseLat && c.providerBaseLng)
-      .sort((a, b) =>
-        this.haversineKm(lat, lng, a.providerBaseLat!, a.providerBaseLng!) -
-        this.haversineKm(lat, lng, b.providerBaseLat!, b.providerBaseLng!),
-      );
 
-    const chosen = sorted[0] ?? candidates[0];
+    const scored = candidates.map((c) => {
+      const dist = c.providerBaseLat && c.providerBaseLng
+        ? this.haversineKm(lat, lng, c.providerBaseLat, c.providerBaseLng)
+        : 10; // penalise providers with no known location
+      const ratingScore = (c.avgRating ?? 0) * 2;
+      const distScore = Math.max(0, 10 - dist);
+      const priceScore = c.basePriceKsh > 0 ? Math.max(0, 5 - c.basePriceKsh / 1000) : 0;
+      return { c, score: ratingScore + distScore + priceScore };
+    });
+
+    scored.sort((a, b) => b.score - a.score);
+    const chosen = scored[0]?.c ?? candidates[0];
 
     request.dispatchedProviderId = chosen.providerId;
     request.dispatchedAt = new Date();

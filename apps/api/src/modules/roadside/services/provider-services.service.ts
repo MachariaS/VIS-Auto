@@ -245,12 +245,33 @@ export class ProviderServicesService {
       : services;
 
     const providerIds = [...new Set(filtered.map((s) => s.providerId))];
-    const providers = await this.usersService.findByIds(providerIds);
+    const [providers, ratingRows] = await Promise.all([
+      this.usersService.findByIds(providerIds),
+      providerIds.length > 0
+        ? this.ratingsRepo
+            .createQueryBuilder('r')
+            .select('r."providerId"', 'providerId')
+            .addSelect('AVG(r.score)', 'avgRating')
+            .addSelect('COUNT(r.id)', 'ratingCount')
+            .where('r."providerId" IN (:...ids)', { ids: providerIds })
+            .groupBy('r."providerId"')
+            .getRawMany()
+        : [],
+    ]);
+
     const providerMap = new Map(providers.map((p) => [p.id, p as unknown as { baseLat?: number; baseLng?: number }]));
+    const ratingMap = new Map<string, { avgRating: number | null; ratingCount: number }>();
+    for (const r of ratingRows as { providerId: string; avgRating: string; ratingCount: string }[]) {
+      ratingMap.set(r.providerId, {
+        avgRating: r.avgRating ? Math.round(Number(r.avgRating) * 10) / 10 : null,
+        ratingCount: Number(r.ratingCount),
+      });
+    }
 
     return filtered.map((s) => {
       const prov = providerMap.get(s.providerId);
-      return this.toDto(s, prov?.baseLat ?? null, prov?.baseLng ?? null);
+      const rating = ratingMap.get(s.providerId);
+      return this.toDto(s, prov?.baseLat ?? null, prov?.baseLng ?? null, rating?.avgRating ?? null, rating?.ratingCount ?? 0);
     });
   }
 

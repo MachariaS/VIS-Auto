@@ -14,7 +14,7 @@ function StarBar({ star, count, total }) {
   );
 }
 
-export default function ProviderProfileCard({ providerId, onClose }) {
+export default function ProviderProfileCard({ providerId, onClose, isFavourite = false, onToggleFavourite }) {
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -31,7 +31,24 @@ export default function ProviderProfileCard({ providerId, onClose }) {
   return (
     <div className="provider-profile-backdrop" onClick={onClose}>
       <div className="provider-profile-card" onClick={(e) => e.stopPropagation()}>
-        <button type="button" className="provider-profile-close" onClick={onClose}>✕</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {onToggleFavourite && (
+            <button
+              type="button"
+              onClick={onToggleFavourite}
+              title={isFavourite ? 'Remove from favourites' : 'Add to favourites'}
+              style={{
+                background: isFavourite ? 'rgba(132,204,22,0.15)' : 'rgba(255,255,255,0.06)',
+                border: `1px solid ${isFavourite ? '#84cc16' : 'rgba(255,255,255,0.12)'}`,
+                borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 16,
+                color: isFavourite ? '#84cc16' : 'inherit', transition: 'all .15s',
+              }}
+            >
+              {isFavourite ? '★' : '☆'}
+            </button>
+          )}
+          <button type="button" className="provider-profile-close" onClick={onClose}>✕</button>
+        </div>
 
         {loading && <p className="provider-profile-loading">Loading profile…</p>}
 

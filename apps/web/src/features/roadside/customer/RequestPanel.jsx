@@ -221,6 +221,17 @@ function ServicePickCard({ svc, selected, isFav, onSelect, onToggleFav }) {
 
 function SortedProviderList({ providers, roadsideForm, setRoadsideForm }) {
   const [viewingProfile, setViewingProfile] = useState(null);
+  const { profileSettings, handleProfileFieldChange } = useApp();
+  const dispatch = profileSettings?.preferences?.dispatch ?? {};
+  const favouriteProviders = dispatch.favouriteProviders ?? [];
+
+  function toggleFavouriteProvider(providerId, providerName) {
+    const already = favouriteProviders.some((p) => p.id === providerId);
+    const next = already
+      ? favouriteProviders.filter((p) => p.id !== providerId)
+      : [...favouriteProviders, { id: providerId, name: providerName }];
+    handleProfileFieldChange('preferences', 'dispatch', { ...dispatch, favouriteProviders: next });
+  }
   const cLat = Number(roadsideForm.latitude) || 0;
   const cLng = Number(roadsideForm.longitude) || 0;
 
@@ -258,7 +269,9 @@ function SortedProviderList({ providers, roadsideForm, setRoadsideForm }) {
     <>
       {viewingProfile && (
         <ProviderProfileCard
-          providerId={viewingProfile}
+          providerId={viewingProfile.id}
+          isFavourite={favouriteProviders.some((p) => p.id === viewingProfile.id)}
+          onToggleFavourite={() => toggleFavouriteProvider(viewingProfile.id, viewingProfile.name)}
           onClose={() => setViewingProfile(null)}
         />
       )}
@@ -274,7 +287,7 @@ function SortedProviderList({ providers, roadsideForm, setRoadsideForm }) {
             <button
               type="button"
               className="provider-view-profile-btn"
-              onClick={() => setViewingProfile(svc.providerId)}
+              onClick={() => setViewingProfile({ id: svc.providerId, name: svc.providerName })}
             >
               View profile
             </button>

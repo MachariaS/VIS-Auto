@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { initialPasswordForm } from '../../shared/constants';
 
+const FUEL_BRANDS = ['Shell', 'Total', 'Rubis', 'Kenol', 'OiLibya', 'Vivo'];
+const RATING_MARKS = [0, 3.0, 3.5, 4.0, 4.5, 5.0];
+
 export default function SettingsPanel() {
   const {
     profileSettings,
@@ -29,6 +32,26 @@ export default function SettingsPanel() {
     if (success) {
       setPasswordForm(initialPasswordForm);
     }
+  }
+
+  const dispatch = profileSettings.preferences?.dispatch ?? {};
+  const favouriteProviders = dispatch.favouriteProviders ?? [];
+  const preferredFuelBrands = dispatch.preferredFuelBrands ?? [];
+  const minProviderRating = dispatch.minProviderRating ?? 0;
+
+  function updateDispatch(key, value) {
+    handleProfileFieldChange('preferences', 'dispatch', { ...dispatch, [key]: value });
+  }
+
+  function toggleFuelBrand(brand) {
+    const next = preferredFuelBrands.includes(brand)
+      ? preferredFuelBrands.filter((b) => b !== brand)
+      : [...preferredFuelBrands, brand];
+    updateDispatch('preferredFuelBrands', next);
+  }
+
+  function removeFavouriteProvider(id) {
+    updateDispatch('favouriteProviders', favouriteProviders.filter((p) => p.id !== id));
   }
 
   return (
@@ -181,6 +204,110 @@ export default function SettingsPanel() {
           <p>Recurring billing, receipts, and active subscriptions will connect here next.</p>
         </div>
       </section>
+      <section className="dashboard-panel stack">
+        <div className="panel-head">
+          <div>
+            <p className="eyebrow">Dispatch preferences</p>
+            <h3>Provider matching</h3>
+          </div>
+        </div>
+        <p style={{ fontSize: 13, color: 'var(--text-secondary, #94a3b8)', margin: '0 0 16px' }}>
+          These signals improve which provider gets dispatched to you automatically.
+        </p>
+
+        <div>
+          <span className="field-label" style={{ display: 'block', marginBottom: 8 }}>Preferred fuel brands</span>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            {FUEL_BRANDS.map((brand) => (
+              <button
+                key={brand}
+                type="button"
+                onClick={() => toggleFuelBrand(brand)}
+                style={{
+                  padding: '6px 14px', borderRadius: 999, fontSize: 13, cursor: 'pointer',
+                  border: `1.5px solid ${preferredFuelBrands.includes(brand) ? '#84cc16' : 'rgba(255,255,255,0.12)'}`,
+                  background: preferredFuelBrands.includes(brand) ? 'rgba(132,204,22,0.12)' : 'transparent',
+                  color: preferredFuelBrands.includes(brand) ? '#84cc16' : 'inherit',
+                  fontWeight: preferredFuelBrands.includes(brand) ? 600 : 400,
+                  transition: 'all .15s',
+                }}
+              >
+                {brand}
+              </button>
+            ))}
+          </div>
+          {preferredFuelBrands.length === 0 && (
+            <p style={{ fontSize: 12, color: 'var(--text-secondary, #94a3b8)', marginTop: 6 }}>
+              No preference — any fuel provider will be dispatched.
+            </p>
+          )}
+        </div>
+
+        <div>
+          <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+            <span className="field-label">Minimum provider rating</span>
+            <strong style={{ color: '#84cc16', fontSize: 14 }}>
+              {minProviderRating === 0 ? 'No floor' : `${minProviderRating}★ minimum`}
+            </strong>
+          </div>
+          <input
+            type="range"
+            min="0"
+            max="5"
+            step="0.5"
+            value={minProviderRating}
+            onChange={(e) => updateDispatch('minProviderRating', Number(e.target.value))}
+            style={{ width: '100%' }}
+          />
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: 'var(--text-secondary, #94a3b8)', marginTop: 4 }}>
+            {RATING_MARKS.map((m) => <span key={m}>{m === 0 ? 'Any' : `${m}★`}</span>)}
+          </div>
+        </div>
+
+        <div>
+          <span className="field-label" style={{ display: 'block', marginBottom: 8 }}>
+            Favourite providers
+            <span style={{ fontWeight: 400, fontSize: 12, color: 'var(--text-secondary, #94a3b8)', marginLeft: 8 }}>
+              Auto-added when you rate 4★+
+            </span>
+          </span>
+          {favouriteProviders.length === 0 ? (
+            <p style={{ fontSize: 13, color: 'var(--text-secondary, #94a3b8)' }}>
+              No favourite providers yet. Rate a provider 4+ stars after a job to add them.
+            </p>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {favouriteProviders.map((p) => (
+                <div key={p.id} style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+                  padding: '8px 12px', borderRadius: 10,
+                  background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <div style={{
+                      width: 32, height: 32, borderRadius: '50%',
+                      background: 'rgba(132,204,22,0.15)', color: '#84cc16',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 14, fontWeight: 700,
+                    }}>
+                      {p.name.charAt(0).toUpperCase()}
+                    </div>
+                    <span style={{ fontSize: 14 }}>{p.name}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeFavouriteProvider(p.id)}
+                    style={{ fontSize: 12, color: '#ef4444', background: 'none', border: 'none', cursor: 'pointer', padding: '4px 8px' }}
+                  >
+                    Remove
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
       <div className="form-actions">
         <button className="primary-cta" type="submit" disabled={profileSaving}>
           {profileSaving ? 'Saving...' : 'Save settings'}

@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { request } from '../../../shared/helpers';
+import { useApp } from '../../../context/AppContext';
 
 export default function RatingPrompt({ completedRequest, token, onDone }) {
+  const { profileSettings, handleProfileFieldChange } = useApp();
   const [score, setScore] = useState(0);
   const [hovered, setHovered] = useState(0);
   const [comment, setComment] = useState('');
@@ -20,6 +22,17 @@ export default function RatingPrompt({ completedRequest, token, onDone }) {
         token,
       );
       setSubmitted(true);
+      // Auto-add to favourites for 4+ star ratings (background, no UI)
+      if (score >= 4 && completedRequest.providerId && completedRequest.providerName) {
+        const dispatch = profileSettings?.preferences?.dispatch ?? {};
+        const favs = dispatch.favouriteProviders ?? [];
+        if (!favs.some((p) => p.id === completedRequest.providerId)) {
+          handleProfileFieldChange('preferences', 'dispatch', {
+            ...dispatch,
+            favouriteProviders: [...favs, { id: completedRequest.providerId, name: completedRequest.providerName }],
+          });
+        }
+      }
       setTimeout(onDone, 1800);
     } catch (e) {
       setError(e.message || 'Unable to submit rating.');

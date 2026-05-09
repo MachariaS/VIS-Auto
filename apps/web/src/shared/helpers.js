@@ -229,10 +229,11 @@ export function getDefaultProfile(user) {
       language: 'English',
       compactMode: false,
       dispatch: {
-        preferredFuelBrands: [],  // e.g. ['Shell', 'Total', 'Rubis']
-        minProviderRating: 0,     // 0 = no floor; e.g. 4.0 means only providers rated ≥ 4.0
-        vehicleBrand: '',         // e.g. 'spec_toyota' — boosts specialist providers in dispatch
-        preferredNetworks: [],    // vendor network IDs for preferred partner dispatch
+        preferredFuelBrands: [],    // e.g. ['Shell', 'Total', 'Rubis']
+        minProviderRating: 0,       // 0 = no floor; e.g. 4.0 = only providers rated ≥ 4.0
+        vehicleBrand: '',           // e.g. 'spec_toyota' — boosts specialists in dispatch
+        preferredNetworks: [],      // vendor network IDs for preferred partner dispatch
+        favouriteProviders: [],     // [{ id: string, name: string }] — auto-built from 4★+ ratings
       },
     },
     subscription: {

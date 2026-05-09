@@ -228,6 +228,12 @@ export function getDefaultProfile(user) {
       theme: 'dark',
       language: 'English',
       compactMode: false,
+      dispatch: {
+        preferredFuelBrands: [],  // e.g. ['Shell', 'Total', 'Rubis']
+        minProviderRating: 0,     // 0 = no floor; e.g. 4.0 means only providers rated ≥ 4.0
+        vehicleBrand: '',         // e.g. 'spec_toyota' — boosts specialist providers in dispatch
+        preferredNetworks: [],    // vendor network IDs for preferred partner dispatch
+      },
     },
     subscription: {
       plan: user?.accountType === 'provider' ? 'Provider Starter' : 'Driver Starter',
@@ -301,6 +307,11 @@ export function mergeProfileSettings(user, ...sources) {
         ...baseProfile.preferences,
         ...current.preferences,
         ...nextSource.preferences,
+        dispatch: {
+          ...baseProfile.preferences.dispatch,
+          ...(current.preferences?.dispatch ?? {}),
+          ...(nextSource.preferences?.dispatch ?? {}),
+        },
       },
       subscription: {
         ...baseProfile.subscription,

@@ -1,0 +1,8 @@
+[phases.setup]
+# Node 22 LTS satisfies React Native's >=20.19.4 requirement and is stable
+nixPkgs = ["nodejs_22"]
+
+[phases.install]
+# Only install API dependencies — do NOT run root workspace install which
+# would pull in apps/mobile React Native packages and fail the build.
+cmds = ["cd apps/api && npm ci --include=dev"]

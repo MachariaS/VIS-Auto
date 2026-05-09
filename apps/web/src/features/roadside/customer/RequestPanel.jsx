@@ -533,7 +533,8 @@ export default function RequestPanel({
       {/* ── Step 3: Provider ── */}
       {step === 3 && (
         <div className="request-step-panel">
-          <h3>How to assign a provider?</h3>
+          <h3>Provider assignment</h3>
+          <p className="step-hint" style={{ marginTop: -4 }}>Choose how you want to be matched with a provider</p>
 
           {filteredProviders.length === 0 ? (
             <div className="cust-empty">
@@ -547,34 +548,80 @@ export default function RequestPanel({
               {/* Auto-dispatch card */}
               <button
                 type="button"
-                className={`dispatch-mode-card ${dispatchMode === 'auto' ? 'dispatch-mode-card--active' : ''}`}
                 onClick={() => setDispatchMode('auto')}
+                style={{
+                  display: 'block', width: '100%', padding: '16px 18px',
+                  borderRadius: '14px', marginBottom: '10px', cursor: 'pointer',
+                  textAlign: 'left', border: `2px solid ${dispatchMode === 'auto' ? '#84cc16' : 'rgba(255,255,255,0.09)'}`,
+                  background: dispatchMode === 'auto' ? 'rgba(132,204,22,0.07)' : 'rgba(255,255,255,0.03)',
+                  transition: 'border-color .15s, background .15s',
+                }}
               >
-                <div className="dispatch-mode-card-head">
-                  <span className="dispatch-mode-icon">⚡</span>
-                  <div>
-                    <strong>Auto-dispatch</strong>
-                    <span className="dispatch-recommended-badge">Recommended</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+                    background: 'rgba(132,204,22,0.15)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+                  }}>⚡</div>
+                  <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                    <strong style={{ fontSize: 15, color: 'var(--text-primary, #f8fafc)' }}>Auto-dispatch</strong>
+                    <span style={{
+                      fontSize: 11, fontWeight: 700, padding: '2px 8px', borderRadius: 999,
+                      background: 'rgba(132,204,22,0.18)', color: '#84cc16',
+                      letterSpacing: '0.05em', textTransform: 'uppercase',
+                    }}>Recommended</span>
                   </div>
-                  {dispatchMode === 'auto' && <span className="dispatch-check">✓</span>}
+                  <div style={{
+                    width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                    border: `2px solid ${dispatchMode === 'auto' ? '#84cc16' : 'rgba(255,255,255,0.2)'}`,
+                    background: dispatchMode === 'auto' ? '#84cc16' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 13, color: '#000', fontWeight: 700,
+                    transition: 'all .15s',
+                  }}>{dispatchMode === 'auto' ? '✓' : ''}</div>
                 </div>
-                <p className="dispatch-mode-desc">
-                  We match you with the nearest available provider. {filteredProviders.length} provider{filteredProviders.length !== 1 ? 's' : ''} ready — typical response under 2 minutes.
+                <p style={{ margin: '10px 0 0 52px', fontSize: 13, color: 'var(--text-secondary, #94a3b8)', lineHeight: 1.55 }}>
+                  We match you with the nearest available provider.{' '}
+                  <strong style={{ color: 'var(--text-primary, #f8fafc)' }}>
+                    {filteredProviders.length} provider{filteredProviders.length !== 1 ? 's' : ''} online
+                  </strong>{' '}
+                  — typical response under 2 minutes.
                 </p>
               </button>
 
               {/* Manual pick card */}
               <button
                 type="button"
-                className={`dispatch-mode-card ${dispatchMode === 'manual' ? 'dispatch-mode-card--active' : ''}`}
                 onClick={() => setDispatchMode('manual')}
+                style={{
+                  display: 'block', width: '100%', padding: '16px 18px',
+                  borderRadius: '14px', marginBottom: '10px', cursor: 'pointer',
+                  textAlign: 'left', border: `2px solid ${dispatchMode === 'manual' ? '#84cc16' : 'rgba(255,255,255,0.09)'}`,
+                  background: dispatchMode === 'manual' ? 'rgba(132,204,22,0.07)' : 'rgba(255,255,255,0.03)',
+                  transition: 'border-color .15s, background .15s',
+                }}
               >
-                <div className="dispatch-mode-card-head">
-                  <span className="dispatch-mode-icon">🔍</span>
-                  <div><strong>Choose manually</strong></div>
-                  {dispatchMode === 'manual' && <span className="dispatch-check">✓</span>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <div style={{
+                    width: 40, height: 40, borderRadius: '50%', flexShrink: 0,
+                    background: 'rgba(255,255,255,0.06)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18,
+                  }}>🔍</div>
+                  <div style={{ flex: 1 }}>
+                    <strong style={{ fontSize: 15, color: 'var(--text-primary, #f8fafc)' }}>Choose manually</strong>
+                  </div>
+                  <div style={{
+                    width: 22, height: 22, borderRadius: '50%', flexShrink: 0,
+                    border: `2px solid ${dispatchMode === 'manual' ? '#84cc16' : 'rgba(255,255,255,0.2)'}`,
+                    background: dispatchMode === 'manual' ? '#84cc16' : 'transparent',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: 13, color: '#000', fontWeight: 700,
+                    transition: 'all .15s',
+                  }}>{dispatchMode === 'manual' ? '✓' : ''}</div>
                 </div>
-                <p className="dispatch-mode-desc">Browse and pick a specific provider from the list.</p>
+                <p style={{ margin: '10px 0 0 52px', fontSize: 13, color: 'var(--text-secondary, #94a3b8)', lineHeight: 1.55 }}>
+                  Browse and pick a specific provider from the list.
+                </p>
               </button>
 
               {/* Provider list — only in manual mode */}

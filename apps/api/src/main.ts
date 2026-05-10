@@ -80,6 +80,10 @@ async function bootstrap() {
   // Socket.IO adapter — uses the same allowedOrigins so WS CORS matches HTTP CORS
   app.useWebSocketAdapter(new SocketIOAdapter(app, allowedOrigins));
 
+  // All routes are prefixed with /api (e.g. /api/auth/login, /api/users/me).
+  // The /health endpoint is excluded so Railway's health check still works.
+  app.setGlobalPrefix('api', { exclude: ['health'] });
+
   app.useGlobalFilters(new AllExceptionsFilter());
 
   app.useGlobalPipes(

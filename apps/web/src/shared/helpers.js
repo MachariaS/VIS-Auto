@@ -1,19 +1,44 @@
 import { API_BASE, serviceImageByCode } from './constants';
-import { request as coreRequest } from '@vis/core';
-
-// Re-export all shared logic from core (formatCurrency, profile utils, location utils, etc.)
-export * from '@vis/core';
 
 // Web-compatible request: keeps existing call sites unchanged (path first, not baseUrl first)
-export function request(path, body, method = 'POST', token, signal) {
-  return coreRequest(API_BASE, path, body, method, token, signal);
+export async function request(path, body, method = 'POST', token, signal) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    method,
+    credentials: 'include',
+    signal,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  const text = await response.text();
+  let data;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    data = {};
+  }
+
+  if (!response.ok) {
+    const error = new Error(
+      Array.isArray(data.message)
+        ? data.message.join(', ')
+        : data.message || `Request failed (${response.status})`,
+    );
+    error.status = response.status;
+    error.path = path;
+    throw error;
+  }
+
+  return data;
 }
 
 export function getApiUrl(path) {
   return `${API_BASE}${path}`;
 }
 
-// getServiceImageUrl is web-specific because it references /assets/ file paths
 export function getServiceImageUrl(service) {
   if (!service) {
     return '/assets/other_services.jpeg';

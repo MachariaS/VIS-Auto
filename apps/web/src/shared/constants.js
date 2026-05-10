@@ -1,8 +1,3 @@
-// Core constants: serviceTypeOptions, CATEGORY_BY_CODE, SERVICE_CATEGORY_ORDER,
-// providerServiceCatalogOptions, providerVehicleTypeOptions,
-// VEHICLE_MAKES/MODELS/YEARS, all initial form states, utils, types
-export * from '@vis/core';
-
 // ── Web-only ──────────────────────────────────────────────────────────────────
 export const API_BASE =
   import.meta.env.VITE_STAGING_API_BASE_URL ??

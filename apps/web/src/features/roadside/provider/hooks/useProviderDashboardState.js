@@ -1,1 +1,1 @@
-export { useProviderDashboardState as default } from '@vis/core';
+export { useProviderDashboardState as default } from '../../../../../../../packages/core/src/hooks/useProviderDashboardState';

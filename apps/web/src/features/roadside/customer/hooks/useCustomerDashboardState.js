@@ -1,1 +1,1 @@
-export { useCustomerDashboardState as default } from '@vis/core';
+export { useCustomerDashboardState as default } from '../../../../../../../packages/core/src/hooks/useCustomerDashboardState';

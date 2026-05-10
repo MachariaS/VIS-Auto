@@ -1,4 +1,4 @@
-import { useRequestTracking as coreUseRequestTracking } from '@vis/core';
+import { useRequestTracking as coreUseRequestTracking } from '../../../../../../../packages/core/src/hooks/useRequestTracking';
 import { API_BASE } from '../../../../shared/constants';
 
 const SERVER_URL = API_BASE.replace('/api', '');

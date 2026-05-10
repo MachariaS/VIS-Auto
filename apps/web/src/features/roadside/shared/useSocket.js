@@ -1,7 +1,6 @@
-import { useSocket as coreUseSocket } from '@vis/core';
+import { useSocket as coreUseSocket } from '../../../../../../packages/core/src/hooks/useSocket';
 import { API_BASE } from '../../../shared/constants';
 
-// Derive the raw server URL (strip /api suffix if present) for the socket namespace
 const SERVER_URL = API_BASE.replace('/api', '');
 
 export function useSocket(token) {

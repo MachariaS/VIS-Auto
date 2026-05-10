@@ -8,6 +8,12 @@ export const API_BASE =
   import.meta.env.VITE_STAGING_API_BASE_URL ??
   import.meta.env.VITE_PROD_API_BASE_URL ??
   '';
+
+if (!API_BASE) {
+  console.error(
+    '[VIS] API_BASE is not set — set VITE_STAGING_API_BASE_URL (Preview) or VITE_PROD_API_BASE_URL (Production) in Vercel env vars and redeploy.',
+  );
+}
 export const SESSION_STORAGE_KEY = 'vis-assist-session';
 export const THEME_STORAGE_KEY = 'vis-assist-theme';
 

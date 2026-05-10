@@ -28,6 +28,16 @@ export default defineConfig({
     alias: {
       '@vis/core': resolve(__dirname, '../../packages/core/src/index.ts'),
     },
+    // Rollup resolves deps starting from the importing file's directory.
+    // Files in packages/core (outside the root) can't walk up to find
+    // node_modules on their own. These absolute paths cover both cases:
+    //   LOCAL  – workspace hoists packages to the repo root node_modules
+    //   VERCEL – isolated `cd apps/web && npm ci` puts them in apps/web/node_modules
+    modules: [
+      resolve(__dirname, 'node_modules'),
+      resolve(__dirname, '../../node_modules'),
+      'node_modules',
+    ],
   },
   server: {
     port: 3000,

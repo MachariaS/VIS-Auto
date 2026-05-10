@@ -51,11 +51,15 @@ export class AuthService {
 
     void this.mailService.sendOtp(email, code);
 
+    const showDevOtp =
+      this.configService.get('NODE_ENV') !== 'production' ||
+      this.configService.get('SHOW_DEV_OTP') === 'true';
+
     return {
       message: 'OTP generated for verification.',
       otpRequired: true,
       expiresAt: new Date(expiresAt).toISOString(),
-      devOtp: this.configService.get('NODE_ENV') === 'production' ? undefined : code,
+      devOtp: showDevOtp ? code : undefined,
     };
   }
 
@@ -168,13 +172,17 @@ export class AuthService {
         }),
       );
 
-      await this.mailService.sendOtp(normalizedEmail, code);
+      void this.mailService.sendOtp(normalizedEmail, code);
+
+      const showDevOtp =
+        this.configService.get('NODE_ENV') !== 'production' ||
+        this.configService.get('SHOW_DEV_OTP') === 'true';
 
       return {
         message: 'A new code has been sent.',
         otpRequired: true,
         expiresAt: new Date(expiresAt).toISOString(),
-        devOtp: this.configService.get('NODE_ENV') === 'production' ? undefined : code,
+        devOtp: showDevOtp ? code : undefined,
       };
     }
 

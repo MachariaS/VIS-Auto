@@ -4,7 +4,10 @@
 export * from '@vis/core';
 
 // ── Web-only ──────────────────────────────────────────────────────────────────
-export const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+export const API_BASE =
+  import.meta.env.MODE === 'staging'
+    ? (import.meta.env.VITE_STAGING_API_BASE_URL ?? '')
+    : (import.meta.env.VITE_PROD_API_BASE_URL ?? '');
 export const SESSION_STORAGE_KEY = 'vis-assist-session';
 export const THEME_STORAGE_KEY = 'vis-assist-theme';
 

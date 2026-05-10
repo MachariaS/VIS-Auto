@@ -3,9 +3,9 @@ import { INestApplicationContext } from '@nestjs/common';
 import type { ServerOptions } from 'socket.io';
 
 export class SocketIOAdapter extends IoAdapter {
-  private readonly allowedOrigins: string[];
+  private readonly allowedOrigins: (string | RegExp)[];
 
-  constructor(app: INestApplicationContext, allowedOrigins: string[]) {
+  constructor(app: INestApplicationContext, allowedOrigins: (string | RegExp)[]) {
     super(app);
     this.allowedOrigins = allowedOrigins;
   }

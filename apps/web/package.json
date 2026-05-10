@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "build:staging": "vite build --mode staging",
+    "build:auto": "if [ \"$VERCEL_GIT_COMMIT_REF\" = 'develop' ]; then vite build --mode staging; else vite build; fi",
     "preview": "vite preview"
   },
   "dependencies": {

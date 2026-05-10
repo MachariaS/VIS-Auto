@@ -16,7 +16,7 @@ const REFRESH_COOKIE_OPTIONS = {
   secure: isProd,
   sameSite: (isProd ? 'none' : 'strict') as 'none' | 'strict',
   maxAge: 7 * 24 * 60 * 60 * 1000,
-  path: '/auth',
+  path: '/',
 };
 
 @Controller('auth')

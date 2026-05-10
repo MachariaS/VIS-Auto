@@ -40,6 +40,9 @@ async function bootstrap() {
   validateProductionSecrets();
 
   const app = await NestFactory.create(AppModule);
+  // Trust Railway's / Heroku's load-balancer proxy so req.secure reflects HTTPS
+  // correctly — required for SameSite=None cookies to be marked Secure.
+  app.getHttpAdapter().getInstance().set('trust proxy', 1);
   const logger = new Logger('Bootstrap');
 
   app.use(

@@ -6,22 +6,6 @@ import { dirname, resolve } from 'path';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-const API_TARGET = 'http://localhost:4000';
-const API_ROUTES = [
-  '/health',
-  '/auth',
-  '/users',
-  '/vehicles',
-  '/provider-services',
-  '/roadside-requests',
-  '/vendors',
-  '/locations',
-  '/service-catalog',
-  '/notifications',
-  '/ratings',
-  '/providers',
-];
-
 export default defineConfig({
   plugins: [react()],
   resolve: {
@@ -41,8 +25,8 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    proxy: Object.fromEntries(
-      API_ROUTES.map((route) => [route, { target: API_TARGET, changeOrigin: true }]),
-    ),
+    proxy: {
+      '/api': { target: 'http://localhost:4000', changeOrigin: true },
+    },
   },
 });

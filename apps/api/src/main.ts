@@ -52,13 +52,24 @@ async function bootstrap() {
   app.use(cookieParser());
 
   const frontendUrl = process.env.FRONTEND_URL;
-  const allowedOrigins = [
+  const isProd = process.env.NODE_ENV === 'production';
+
+  const allowedOrigins: (string | RegExp)[] = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
-    frontendUrl,
-    frontendUrl ? frontendUrl.replace('https://', 'https://www.') : undefined,
-    frontendUrl ? frontendUrl.replace('https://www.', 'https://') : undefined,
-  ].filter(Boolean) as string[];
+  ];
+
+  if (frontendUrl) {
+    allowedOrigins.push(frontendUrl);
+    allowedOrigins.push(frontendUrl.replace('https://', 'https://www.'));
+    allowedOrigins.push(frontendUrl.replace('https://www.', 'https://'));
+  }
+
+  // Allow all Vercel preview deployments in non-production so develop-branch
+  // previews work without updating FRONTEND_URL for every deployment URL.
+  if (!isProd) {
+    allowedOrigins.push(/https:\/\/.*\.vercel\.app$/);
+  }
 
   app.enableCors({
     origin: allowedOrigins,

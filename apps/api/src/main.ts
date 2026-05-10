@@ -64,9 +64,11 @@ async function bootstrap() {
     // Railway and Heroku both set NODE_ENV=production so we can't use that
     // to distinguish staging from prod; allow all Vercel origins on both.
     /https:\/\/.*\.vercel\.app$/,
-    // Custom production domain
+    // Custom domains
     'https://www.vis-auto.tech',
     'https://vis-auto.tech',
+    'https://staging.vis-auto.tech',
+    'https://staging.vis-auto.com',
   ];
 
   if (frontendUrl) {

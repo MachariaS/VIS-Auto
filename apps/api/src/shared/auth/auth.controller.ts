@@ -31,8 +31,17 @@ export class AuthController {
 
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    return this.authService.login(dto);
+  async login(
+    @Body() dto: LoginDto,
+    @Res({ passthrough: true }) res: Response,
+  ) {
+    const result = await this.authService.login(dto);
+    if ('refreshToken' in result) {
+      res.cookie(REFRESH_COOKIE, result.refreshToken, REFRESH_COOKIE_OPTIONS);
+      const { refreshToken: _rt, ...response } = result;
+      return response;
+    }
+    return result;
   }
 
   @Throttle({ default: { limit: 3, ttl: 600_000 } })

@@ -81,6 +81,11 @@ export default function AuthPanel() {
     setLoading(true);
     try {
       const data = await request('/auth/login', loginForm);
+      if (data.accessToken) {
+        // OTP bypassed (SKIP_OTP=true on staging) — tokens returned directly
+        completeDashboard(data.user, data.accessToken);
+        return;
+      }
       setDevOtp(data.devOtp ?? '');
       setVerifyForm({ email: loginForm.email, otp: '' });
       setMessage(data.devOtp ? 'OTP sent. Use the code below for local testing.' : 'OTP sent.');

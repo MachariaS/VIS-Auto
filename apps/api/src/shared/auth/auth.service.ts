@@ -41,6 +41,24 @@ export class AuthService {
       throw new UnauthorizedException('Invalid email or password.');
     }
 
+    // Staging bypass: skip OTP entirely and return tokens directly.
+    // Set SKIP_OTP=true in Railway env vars only — never in production.
+    if (this.configService.get('SKIP_OTP') === 'true') {
+      const [accessToken, refreshToken] = await Promise.all([
+        this.jwtService.signAsync({
+          sub: user.id,
+          email: user.email,
+          name: user.name,
+          accountType: user.accountType,
+        }),
+        this.jwtService.signAsync({ sub: user.id, type: 'refresh' }, {
+          secret: this.configService.getOrThrow<string>('REFRESH_TOKEN_SECRET'),
+          expiresIn: '7d',
+        }),
+      ]);
+      return { accessToken, refreshToken, user: this.usersService.toSafeUser(user), otpSkipped: true };
+    }
+
     const code = this.generateOtp();
     const expiresAt = Date.now() + 5 * 60 * 1000;
     const email = user.email.toLowerCase();
@@ -51,15 +69,11 @@ export class AuthService {
 
     void this.mailService.sendOtp(email, code);
 
-    const showDevOtp =
-      this.configService.get('NODE_ENV') !== 'production' ||
-      this.configService.get('SHOW_DEV_OTP') === 'true';
-
     return {
       message: 'OTP generated for verification.',
       otpRequired: true,
       expiresAt: new Date(expiresAt).toISOString(),
-      devOtp: showDevOtp ? code : undefined,
+      devOtp: this.configService.get('NODE_ENV') !== 'production' ? code : undefined,
     };
   }
 
@@ -174,15 +188,11 @@ export class AuthService {
 
       void this.mailService.sendOtp(normalizedEmail, code);
 
-      const showDevOtp =
-        this.configService.get('NODE_ENV') !== 'production' ||
-        this.configService.get('SHOW_DEV_OTP') === 'true';
-
       return {
         message: 'A new code has been sent.',
         otpRequired: true,
         expiresAt: new Date(expiresAt).toISOString(),
-        devOtp: showDevOtp ? code : undefined,
+        devOtp: this.configService.get('NODE_ENV') !== 'production' ? code : undefined,
       };
     }
 

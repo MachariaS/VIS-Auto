@@ -4,25 +4,10 @@ on:
   push:
     branches:
       - main
-      - develop
 
+# Staging (Railway) is paused — its trial expired. Restore the deploy-staging
+# job from git history (and re-add `develop` above) when staging comes back.
 jobs:
-  deploy-staging:
-    name: Deploy to Railway (staging)
-    if: github.ref == 'refs/heads/develop'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      - name: Deploy to Railway
-        run: railway up --service vis-auto-api --detach
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-
   deploy-production:
     name: Deploy to Heroku (production)
     if: github.ref == 'refs/heads/main'

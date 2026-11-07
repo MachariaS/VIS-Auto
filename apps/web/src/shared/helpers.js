@@ -1,5 +1,19 @@
 import { API_BASE, serviceImageByCode } from './constants';
 
+// Pure utils shared with mobile, imported by source path (no @vis/core package dependency)
+export { formatCurrency } from '../../../../packages/core/src/utils/currency';
+export { getSelectedFuelLitres, getFuelUnitPrice } from '../../../../packages/core/src/utils/fuel';
+export {
+  normalizeLocationQuery,
+  shouldLookupAfterWord,
+  parseAddressParts,
+} from '../../../../packages/core/src/utils/location';
+export {
+  mergeUniqueList,
+  getDefaultProfile,
+  mergeProfileSettings,
+} from '../../../../packages/core/src/utils/profile';
+
 // Web-compatible request: keeps existing call sites unchanged (path first, not baseUrl first)
 export async function request(path, body, method = 'POST', token, signal) {
   const response = await fetch(`${API_BASE}${path}`, {

@@ -1,3 +1,22 @@
+// ── Shared with mobile (imported by source path, no @vis/core package dependency) ──
+export {
+  SERVICE_CATEGORY_ORDER,
+  CATEGORY_BY_CODE,
+  serviceTypeOptions,
+} from '../../../../packages/core/src/constants/services';
+export {
+  providerServiceCatalogOptions,
+  providerVehicleTypeOptions,
+} from '../../../../packages/core/src/constants/catalog';
+export {
+  initialVehicle,
+  initialProviderService,
+  initialRegister,
+  initialLogin,
+  initialVerify,
+  initialPasswordForm,
+} from '../../../../packages/core/src/constants/forms';
+
 // ── Web-only ──────────────────────────────────────────────────────────────────
 export const API_BASE =
   import.meta.env.VITE_STAGING_API_BASE_URL ??
